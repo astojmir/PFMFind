@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <limits.h>
 #include "hit_list.h"
 #include "partition.h"
 #include "smatrix.h"
@@ -12,6 +13,7 @@
 #include "clusters.h"
 #endif
 
+#define MERGE_DUPLICATES
 
 /********************************************************************/    
 /********************************************************************/    
@@ -33,196 +35,262 @@
 /* Main constructor */
 FS_HASH_TABLE_t *FS_HASH_TABLE_create(ULINT no_bins, ULINT def_size) 
 {
-  FS_HASH_TABLE_t *FS_HT = mallocec(sizeof(FS_HASH_TABLE_t));
+  FS_HASH_TABLE_t *HT = mallocec(sizeof(FS_HASH_TABLE_t));
  
-  FS_HT->no_bins = no_bins;
-  FS_HT->no_seqs = 0;
-  FS_HT->max_seqs_per_bin = 5 * def_size;
-  FS_HT->largest_bin = 0;
-  FS_HT->heap = NULL;
-  
-  FS_HT->freq_seqs_per_bin = callocec(FS_HT->max_seqs_per_bin,
-				      sizeof(ULINT));
-  FS_HT->freq_seqs_per_bin[0] = no_bins;
-  FS_HT->bin_size = mallocec(no_bins * sizeof(ULINT));
-  FS_HT->max_bin_size = mallocec(no_bins * sizeof(ULINT)); 
-  FS_HT->bin = mallocec(no_bins * sizeof(SEQ_index_t *));
+  HT->no_bins = no_bins;
+  HT->no_seqs = 0;
+  HT->no_useqs = 0;
 
-  memset(FS_HT->bin_size, 0, no_bins * sizeof(ULINT));
-  memset(FS_HT->max_bin_size, 0, no_bins * sizeof(ULINT));
- 
-  return FS_HT;  
+  HT->shist_len = 5 * def_size;
+  HT->shist = callocec(HT->shist_len, sizeof(ULINT)); 
+  HT->uhist_len = 5 * def_size;
+  HT->uhist = callocec(HT->uhist_len, sizeof(ULINT)); 
+  HT->bin_size = callocec(no_bins, sizeof(ULINT));
+  HT->max_bin_size = callocec(no_bins, sizeof(ULINT)); 
+  HT->bin = mallocec(no_bins * sizeof(SEQ_index_t *));
+  HT->binL = 0;
+  HT->heap = NULL;
+
+  HT->u_size = callocec(no_bins, sizeof(ULINT));
+  HT->u = mallocec(no_bins * sizeof(int));
+  HT->u_heap = NULL;
+  HT->uL = 0;
+
+  return HT;  
 }
 
 /* Destructor */
-void FS_HASH_TABLE_destroy(FS_HASH_TABLE_t *FS_HT)
+void FS_HASH_TABLE_destroy(FS_HASH_TABLE_t *HT)
 {
   ULINT i;
-  if (FS_HT->heap == NULL)
-    for (i=0; i < FS_HT->no_bins; i++)
-      free(FS_HT->bin[i]);
+
+  if (HT->heap == NULL)
+    for (i=0; i < HT->no_bins; i++)
+      free(HT->bin[i]);
   else
-    free(FS_HT->heap);
-  free(FS_HT->bin);
-  free(FS_HT->bin_size);
-  free(FS_HT->freq_seqs_per_bin);
-  if (FS_HT->max_bin_size != NULL)
-    free(FS_HT->max_bin_size);
-  free(FS_HT);
+    free(HT->heap);
+
+  /* TO DO: Free unique sequneces */
+
+  free(HT->bin);
+  free(HT->bin_size);
+  free(HT->shist);
+  if (HT->max_bin_size != NULL)
+    free(HT->max_bin_size);
+  free(HT);
 }
 
 /* Insertion */
-void FS_HASH_TABLE_count_seq(FS_HASH_TABLE_t *FS_HT, ULINT i,
+void FS_HASH_TABLE_count_seq(FS_HASH_TABLE_t *HT, ULINT i,
 			      SEQ_index_t seq_i)
 {
-  ULINT old_seqs_per_bin;
-  FS_HT->freq_seqs_per_bin[FS_HT->max_bin_size[seq_i]]--;
-
-  FS_HT->max_bin_size[seq_i]++;
-  FS_HT->no_seqs++;
-
-  if (FS_HT->max_bin_size[seq_i] > 
-      FS_HT->max_bin_size[FS_HT->largest_bin]) 
-    FS_HT->largest_bin = seq_i;
-
-  if (FS_HT->max_bin_size[seq_i] >= FS_HT->max_seqs_per_bin)
-    {
-      old_seqs_per_bin = FS_HT->max_seqs_per_bin;
-      FS_HT->max_seqs_per_bin = FS_HT->max_bin_size[seq_i] + 1;       
-      FS_HT->freq_seqs_per_bin = reallocec(FS_HT->freq_seqs_per_bin,
-				   FS_HT->max_seqs_per_bin *
-					   sizeof(ULINT)); 
-      memset(FS_HT->freq_seqs_per_bin + old_seqs_per_bin, 0, 
-	     (FS_HT->max_seqs_per_bin - old_seqs_per_bin) 
-	     * sizeof(ULINT));
-    }
-  FS_HT->freq_seqs_per_bin[FS_HT->max_bin_size[seq_i]]++;
+  /* Count the sequence */
+  HT->max_bin_size[seq_i]++;
+  HT->no_seqs++;
 }
 
-void FS_HASH_TABLE_allocate_bins(FS_HASH_TABLE_t *FS_HT)
+void FS_HASH_TABLE_allocate_bins(FS_HASH_TABLE_t *HT)
 {
   ULINT i;
-  for (i=0; i < FS_HT->no_bins; i++)
-    FS_HT->bin[i] = mallocec(FS_HT->max_bin_size[i] 
+  for (i=0; i < HT->no_bins; i++)
+    HT->bin[i] = mallocec(HT->max_bin_size[i] 
 			     * sizeof(SEQ_index_t));
 }
 
-void FS_HASH_TABLE_insert_seq(FS_HASH_TABLE_t *FS_HT, ULINT i,
+void FS_HASH_TABLE_insert_seq(FS_HASH_TABLE_t *HT, ULINT i,
 			      SEQ_index_t seq_i)
 {
-  FS_HT->bin[seq_i][FS_HT->bin_size[seq_i]] = i;
-  FS_HT->bin_size[seq_i]++;  
+  /* Insert the sequence */
+  HT->bin[seq_i][HT->bin_size[seq_i]] = i;
+  HT->bin_size[seq_i]++;
+}
+
+void FS_HASH_TABLE_add_bin_stats(FS_HASH_TABLE_t *HT,
+				 SEQ_index_t seq_i)
+{
+  ULINT s0; /* Old length of frequency vector */
+
+  if (HT->bin_size[seq_i] > HT->bin_size[HT->binL])
+    HT->binL = seq_i;
+    
+  if (HT->bin_size[seq_i] >= HT->shist_len)
+    {
+      s0 = HT->shist_len;
+      HT->shist_len = HT->bin_size[seq_i]+1;
+      HT->shist = reallocec(HT->shist, HT->shist_len * sizeof(ULINT)); 
+      memset(HT->shist + s0, 0, (HT->shist_len - s0) * sizeof(ULINT));
+    }
+  HT->shist[HT->bin_size[seq_i]]++;
+
+#ifdef MERGE_DUPLICATES
+  if (HT->u_size[seq_i] > HT->u_size[HT->uL])
+    HT->uL = seq_i;
+
+  if (HT->u_size[seq_i] >= HT->uhist_len)
+    {
+      s0 = HT->uhist_len;
+      HT->uhist_len = HT->u_size[seq_i]+1;
+      HT->uhist = reallocec(HT->uhist, HT->uhist_len * sizeof(ULINT));  
+      memset(HT->uhist + s0, 0, (HT->uhist_len - s0) * sizeof(ULINT));
+    }
+  HT->uhist[HT->u_size[seq_i]]++;
+#endif
 }
 
 /* Trimming */
-void FS_HASH_TABLE_resize(FS_HASH_TABLE_t *FS_HT)
+void FS_HASH_TABLE_resize(FS_HASH_TABLE_t *HT)
 {
   ULINT i;
-  for (i=0; i < FS_HT->no_bins; i++)
+  for (i=0; i < HT->no_bins; i++)
     {
-      if (FS_HT->bin_size[i] > 0)
+      if (HT->bin_size[i] > 0)
 	{
-	  FS_HT->bin[i] = reallocec(FS_HT->bin[i], 
-	  		FS_HT->bin_size[i] * sizeof(SEQ_index_t)); 
-	  FS_HT->max_bin_size[i] = FS_HT->bin_size[i];
+	  HT->bin[i] = reallocec(HT->bin[i], 
+	  		HT->bin_size[i] * sizeof(SEQ_index_t)); 
+	  HT->max_bin_size[i] = HT->bin_size[i];
 	}      
     }
 }
 
 
 /* Reading, writing to file */
-int FS_HASH_TABLE_write(FS_HASH_TABLE_t *FS_HT, FILE *stream)
+int FS_HASH_TABLE_write(FS_HASH_TABLE_t *HT, FILE *stream)
 {
   ULINT i;
-#if 0
-  ULINT one_percent = FS_HT->no_bins/100;
-#endif
-  fwrite(&(FS_HT->no_bins), sizeof(ULINT), 1, stream);
-  fwrite(&(FS_HT->no_seqs), sizeof(ULINT), 1, stream);
-  fwrite(&(FS_HT->max_seqs_per_bin), sizeof(ULINT), 1, stream);
-  fwrite(&(FS_HT->largest_bin), sizeof(SEQ_index_t), 1, stream);
 
-  fwrite(FS_HT->freq_seqs_per_bin, sizeof(ULINT),
-	 FS_HT->max_seqs_per_bin, stream); 
-  fwrite(FS_HT->bin_size, sizeof(ULINT), FS_HT->no_bins, stream);  
+  fwrite(&(HT->no_bins), sizeof(ULINT), 1, stream);
 
-  for (i=0; i < FS_HT->no_bins; i++)
-    {
-      fwrite(FS_HT->bin[i], sizeof(SEQ_index_t), FS_HT->bin_size[i],
-	     stream);
-#if 0
-      printbar(stdout, i+1, one_percent, 50);  
-#endif
-    }   
+  fwrite(&(HT->no_seqs), sizeof(ULINT), 1, stream);
+  fwrite(&(HT->shist_len), sizeof(ULINT), 1, stream);
+  fwrite(&(HT->binL), sizeof(SEQ_index_t), 1, stream);
+  fwrite(HT->shist, sizeof(ULINT), HT->shist_len, stream); 
+  fwrite(HT->bin_size, sizeof(ULINT), HT->no_bins, stream);  
+
+  for (i=0; i < HT->no_bins; i++)
+    fwrite(HT->bin[i], sizeof(SEQ_index_t), HT->bin_size[i], stream);
+
+  fwrite(&(HT->no_useqs), sizeof(ULINT), 1, stream);
+  fwrite(&(HT->uhist_len), sizeof(ULINT), 1, stream);
+  fwrite(&(HT->uL), sizeof(SEQ_index_t), 1, stream);
+  fwrite(HT->uhist, sizeof(ULINT), HT->uhist_len, stream); 
+  fwrite(HT->u_size, sizeof(ULINT), HT->no_bins, stream);  
+  
+  for (i=0; i < HT->no_bins; i++)
+    fwrite(HT->u[i], sizeof(int), HT->u_size[i], stream);
+
   return 1;
 }
 
 FS_HASH_TABLE_t *FS_HASH_TABLE_read(FILE *stream)
 {
-  FS_HASH_TABLE_t *FS_HT = mallocec(sizeof(FS_HASH_TABLE_t));
+  FS_HASH_TABLE_t *HT = mallocec(sizeof(FS_HASH_TABLE_t));
   ULINT i;
   SEQ_index_t *current;
+  int *t2;
 
-  fread(&(FS_HT->no_bins), sizeof(ULINT), 1, stream);
-  fread(&(FS_HT->no_seqs), sizeof(ULINT), 1, stream);
-  fread(&(FS_HT->max_seqs_per_bin), sizeof(ULINT), 1, stream);
-  fread(&(FS_HT->largest_bin), sizeof(SEQ_index_t), 1, stream);
+  fread(&(HT->no_bins), sizeof(ULINT), 1, stream);
+  HT->bin_size = mallocec(HT->no_bins * sizeof(ULINT));
+  HT->u_size = mallocec(HT->no_bins * sizeof(ULINT));
+  HT->bin = mallocec(HT->no_bins * sizeof(SEQ_index_t *));
+  HT->u = mallocec(HT->no_bins * sizeof(int *));
 
-  FS_HT->freq_seqs_per_bin = mallocec(FS_HT->max_seqs_per_bin
-				      * sizeof(ULINT));
-  FS_HT->bin_size = mallocec(FS_HT->no_bins * sizeof(ULINT));
-  FS_HT->max_bin_size = NULL;
-  FS_HT->bin = mallocec(FS_HT->no_bins * sizeof(SEQ_index_t *));
+  fread(&(HT->no_seqs), sizeof(ULINT), 1, stream);
+  HT->heap = mallocec(HT->no_seqs * sizeof(SEQ_index_t)); 
 
-  fread(FS_HT->freq_seqs_per_bin, sizeof(ULINT),
-	 FS_HT->max_seqs_per_bin, stream); 
-  fread(FS_HT->bin_size, sizeof(ULINT), FS_HT->no_bins, stream);  
+  fread(&(HT->shist_len), sizeof(ULINT), 1, stream);
+  HT->shist = mallocec(HT->shist_len * sizeof(ULINT));
 
-  FS_HT->heap = mallocec(FS_HT->no_seqs * sizeof(SEQ_index_t)); 
-  current =  FS_HT->heap;
-  for (i=0; i < FS_HT->no_bins; i++)
+  fread(&(HT->binL), sizeof(SEQ_index_t), 1, stream);
+
+  HT->max_bin_size = NULL;
+
+  fread(HT->shist, sizeof(ULINT), HT->shist_len, stream); 
+  fread(HT->bin_size, sizeof(ULINT), HT->no_bins, stream);  
+
+  current =  HT->heap;
+  for (i=0; i < HT->no_bins; i++)
     {
-#if 0
-      if (FS_HT->bin_size[i] > 0)
-	{
-	  FS_HT->bin[i] = mallocec(FS_HT->bin_size[i] *
-				   sizeof(SEQ_index_t));
-	} 
-#endif
-      FS_HT->bin[i] = current;
-      fread(FS_HT->bin[i], sizeof(SEQ_index_t), FS_HT->bin_size[i],
+      HT->bin[i] = current;
+      fread(HT->bin[i], sizeof(SEQ_index_t), HT->bin_size[i],
 	    stream);
-      current += FS_HT->bin_size[i];
-    }   
-  return FS_HT;  
+      current += HT->bin_size[i];
+    }
+
+  fread(&(HT->no_useqs), sizeof(ULINT), 1, stream);
+  HT->u_heap = mallocec(HT->no_useqs * sizeof(int)); 
+
+  fread(&(HT->uhist_len), sizeof(ULINT), 1, stream);
+  HT->uhist = mallocec(HT->uhist_len * sizeof(ULINT)); 
+
+  fread(&(HT->uL), sizeof(SEQ_index_t), 1, stream);
+
+  fread(HT->uhist, sizeof(ULINT), HT->uhist_len, stream); 
+  fread(HT->u_size, sizeof(ULINT), HT->no_bins, stream);  
+  
+  t2 = HT->u_heap;
+  for (i=0; i < HT->no_bins; i++)
+    {
+      HT->u[i] = t2;
+      fread(HT->u[i], sizeof(int), HT->u_size[i], stream);
+      t2 += HT->u_size[i];
+    }
+   
+  return HT;  
 }
 
 /* Statistics */
-void FS_HASH_TABLE_print_stats(FS_HASH_TABLE_t *FS_HT, FILE *stream,
+void FS_HASH_TABLE_print_stats(FS_HASH_TABLE_t *HT, FILE *stream,
 			       FS_PARTITION_t *FS_partition, 
 			       ULINT frag_len)
 {
   ULINT i;
+  ULINT CF;
+  ULINT CS;
   
   fprintf(stream, "Total number of fragments in index: %ld\n", 
-	  FS_HT->no_seqs);
+	  HT->no_seqs);
   fprintf(stream, "Total number of index entries: %ld\n", 
-	  FS_HT->no_bins);
+	  HT->no_bins);
   fprintf(stream, "Average size of index entry: %.2f\n", 
-	  (float) FS_HT->no_seqs / (float) FS_HT->no_bins);
-  fprintf(stream, "Maximum size of index entry: %ld\n", 
-	  FS_HT->bin_size[FS_HT->largest_bin]);
-  fprintf(stream, "Largest index entry: %s\n",
-	  FS_seq_print(FS_HT->largest_bin, FS_partition, frag_len));
+	  (float) HT->no_seqs / (float) HT->no_bins);
+  fprintf(stream, "Largest index entry: %s (%ld)\n",
+	  FS_seq_print(HT->binL, FS_partition, frag_len),
+	  HT->bin_size[HT->binL]);
+  fprintf(stream, "Total number of distinct fragments in index: %ld\n", 
+	  HT->no_useqs);
+  fprintf(stream, "Average 'distinct' size of index entry: %.2f\n", 
+	  (float) HT->no_useqs / (float) HT->no_bins);
+  fprintf(stream, "Largest 'distinct' index entry: %s (%ld)\n",
+	  FS_seq_print(HT->uL, FS_partition, frag_len),
+	  HT->u_size[HT->uL]);
 
   fprintf(stream, "\n* Distribution of numbers of fragments per"
 	  " index entry *\n");
   fprintf(stream, "%17s %10s\n","Index entry size", "Frequency");
-  for (i = 0; i < FS_HT->max_seqs_per_bin; i++)
+  CF = 0;
+  CS = 0;
+  for (i = 0; i < HT->shist_len; i++)
     {
-      if (FS_HT->freq_seqs_per_bin[i] > 0)
-	fprintf(stream, "%17ld %10ld\n", i, 
-		FS_HT->freq_seqs_per_bin[i]);
+      CF += HT->shist[i];
+      CS += HT->shist[i] * i;    
+      if (HT->shist[i] > 0)
+	fprintf(stream, "%17ld %10ld %10ld %10ld\n", i, HT->shist[i], 
+		CF, CS);
+    }
+  fprintf(stream, "\n");
+
+  fprintf(stream, "\n* Distribution of numbers of distinct fragments per"
+	  " index entry *\n");
+  fprintf(stream, "%17s %10s\n","Index entry size", "Frequency");
+  CF = 0;
+  CS = 0;
+  for (i = 0; i < HT->uhist_len; i++)
+    {
+      CF += HT->uhist[i];
+      CS += HT->uhist[i] * i;
+      if (HT->uhist[i] > 0)
+	fprintf(stream, "%17ld %10ld %10ld %10ld\n", i, HT->uhist[i], 
+		CF, CS);
     }
   fprintf(stream, "\n");
 }
@@ -292,6 +360,22 @@ static ULINT *FS_REM;
 static int *qind; /* sequence converted to indices */
 
 
+#ifdef MERGE_DUPLICATES
+/* Fragment comparison routine */
+static 
+int comp_frags(const void *fg1, const void *fg2)
+{
+  SEQ_index_t *f1 = (SEQ_index_t *) fg1;
+  SEQ_index_t *f2 = (SEQ_index_t *) fg2;
+  BIOSEQ s1;
+  BIOSEQ s2;
+
+  fastadb_get_Ffrag(s_db, frag_len, &s1, *f1);
+  fastadb_get_Ffrag(s_db, frag_len, &s2, *f2);
+  return memcmp(s1.start, s2.start, frag_len);
+}
+#endif
+
 
 /* Main constructor */
 void FS_INDEX_create(const char *database, ULINT flen,
@@ -316,6 +400,11 @@ void FS_INDEX_create(const char *database, ULINT flen,
   fastadb_arg fastadb_argt[3];
   fastadb_argv_t fastadb_argv[3];
   ULINT bin_size;
+
+#ifdef MERGE_DUPLICATES
+  int k;
+#endif
+
 
   /* Initialise FS_index */
   split_base_dir(database, &db_base, &db_dir);
@@ -381,7 +470,8 @@ void FS_INDEX_create(const char *database, ULINT flen,
 
   /* We do it in two passes - first we count the fragments, then put
      them */
-
+  if (FS_INDEX_VERBOSE || FS_INDEX_PRINT_BAR)
+    printf("Counting fragments ...\n");
   /* Counting */ 
   j = 0;
   while (fastadb_get_next_Ffrag(s_db, frag_len, frag, &i, skip))  
@@ -396,9 +486,13 @@ void FS_INDEX_create(const char *database, ULINT flen,
 	printbar(stdout, j+1, one_percent_fragments, 50);  
     }  
   /* Allocating */
+  if (FS_INDEX_VERBOSE || FS_INDEX_PRINT_BAR)
+    printf("Allocating bins ...\n");
   FS_HASH_TABLE_allocate_bins(HT);
 
   /* Commiting */
+  if (FS_INDEX_VERBOSE || FS_INDEX_PRINT_BAR)
+    printf("Collecting fragments ...\n");
   j = 0;
   fastadb_init_Ffrags(s_db, frag_len);
   while (fastadb_get_next_Ffrag(s_db, frag_len, frag, &i, skip))  
@@ -416,7 +510,46 @@ void FS_INDEX_create(const char *database, ULINT flen,
       if (FS_INDEX_PRINT_BAR > 0)
 	printbar(stdout, j+1, one_percent_fragments, 50);  
     }  
+  if (FS_INDEX_VERBOSE || FS_INDEX_PRINT_BAR)
+    printf("Collecting duplicate fragments ...\n");
 
+  for (j=0; j < HT->no_bins; j++)
+    {
+
+#ifdef MERGE_DUPLICATES
+      if (HT->bin_size[j] != 0) {
+
+      /* Sort fragments */
+      qsort(HT->bin[j], HT->bin_size[j], sizeof(SEQ_index_t),
+	    comp_frags);
+      /* Count unique fragments */
+      HT->u_size[j] = 1;
+      for (i=1; i < HT->bin_size[j]; i++)
+	if (comp_frags(HT->bin[j]+i, HT->bin[j]+i-1) != 0)
+	  HT->u_size[j]++;
+
+      HT->no_useqs += HT->u_size[j];
+      /* Allocate unique fragments */
+      HT->u[j] = callocec(HT->u_size[j], sizeof(int));
+
+      /* Fill unique array */
+ 
+      HT->u[j][0] = 0;
+      k = 0;
+      for (i=1; i < HT->bin_size[j]; i++)
+	if (comp_frags(HT->bin[j]+i, HT->bin[j]+i-1) != 0)
+	  {
+	    k++;
+	    HT->u[j][k] = i; 
+	  }
+      }
+      if (FS_INDEX_PRINT_BAR > 0)
+	printbar(stdout, j+1, HT->no_bins/100, 50);  
+      
+#endif
+      /* Add statistics */
+      FS_HASH_TABLE_add_bin_stats(HT, j);     
+    }
 
 #if 0
   /* Resize bins */
@@ -678,25 +811,42 @@ void check_bins(FS_SEQ_t FS_neighbour, int i, int dist)
 
 void FS_INDEX_QD_process_bin(FS_SEQ_t FS_query)
 {
-  ULINT n = FS_HASH_TABLE_get_no_seqs(HT, FS_query);
-  ULINT j;
+  ULINT n = FS_HASH_TABLE_get_no_useqs(HT, FS_query);
+  ULINT N = FS_HASH_TABLE_get_no_seqs(HT, FS_query);
+  int i;
+  int j;
   ULINT frag_offset;
   BIOSEQ subject;
   int D_value;
 
-  for (j = 0; j < n; j++)
+  for (i = 0; i < n; i++)
     {
-      frag_offset = FS_HASH_TABLE_retrieve_seq(HT, FS_query, j);
+      j = HT->u[FS_query][i];
 
+      frag_offset = FS_HASH_TABLE_retrieve_seq(HT, FS_query, j);
       fastadb_get_Ffrag(s_db, frag_len, &subject, frag_offset);
+
       if (SCORE_MATRIX_evaluate_max(D, query, &subject, 
 				    D_cutoff, &D_value))
 	{
+	  HIT_LIST_count_useq_hit(hit_list, 1);
+	  HIT_LIST_insert_seq_hit(hit_list, &subject, (float) D_value); 
 	  HIT_LIST_count_seq_hit(hit_list, 1);
-	  HIT_LIST_insert_seq_hit(hit_list, &subject, 
-				  (float) D_value); 
+	  j++;
+	  while ((j < N && i == n-1) || j < HT->u[FS_query][i+1])
+	    {
+	      HIT_LIST_count_seq_hit(hit_list, 1);
+	      frag_offset = FS_HASH_TABLE_retrieve_seq(HT, FS_query, j);
+	      fastadb_get_Ffrag(s_db, frag_len, &subject, frag_offset);
+	      HIT_LIST_insert_seq_hit(hit_list, &subject, (float) D_value); 
+	      j++;
+	    }
+
 	}
-      HIT_LIST_count_seq_visited(hit_list, 1);
+      HIT_LIST_count_seq_visited(hit_list,
+	i == n-1 ? N - HT->u[FS_query][i] :
+                   HT->u[FS_query][i+1]- HT->u[FS_query][i]);
+      HIT_LIST_count_useq_visited(hit_list, 1);
     }
 }
 
@@ -891,7 +1041,7 @@ int FS_INDEX_kNN_search(HIT_LIST_t *hit_list0, BIOSEQ *query0,
   D = D0;
   pfunc = FS_INDEX_kNN_QD_process_bin;
   S_cutoff = 0;
-  D_cutoff = 0;
+  D_cutoff = INT_MAX;
   HIT_LIST_set_index_data(hit_list, index_name, alphabet, HT->no_bins,
 			  HT->no_seqs);
 
