@@ -14,14 +14,10 @@
 
 /* If the extern inline functions are not to be inlined, they must be
    here */ 
-#ifdef DEBUG
-#define FS_INDEX_INLINE
-#endif
-
+#ifndef MY_INLINE
+#define MY_INLINE
 #include "FSindex.h"
-
-#ifdef DEBUG
-#undef FS_INDEX_INLINE
+#undef MY_INLINE
 #endif
 
 

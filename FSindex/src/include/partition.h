@@ -113,24 +113,9 @@ void FS_PARTITION_pletter_2_string(FS_PARTITION_t *ptable, int p,
 /***                                                              ***/
 /********************************************************************/    
 /********************************************************************/    
-#ifndef DEBUG
-
-#ifndef MY_INLINE
-#define MY_INLINE extern inline
-#endif
-
-#define FS_PARTITION_INLINE
-
-#else
-
-#ifndef MY_INLINE
-#define MY_INLINE 
-#endif
-
-#endif
 
 
-#ifdef  FS_PARTITION_INLINE
+#ifdef  MY_INLINE
 
 /********************************************************************/    
 /*                                                                  */

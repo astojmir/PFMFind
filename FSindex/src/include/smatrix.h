@@ -97,23 +97,8 @@ void SCORE_MATRIX_print(SCORE_MATRIX_t *S, FILE *stream,
 /***                                                              ***/
 /********************************************************************/    
 /********************************************************************/    
-#ifndef DEBUG
 
-#ifndef MY_INLINE
-#define MY_INLINE extern inline
-#endif
-
-#define SMATRIX_INLINE
-
-#else
-
-#ifndef MY_INLINE
-#define MY_INLINE 
-#endif
-
-#endif /* #ifndef DEBUG */
-
-#ifdef SMATRIX_INLINE
+#ifdef MY_INLINE
 /* Set members */
 
 MY_INLINE

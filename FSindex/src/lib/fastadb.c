@@ -5,14 +5,10 @@
 #include <time.h>
 #include <assert.h>
 
-#ifdef DEBUG
-#define FASTA_DB_INLINE
-#endif
-
+#ifndef MY_INLINE
+#define MY_INLINE
 #include "fastadb.h"
-
-#ifdef DEBUG
-#undef FASTA_DB_INLINE
+#undef MY_INLINE
 #endif
 
 

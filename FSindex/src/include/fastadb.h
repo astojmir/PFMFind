@@ -167,19 +167,9 @@ int fastadb_find_Ffrag_seq(SEQUENCE_DB *s_db, BIOSEQ *frag,
 int fastadb_get_Ffrag_seq(SEQUENCE_DB *s_db, BIOSEQ *frag, 
 			  ULINT seq_id, ULINT from, ULINT to);
 
-#ifndef DEBUG
-
-#define MY_INLINE extern inline
-#define FASTA_DB_INLINE
-
-#else
-
-#define MY_INLINE 
-
-#endif
 
 
-#ifdef  FASTA_DB_INLINE
+#ifdef  MY_INLINE
 /********************************************************************/    
 /********************************************************************/    
 /***                                                              ***/

@@ -1,6 +1,6 @@
 /********************************************************************/    
 /*                                                                  */
-/*                     SCORE_MATRIX module                          */ 
+/*                     POS_MATRIX module                            */ 
 /*                                                                  */
 /********************************************************************/    
 
@@ -14,16 +14,11 @@
 #include "smatrix.h"
 #include "fastadb.h"
 
-#ifdef DEBUG
-#define POS_MATRIX_INLINE
-#endif
-
+#ifndef MY_INLINE
+#define MY_INLINE
 #include "pmatrix.h"
-
-#ifdef DEBUG
-#undef POS_MATRIX_INLINE
+#undef MY_INLINE
 #endif
-
 
 
 static inline

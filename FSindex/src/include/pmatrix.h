@@ -82,6 +82,7 @@ void POS_MATRIX_simple_pseudo_counts_init(POS_MATRIX *PS, double A);
 
 /* Weight functions */
 void POS_MATRIX_equal_weights(POS_MATRIX *PS);
+void POS_MATRIX_Henikoff_weights(POS_MATRIX *PS);
 
 /* Load background frequences */
 double *load_bkgrnd_probs(const char *filename);
@@ -144,23 +145,9 @@ int POS_MATRIX_verify_pos(POS_MATRIX *PD, ULINT Pfrom, ULINT Pto,
 /***                                                              ***/
 /********************************************************************/    
 /********************************************************************/    
-#ifndef DEBUG
 
-#ifndef MY_INLINE
-#define MY_INLINE extern inline
-#endif
 
-#define POS_MATRIX_INLINE
-
-#else
-
-#ifndef MY_INLINE
-#define MY_INLINE 
-#endif
-
-#endif /* #ifndef DEBUG */
-
-#ifdef POS_MATRIX_INLINE
+#ifdef MY_INLINE
 /* Set members */
 
 MY_INLINE

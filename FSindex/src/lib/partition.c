@@ -8,16 +8,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#ifdef DEBUG
-#define FS_PARTITION_INLINE
-#endif
-
+#ifndef MY_INLINE
+#define MY_INLINE
 #include "partition.h"
-
-#ifdef DEBUG
-#undef FS_PARTITION_INLINE
+#undef MY_INLINE
 #endif
-
 
 /* Main constructor */
 FS_PARTITION_t *FS_PARTITION_create(const char *alphabet, 
