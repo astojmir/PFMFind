@@ -1,2 +1,3 @@
 include include/*.h
 include ShortFrags/frag_toolbox.pyw
+include ShortFrags/FSsearchd.py

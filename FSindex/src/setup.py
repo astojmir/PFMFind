@@ -46,12 +46,13 @@ EXTENSIONS = [
     ]
 
 SCRIPTS = [
-    'ShortFrags/frag_toolbox.pyw'
+    'ShortFrags/frag_toolbox.pyw',
+    'ShortFrags/FSsearchd.py'
     ]
 
 setup(
     name='ShortFrags',
-    version='0.42',
+    version='0.43',
     author='Aleksandar Stojmirovic',
     author_email='aleksand@mcs.vuw.ac.nz',
     url='http://www.mcs.vuw.ac.nz/~aleksand',
