@@ -128,13 +128,13 @@ def summary(hits,
                            (defline_width, defline_width,
                             'Description', 'Dist', 'Sim'))
 
-    for i, ht in enumerate(hits):
+    for j, ht in enumerate(hits):
         defline = ht.defline
         if len(defline) > defline_width:
             defline = defline[:defline_width-3] + '...'
-            file_str.write(line_func(i+rank_offset, defline_width,
-                                     defline, ht.dist, ht.sim))
-            if len(hits) > 1: file_str.write('\n')
+        file_str.write(line_func(j+rank_offset, defline_width,
+                                 defline, ht.dist, ht.sim))
+        if len(hits) > 1: file_str.write('\n')
     return file_str.getvalue()
 
 def description(hits, query_seq, qs=0):
