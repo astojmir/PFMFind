@@ -1,5 +1,5 @@
 import types, cPickle, threading, sys, os, re, socket, Queue
-import time
+import time, os.path, string
 from ShortFrags.Expt.index import FSIndex
 from cStringIO import StringIO
 
@@ -11,6 +11,8 @@ from ShortFrags.Expt.scoredistr import ScoreDistr
 RNG_SRCH = 0
 KNN_SRCH = 1
 REL_SRCH = 2
+
+MAX_HITS = 1500
 
 
 # ***********************************************************************
@@ -109,33 +111,74 @@ def now():
     return time.ctime(time.time())
 
 class SearchServer(object):
-    def __init__(self, servers):
-        if len(servers) == 1:
-            self.distr = False
-        else:
-            self.distr = True
+    def __init__(self, port, indexfile):
+        print "Starting at %s" % now()
+        sys.stdout.flush()
 
-        self.servers = servers
+        self.port = int(port)
+        self.indexfile = indexfile
+
+        # Check if indexfile is in fact a config file
+        if os.path.splitext(indexfile)[1] == '.cfg':
+            self.create_subservers(indexfile)
+        else:
+            self.servers = []
+            self.load_index(indexfile)
+        
         self.sp_acc = re.compile('\((\w+)\)')
 
-    def load_index(self):
+        print "Starting Main Loop at %s" % now()
+        sys.stdout.flush()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        sock.bind(('', self.port))
+        sock.listen(5)
+
+        while 1:
+            (clsock, address) = sock.accept()
+            ct = threading.Thread(target=self.answer_request, args=(clsock,))
+            ct.start()
+
+    def load_index(self, indexfile):
         print "Loading Index at %s" % now()
         sys.stdout.flush()
-        index_filename = self.servers[0][3]
-        self.I = FSIndex(index_filename, [])
+        self.I = FSIndex(indexfile, [])
 
-    def create_subservers(self):
+    def create_subservers(self, serverfile):
         print "Creating subservers at %s" % now()
         sys.stdout.flush()
-        self.queue = Queue.Queue(len(self.servers)-1)
-        for i,srvr in enumerate(self.servers[1:]):
-            fn = os.path.join(os.path.expanduser(srvr[2]), 'server%d.cfg' % i)
-            fp = file(fn, 'w')
-            fp.write('%s %d %s %s\n' % srvr)
-            fp.close()
-            command = 'rsh -n %s "FSsearchd.py %s >&/dev/null </dev/null &"'\
-                      % (srvr[0], fn)
-            os.system(command)
+
+        # Read the configuration file
+        # File format: host port workpath indexfile [pythonpath [binpath]]
+        fp = file(serverfile, 'r')
+        self.servers = []
+        for line in fp:
+            sp_line = string.split(line)
+            sp_line[1] = int(sp_line[1])
+            self.servers.append(sp_line)
+        fp.close()
+
+        self.queue = Queue.Queue(len(self.servers))
+
+        for i,srvr in enumerate(self.servers):
+            host, port, workpath, indexfile = srvr[:4]
+            pythonpath = binpath = ''            
+            if len(srvr) > 4:
+                pythonpath = srvr[4]
+                if len(srvr) > 5:
+                    binpath = srvr[5]
+            try: # Try to see if a daemon is already running
+                send_obj2(host, port, (1,0))
+                print "FSsearchd slave %2.2d already running on %s:%d" % (i, host, port)
+                sys.stdout.flush()
+            except socket.error, inst: # Start the daemon 
+                print "Starting FSsearchd slave %2.2d on %s:%d" % (i, host, port)
+                sys.stdout.flush()
+                daemon_full = os.path.join(binpath, "FSsearchd.py")
+                daemon_args = 's%2.2d %d %s %s %s' % (i, port, workpath, indexfile, pythonpath)
+                command = 'ssh -x %s "%s %s >&/dev/null </dev/null &"'\
+                          % (host, daemon_full, daemon_args)
+                os.system(command)
 
     def check_request(self, clsock):
         obj = receive_obj(clsock)
@@ -154,8 +197,10 @@ class SearchServer(object):
         try:
             try:
                 opcode, data = self.check_request(clsock)
+                print "Answering request %d at %s: " % (opcode, now())
+                sys.stdout.flush()
 
-                if self.distr:
+                if len(self.servers):
                     self.dispatch_request(clsock, opcode, data)
                 else:
                     self.process_request(clsock, opcode, data)
@@ -169,9 +214,11 @@ class SearchServer(object):
         if opcode == DIE:
             print "Terminating all subservers at %s" % now() 
             sys.stdout.flush()
-            for srvr in self.servers[1:]:
+            for srvr in self.servers:
                 try:
-                    send_obj2(srvr[0], srvr[1], (opcode, data))
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.connect((srvr[0], srvr[1]))
+                    send_obj(sock, (opcode, data))
                 except Exception, inst:
                     print "Response error: ", srvr, inst
                     sys.stdout.flush()
@@ -181,7 +228,7 @@ class SearchServer(object):
             os._exit(0)
         elif opcode == GET_INDEX_DATA:
             results = []
-            for srvr in self.servers[1:]:
+            for srvr in self.servers:
                 try:
                     res1 = send_obj2(srvr[0], srvr[1], (opcode, data))
                     results.extend(res1)
@@ -196,7 +243,7 @@ class SearchServer(object):
                 raise RuntimeError,\
                       "Wrong search request type recieved"
 
-            print "Started %d search requests at %s" % (len(data), now())
+            print "Started %d distribution requests at %s" % (len(data), now())
             sys.stdout.flush()
 
             # Dispatch calculation of SD
@@ -212,23 +259,33 @@ class SearchServer(object):
                     conv_type = srch[5]
                     sd_data.append((matrix, matrix_type, conv_type, qseq))
 
-            chunk = (len(sd_data)//(len(self.servers)-1)) + 1
-            a = 0
-            b = chunk
-            for j,srvr in enumerate(self.servers[1:]):
-                DispatchedSearch(srvr[0], srvr[1],
-                                 (SCORE_DISTR, ((a,b),sd_data)), self.queue).start()
-                a += chunk
-                b += chunk
+            chunk = len(sd_data)//len(self.servers)
+            if chunk > 0:
+                for j,srvr in enumerate(self.servers):
+                    a = j*chunk
+                    b = a+chunk
+                    DispatchedSearch(srvr[0], srvr[1],
+                                     (SCORE_DISTR, ((a,b), sd_data[a:b])),
+                                     self.queue).start()
+            else:
+                j = 0
+
+            a = len(self.servers)*chunk
+            rng, res = self._process_distributions(((a,len(sd_data)),sd_data[a:]))
+            for j,i in enumerate(xrange(*rng)):
+                data[i][6] = res[j]
                 
-            for j in xrange(len(self.servers)-1):
-                rng, res = self.queue.get()
-                for i in xrange(*rng):
-                    data[i][6] = res[i]
+            if chunk > 0:
+                for srvr in self.servers:
+                    rng, res = self.queue.get()
+                    for j,i in enumerate(xrange(*rng)):
+                        data[i][6] = res[j]
                     
 
+            print "Started %d search requests at %s" % (len(data), now())
+            sys.stdout.flush()
             # Use threads to produce the results simultaneously
-            for srvr in self.servers[1:]:
+            for srvr in self.servers:
                 DispatchedSearch(srvr[0], srvr[1], (opcode, data), self.queue).start()
 
             # First search separately
@@ -236,7 +293,7 @@ class SearchServer(object):
 
             # Must retrieve all results in order to clear the queue
             # Assume that all results are in order
-            for j in xrange(len(self.servers)-2):
+            for j in xrange(len(self.servers)-1):
                 res1 = self.queue.get()
                 if res1 == None: results = None
                 if results == None: continue
@@ -260,6 +317,9 @@ class SearchServer(object):
             if results == None:
                 raise RuntimeError, "Subserver Failure"
 
+            print "Collecting kNN searches at %s" % now()
+            sys.stdout.flush()
+
             # Tidy up if kNN search
             for i,HL in enumerate(results):
                 if HL == None:
@@ -269,16 +329,30 @@ class SearchServer(object):
                     k = data[i][4]  
                     HL.sort_by_distance()
                     d = HL[k-1].dist                    
-                    while HL[k].dist == d:
-                        k += 1
-                    del(HL[k:])
+                    if HL[-1].dist > d:
+                        while HL[k].dist == d:
+                            k += 1
+                        del(HL[k:])
             print "Processed %d search requests at %s" % (len(data), now())
             sys.stdout.flush()
         else:
-            # Just do it
-            self.process_request(clsock, opcode, data)
+            results = self._process_distributions(data)
 
         send_obj(clsock, results)
+
+    def _process_distributions(self, data):
+        results = []
+        rng = data[0]
+        sd_data = data[1]
+        for dargs in sd_data:
+            if type(dargs) == types.TupleType and len(dargs) == 4:
+                results.append(ScoreDistr(*dargs))
+            else:
+                results.append(None)
+        results = (rng,results)
+        print "Processed %d distributions at %s" % (len(sd_data), now())
+        sys.stdout.flush() 
+        return results
         
     def process_request(self, clsock, opcode, data):
         if opcode == DIE:
@@ -299,7 +373,7 @@ class SearchServer(object):
             sys.stdout.flush()
 
             results = []
-            for srch in data:
+            for i, srch in enumerate(data):
                 if type(srch) != types.ListType\
                        or len(srch) != 8:
                     results.append(None)
@@ -330,15 +404,23 @@ class SearchServer(object):
                     M = M.matrix_conv()
 
                 if search_type == RNG_SRCH:
-                    HL=self.I.rng_srch(qseq, M, r0, conv_type)
+                    HL=self.I.rng_srch(qseq, M, r0)
                 elif search_type == KNN_SRCH:
                     HL=self.I.kNN_srch(qseq, M, r0)
                 elif search_type == REL_SRCH:
                     r1 = SD.cutoff(r0/totfrags)
-                    HL=self.I.rng_srch(qseq, M, r1, conv_type)
+                    HL=self.I.rng_srch(qseq, M, r1)
                 else:
                     results.append(None)
                     continue
+
+                # Truncate too large sets of results.
+                if len(HL) > MAX_HITS:
+                    HL.sort_by_distance_only()
+                    del(HL[MAX_HITS:])
+                    print "Truncated hit list %d" % i
+                    sys.stdout.flush()
+
 
                 # Now add sequence and accession to the hit
                 # At some stage this should be implemented in
@@ -366,44 +448,8 @@ class SearchServer(object):
             print "Processed %d search requests at %s" % (len(data), now())
             sys.stdout.flush()
         else:
-            results = []
-            rng = data[0]
-            sd_data = data[1]
-            for dargs in sd_data:
-                if type(dargs) == types.TupleType and len(dargs) == 4:
-                    results.append(ScoreDistr(*dargs))
-                else:
-                    results.append(None)
-            results = (rng,results)
+            results = self._process_distributions(data)
         send_obj(clsock, results)
-
-            
-    def server_main(self):
-        print "Starting Main Loop at %s" % now()
-        sys.stdout.flush()
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        host = ''
-        port = self.servers[0][1]
-        sock.bind((host, port))
-        sock.listen(5)
-
-        while 1:
-            (clsock, address) = sock.accept()
-            ct = threading.Thread(target=self.answer_request, args=(clsock,))
-            ct.start()
-
-    def start(self):
-        print "Starting at %s" % now()
-        sys.stdout.flush()
-        if self.distr:
-            self.create_subservers()
-            self.server_main()
-        else:
-            self.load_index()
-            self.server_main()
-
-
 
 class SearchClient(object):
     def __init__(self):
