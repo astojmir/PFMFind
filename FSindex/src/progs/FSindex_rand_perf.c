@@ -100,9 +100,11 @@ int main(int argc, char **argv)
     {
       fprintf(stdout,"\nk = %d\n", K0);
       fprintf(stream,"\nk = %d\n", K0);
-      fprintf(stream, "%*.*s %6.6s %6.6s %10.10s %10.10s %10.10s %10.10s %10.10s %10.10s \n",
+      fprintf(stream, "%*.*s %6.6s %6.6s %10.10s %10.10s %10.10s"
+	      " %10.10s %10.10s %10.10s %10.10s %10.10s %10.10s\n",
 	      (int) len , (int) len, "query", "k", "eps", "FS_visited",
-	      "FS_hits", "FS_ratio", "s_visited", "s_hits", "s_ratio");   
+	      "FS_hits", "FS_ratio", "s_visited", "s_hits", "s_ratio",
+	      "u_visited", "u_hits", "u_ratio");   
       for (i = 0; i < no_runs; i++)
 	{
 	  SEQ_GENERATOR_rand_seq(seq_generator, &query, len,
@@ -112,6 +114,7 @@ int main(int argc, char **argv)
 
 	  FS_INDEX_kNN_search(hit_list, &query, S, D, K0);
 	  eps = hit_list->range;
+#if 0
 	  fprintf(stream, "%*.*s %6d %6d %10ld %10ld %10.2f %10ld"
 		  " %10ld %10.2f %10ld\n", (int) len , (int) len, query.start,
 		  K0, hit_list->range, hit_list->FS_seqs_visited,
@@ -120,7 +123,7 @@ int main(int argc, char **argv)
 		  hit_list->seqs_visited, hit_list->seqs_hits,
 		  (double) hit_list->seqs_visited / hit_list->seqs_hits,
 		  hit_list->actual_seqs_hits);
-
+#endif
 	  HIT_LIST_reset(hit_list, &query, FS_INDEX_get_database(),
 			 matrix_base, eps);
 	  FS_INDEX_search(hit_list, &query, S, D, eps,
@@ -128,15 +131,16 @@ int main(int argc, char **argv)
 			  FS_INDEX_identity_convert);
 
 	  fprintf(stream, "%*.*s %6d %6d %10ld %10ld %10.2f %10ld"
-		  " %10ld %10.2f %10ld\n", (int) len , (int) len, query.start,
+		  " %10ld %10.2f %10ld %10ld %10.2f\n", 
+		  (int) len , (int) len, query.start,
 		  K0, hit_list->range, hit_list->FS_seqs_visited,
 		  hit_list->FS_seqs_hits, 
 		  (double) hit_list->FS_seqs_visited / hit_list->FS_seqs_hits, 
 		  hit_list->seqs_visited, hit_list->seqs_hits,
 		  (double) hit_list->seqs_visited / hit_list->seqs_hits,
-		  hit_list->actual_seqs_hits);
+		  hit_list->useqs_visited, hit_list->useqs_hits,
+		  (double) hit_list->useqs_visited / hit_list->useqs_hits);
 
-	  fflush(stream);
 	  /* Print progress bar */
 	  printbar(stdout, i+1, one_percent, 50);  
 	}
