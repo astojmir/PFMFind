@@ -4,11 +4,30 @@
 #include <string.h>
 #include <math.h>
 
+
+void discrete_meanvar(int n, SSINT *values, double *probs, 
+		      double *mean, double *var)
+{
+  int i = 0;
+  double T = 0.0;
+  *mean = 0.0;
+  *var = 0.0;
+
+  for (i=0; i < n; i++)
+    {
+      T = values[i] * probs[i];
+      *mean += T;
+      T *= values[i];
+      *var += T;
+    }
+  *var = *var - (*mean * *mean); 
+}
+
+
 #define TOTAL_MEM
 #ifdef TOTAL_MEM
 static unsigned long int total_mem = 0; 
 #endif
-
 
 void *callocec(long int number, long int size)
 {

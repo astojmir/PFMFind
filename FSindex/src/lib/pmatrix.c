@@ -14,7 +14,7 @@
 #include "smatrix.h"
 #include "fastadb.h"
 #include "pmatrix.h"
-
+#include "normsinv.h"
 
 static inline
 void create_counts(POS_MATRIX *PS)
@@ -151,7 +151,7 @@ void POS_MATRIX_init(POS_MATRIX *PS, double lambda,
   else if ((stream = fopen(freq_filename, "r")) == NULL)
     {
       fprintf(stderr, 
-	      "POS_MATRIX_init(): Could not frequency file %s!\n", 
+	      "POS_MATRIX_init(): Could not open frequency file %s!\n", 
 	      freq_filename);
       exit(EXIT_FAILURE);
     }
@@ -342,6 +342,32 @@ void POS_MATRIX_destroy(POS_MATRIX *PS)
   free(PS->pMclosest);
   free(PS);
 }
+
+/* Scores and p-values */
+int POS_MATRIX_Gaussian_cutoff(POS_MATRIX *S, double pcutoff)
+{
+  int j;
+  double Tmean = 0.0;
+  double Tvar = 0.0;
+  double sd;
+  SSINT *value = NULL;
+  S->mean = 0.0;
+  S->var = 0.0;
+
+
+  /* Calculate mean and variance */
+  for (j=0; j < S->len; j++)
+    {
+      value = S->M + PM_M(j, 0); 
+      discrete_meanvar(A_SIZE, value, S->bkgrnd, &Tmean, &Tvar);      
+      S->mean += Tmean;
+      S->var += Tvar;
+    }
+  sd = sqrt(S->var);
+  return (int) (normsinv(1.0-pcutoff)*sd + S->mean + 0.5);
+}
+
+
 
 /* Pseudo-count functions */
 void POS_MATRIX_simple_pseudo_counts(POS_MATRIX *PS)

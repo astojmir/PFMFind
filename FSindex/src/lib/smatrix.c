@@ -8,9 +8,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
+#include <math.h>
 #include "partition.h"
 #include "smatrix.h"
-
+#include "normsinv.h"
 
 /* Routines for computing distances to pattern letters (i.e. subsets
    of alphabet partitions. */
@@ -487,6 +488,36 @@ SCORE_MATRIX_t *SCORE_MATRIX_S_2_Davg(SCORE_MATRIX_t *S)
     SCORE_MATRIX_print(D, stdout, "*** Davg MATRIX ***");
   return D;
 }
+
+/* Scores and p-values */
+int SCORE_MATRIX_Gaussian_cutoff(SCORE_MATRIX_t *S, BIOSEQ *query,
+				 double *bkgrnd, double pcutoff)
+{
+  int j;
+  double Tmean = 0.0;
+  double Tvar = 0.0;
+  double sd;
+  SSINT *value = NULL;
+  S->mean = 0.0;
+  S->var = 0.0;
+
+
+  /* Calculate mean and variance */
+  for (j=0; j < query->len; j++)
+    {
+      value = &(S->M[j][0]);
+      discrete_meanvar(A_SIZE, value, bkgrnd, &Tmean, &Tvar);      
+      S->mean += Tmean;
+      S->var +=Tvar;
+    }
+  sd = sqrt(S->var);
+  if (S->similarity_flag)
+    return (int) (normsinv(1.0-pcutoff)*sd + S->mean + 0.5);
+  else
+    return (int) (normsinv(1.0-pcutoff)*sd + S->mean);
+}
+
+
 
 /* Printing */
 void SCORE_MATRIX_print(SCORE_MATRIX_t *S, FILE *stream, 

@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 #include <limits.h>
 #include "hit_list.h"
 
@@ -31,13 +32,13 @@ void SEQ_HIT_print(SEQ_HIT_t *hit, FILE *stream,
   char dots[] = "...";
   
   if (strlen(hit->subject->id.defline) > 57)
-    fprintf(stream, "%-57.57s%3.3s %6.0f %5s\n",
+    fprintf(stream, "%-57.57s%3.3s %6.0f %5.2e\n",
 	    hit->subject->id.defline,
-	    dots, hit->value, "");
+	    dots, hit->value, hit->pvalue);
   else
-    fprintf(stream, "%-57.57s%3.3s %6.0f %5s\n",
+    fprintf(stream, "%-57.57s%3.3s %6.0f %5.2e\n",
 	    hit->subject->id.defline,
-	    "", hit->value, "");
+	    "", hit->value, hit->pvalue);
 }
 
 static
@@ -48,7 +49,8 @@ void SEQ_HIT_print_alignment(SEQ_HIT_t *hit, FILE *stream,
   fprintf(stream, "%s\n", hit->subject->id.defline);
   fprintf(stream, "        (Length = %ld, ID = %ld)\n\n", 
 	  hit->subject->len, hit->sequence_id); 
-  fprintf(stream, " Score = %5.0f, Expect =\n",  hit->value);
+  fprintf(stream, " Score = %5.0f, P-value = %5.2e\n", hit->value,
+	  hit->pvalue);
 #if 0
   fprintf(stream, "\n");
 #endif
@@ -222,8 +224,12 @@ void HIT_LIST_print(HIT_LIST_t *HIT_list, FILE *stream,
   
   fprintf(stream, "Database: %s\n\n", HIT_list->s_db->db_name);
   
+  if (HIT_list->actual_seqs_hits == 0)
+    fprintf(stream, "%25s\n --- No significant hits found ---\n\n",
+	    "");
+  else {
   fprintf(stream, "%25s **** Significant hits ****\n\n", "");
-  fprintf(stream, "%76s E\n","");
+  fprintf(stream, "%76s P\n","");
   fprintf(stream, "%67s  Score Value\n", "");
 
   for (i=0; i <  HIT_list->actual_seqs_hits; i++)
@@ -239,7 +245,8 @@ void HIT_LIST_print(HIT_LIST_t *HIT_list, FILE *stream,
       SEQ_HIT_print_alignment(HIT_list->hits +i, stream, 
 			      HIT_list->query, 0);  
     }
-  fprintf(stream, "\n\n");
+  fprintf(stream, "\n\n");}
+
   fprintf(stream, "**** Statistics ****\n\n");
   fprintf(stream, "Database: %s\n", HIT_list->s_db->db_name);
   fprintf(stream, "Number of letters in database: %ld\n", 
@@ -374,4 +381,21 @@ void HIT_LIST_sort_by_sequence(HIT_LIST_t *HIT_list)
 {
   qsort(HIT_list->hits, HIT_list->actual_seqs_hits, 
 	sizeof(SEQ_HIT_t), SEQ_HIT_cmp_by_seq);
+}
+
+
+/* Add p-values */
+void HIT_LIST_Gaussian_pvalues(HIT_LIST_t *HT, double mean, 
+			       double var)
+{
+  int i;
+  double sd = sqrt(var);
+  double Z;
+
+  for (i=0; i <  HT->actual_seqs_hits; i++)
+    {
+      Z = (HT->hits[i].value - mean)/sd;
+      if (Z < 0) Z = -Z;
+      HT->hits[i].pvalue = 0.5 * erfc(Z/M_SQRT2);
+    }
 }
