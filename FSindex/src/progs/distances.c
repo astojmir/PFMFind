@@ -166,15 +166,16 @@ int main(int argc, char **argv)
     {
       fprintf(stdout, "pt #%d\n", i);
 
-      SEQ_GENERATOR_rand_seq(seq_generator, &query, len, seq_heap);  
-      fprintf(out_stream, "%*.*s\n", (int) query.len, (int) query.len,
-	      query.start);
+      s = HT->heap[lrand48()%FS_HASH_TABLE_get_total_seqs(HT)];
+      fastadb_get_Ffrag(FS_INDEX_get_database(), 10, &subject, s);
+      fprintf(out_stream, "%*.*s\n", (int) subject.len, (int) subject.len,
+	      subject.start);
+
       for (j=0; j < no_runs; j++)
 	{
-	  s = HT->heap[lrand48()%FS_HASH_TABLE_get_total_seqs(HT)];
-	  fastadb_get_Ffrag(FS_INDEX_get_database(), 10, &subject, s);
-	  fprintf(out_stream, "%*.*s %3d", (int) subject.len,
-		  (int) subject.len, subject.start, 
+	  SEQ_GENERATOR_rand_seq(seq_generator, &query, len, seq_heap);  
+	  fprintf(out_stream, "%*.*s %3d", (int) query.len,
+		  (int) query.len, query.start, 
 		  SCORE_MATRIX_evaluate(D, &query, &subject));
 	  for (dist=0, k=0; k < subject.len; k++)
 	    {
