@@ -12,7 +12,7 @@ B{Classes}:
         - A class that defines an instance of Hit [a hit is
         a fragment of the sequence].
     - HitList  
-        - Contains the functions needed to print and sort the hit results.
+        - Contains the list of hits and the functions to manipulate them.
 
 B{Functions}:
     - description(hits, query_seq, qs=0):
@@ -37,7 +37,7 @@ class Hit:
     The dictionary for each hit contains the following 
     attributes:
         - defline
-	     - Default line width.
+	     - Description of the hit.
              - I{*Assigned dynamically*} the database must
 	     be loaded for defline to be available.
         - accession
@@ -49,7 +49,7 @@ class Hit:
              - I{*Assigned dynamically*} the database must 
 	     be loaded for seq to be available.
         - seq_id 
-	     - Sequence identifier.
+	     - Sequence description.
         - seq_to 
 	     - End of sequence. 
         - seq_from
@@ -96,13 +96,15 @@ def summary(hits,
 	    defline_width=57,
             rank_offset=0):
     """
-    A list of hit class instances to be displayed.
+    Construct a string, which may be printed, from a list of 
+    hit class instances.
     
         @param hits: The hit to be displayed.
         @param show_rank: Display the rank of the hits if true.
-	@param defline_width: Default line width.
+	Default value 0.
+	@param defline_width: Default line width is 57.
 	@param rank_offset: Control how much space is between
-	the rank and the hit.
+	the rank and the hit.  Default value 0.
     """
 	
     file_str = StringIO()
@@ -138,7 +140,8 @@ def description(hits, query_seq, qs=0):
     
     @param hits: The hit to be displayed.
     @param query_seq: Fragment of a sequence.
-    @param qs:  Query start (beginning of the sequence).   
+    @param qs:  Query start.  Where the fragment begins.  Unless
+    a value is provided 0 will be used.
     """
     file_str = StringIO()
 
@@ -161,7 +164,7 @@ def description(hits, query_seq, qs=0):
 class HitList:
 
     """
-    Contains the functions needed to print and sort the hit results.
+    Contains the list of hits.
     
     The class may be used to print query details, print a full summary, 
     print full details for all hits, and to print performance statistics.  
@@ -172,9 +175,37 @@ class HitList:
     
     def __init__(self, dict):
         """
-	Constructor, create a list of B{Hit} instances.
-	Each instance of B{Hit} will contain a list of 
-        dictionaries for individual hits.
+	Constructor, assigns the dictionary containing the information
+	for the index.  For each hit in the hits dictionary B{Hit} 
+	is called to create a list of B{Hit} instances.  The 
+	information contained in the hits dictionary includes the 
+	following attributes:
+	    - query_seq
+	        - The query fragment.
+	    - query_def
+	        - The query description.
+	    - conv_type
+	        - Matrix conversion type.
+	    - sim_range
+	        - Similarity score range.
+	    - dist_range
+	        - Distance range.
+	    - kNN
+	        - Nearest neighbor cutoff.
+	    - bins_visited
+	        - Bins checked.
+	    - bins_hit
+	        - Accepted bins.
+	    - frags_visited
+	        - Number of checked fragments.
+	    - frags_hit 
+	        - Number of accepted fragments.
+	    - search_time
+	        - Time to complete the search.
+	    - hits
+	        - A list holding individual dictionaries for each hit.  
+		For the attributes contained in the dictionary of 
+		each hit please refer to the help for class B{Hit}.
 	"""
         self.__dict__ = dict
         tmphits = [Hit(ht) for ht in self.hits]
@@ -219,7 +250,8 @@ class HitList:
         Return a string containing full details for all hits that may be 
 	printed.
 	
-	@param qs: Query start.
+	@param qs: Query start.  Where the fragment begins.  Unless a value
+	is provided 0 will be used.
         """
 
         file_str = StringIO()
@@ -233,7 +265,8 @@ class HitList:
         Return a string containing performance statistics that may be 
 	printed.
 	
-	@param Idata: Index data.
+	@param Idata: Index data.  Please see the help for module 
+	index.py for details on what attribute are contained in Idata.
         """
 
         file_str = StringIO()
@@ -279,8 +312,10 @@ class HitList:
 	Return a string containing the header, summary, full details, 
 	and performance statistics that may be printed.
 	
-	@param Idata: Index data.
-	@param qs: Query start.
+	@param Idata: Index data.  Please see the help for module 
+	index.py for details on what attribute are contained in Idata.
+	@param qs: Query start.  Where the fragment begins.  Unless a value
+	is provided 0 will be used.
 	"""
         file_str = StringIO()
         file_str.write(self.header_str())
@@ -365,14 +400,14 @@ class HitList:
 
     def get_seqs(self):
         """
-	Extract sequences of all hits.
+	Extract sequences of all hits from the dictionary.
 	"""
         seqs = [ht.seq for ht in self.hits]
         return seqs
 
     def get_deflines(self):
         """
-	Extract deflines of all hits.
+	Extract descriptions of all hits from the dictionary.
 	"""
         deflines = [ht.defline for ht in self.hits]
         return deflines
