@@ -39,8 +39,72 @@ import os
 import os.path
 import struct
 import md5
-from ShortFrags import FS
+import FS
 import hit_list
+from db import db
+from hit_list import HitList
+
+FS_BINS = FS.FS_BINS
+SUFFIX_ARRAY = FS.SUFFIX_ARRAY
+SEQ_SCAN = FS.SEQ_SCAN
+
+SARRAY = FS.SARRAY
+DUPS_ONLY = FS.DUPS_ONLY
+FULL_SCAN = FS.FULL_SCAN
+
+def _get_db(I):
+    return db(FS.index_s_db_get(I), new=False, own=False) 
+
+class FSIndex(object):
+    def __init__(self, filename, sepn=None, use_sa=1, print_flag=0):
+        if sepn == None:
+            sepn = []
+        self.this = FS.new_index(filename, sepn, use_sa, print_flag)
+        self.thisown = 1
+        self.__dict__.update(FS.index_get_data(self))
+
+    def __del__(self):
+        FS.delete_index(self)
+
+    def save(self, filename):
+        return FS.index_save(self, filename)
+
+    def __str__(self):
+        return FS.index___str__(self)
+
+    def seq2bin(self, seq):
+        return FS.index_seq2bin(self, seq)
+
+    def print_bin(self, bin, options=1):
+        return FS.index_print_bin(self, bin, options)
+
+    def print_stats(self, options=3):
+        return FS.index_print_stats(self, options)
+
+    def get_bin_size(self, bin):
+        return FS.index_get_bin_size(self, bin)
+
+    def get_unique_bin_size(self, bin):
+        return FS.index_get_unique_bin_size(self, bin)
+
+    def rng_srch(self, qseq, M, rng, stype=FS_BINS,
+                 ptype=SARRAY, qdef=""):
+        
+        hits_dict = FS.index_rng_srch(self, qseq, M, rng, M.conv_type,
+                                      stype, ptype, qdef)
+        return HitList(hits_dict)
+
+    def kNN_srch(self, qseq, M, kNN, stype=FS_BINS,
+                 ptype=SARRAY, qdef=""):
+        hits_dict = FS.index_kNN_srch(self, qseq, M, kNN,
+                                      stype, ptype, qdef)
+        return HitList(hits_dict)
+
+    def threaded_search(self, srch_args):
+        results = FS.index_threaded_search(self, srch_args)
+        return [HitList(r) for r in results]
+
+    db = property(_get_db)
 
 
 def _md5digest(filename):
@@ -57,7 +121,7 @@ def _md5digest(filename):
     return sum.hexdigest()
 
 
-class IndexedDb:
+class IndexedDb(object):
 
     """
     Provides the functions to load the databases and 
@@ -78,8 +142,6 @@ class IndexedDb:
         self.get_frag = lambda i, a, b: 'X'*(b-a)
         
         self.deflines = None
-        self.seq2clusters = None
-        self.clusters2seqs = None
         self.accessions = None
 
         self._default_deflines()
@@ -109,7 +171,7 @@ class IndexedDb:
         self.I = None
 
         # Load fasta database
-        self.sdb = FS.db(filename)
+        self.sdb = db(filename)
         self.get_frag = self.sdb.get_frag
 
         # Assign defline attributes
@@ -122,7 +184,7 @@ class IndexedDb:
         """
 	Load the index.
 	
-	@param filename: Name of the FASTA file.
+	@param filename: Name of the FSindex file.
 	@param md5sum:  Compared (if provided) with the md5 digest of 
 	the B{filename}.  RuntimeError raised if the two digests do 
 	not match. This can help ensure that the database being opened 
@@ -155,10 +217,10 @@ class IndexedDb:
 
         # Load Index
         try:
-            self.I = FS.index(filename, [])
+            self.I = FSIndex(filename, [])
         except (IOError, RuntimeError):
             raise IOError, 'Could not load index file %s.' % filename
-        self.sdb = self.I.s_db
+        self.sdb = self.I.db
         self.get_frag = self.sdb.get_frag
 
         # Assign defline attributes
@@ -180,10 +242,9 @@ class IndexedDb:
         self.seq2cluster = lambda i: i
         self.get_accession = lambda i: str(i)
 
-    def _clusters_deflines(self):
-        self.get_def = lambda i: self.deflines[i]
-        self.seq2cluster = lambda i: self.seq2clusters[i]
-        self.get_accession = lambda i: self.accessions[i]
+##     def _clusters_deflines(self):
+##         self.get_def = lambda i: self.deflines[i]
+##         self.get_accession = lambda i: self.accessions[i]
 
     def print_str(self):
         """
@@ -195,32 +256,28 @@ class IndexedDb:
 	"""
         if self.I == None: return ""
 
-        class Data:
-            pass
-        data = Data()
-        data.__dict__ = self.I.get_data()
         file_str = StringIO()
 
         file_str.write("***** Database Details *****\n")
-        file_str.write("Database path: %s\n" % data.db_name)
-        file_str.write("Full length: %d\n" % data.db_length)
-        file_str.write("Number of sequences: %d\n\n" % data.db_no_seq)
+        file_str.write("Database path: %s\n" % self.sdb.db_name)
+        file_str.write("Full length: %d\n" % self.sdb.length)
+        file_str.write("Number of sequences: %d\n\n" % self.sdb.no_seq)
         file_str.write("***** Index Details *****\n")
-        file_str.write("Index path: %s\n" % data.index_name)
-        file_str.write("Indexed Alphabet: %s\n" % data.alphabet)
+        file_str.write("Index path: %s\n" % self.I.index_name)
+        file_str.write("Indexed Alphabet: %s\n" % self.I.alphabet)
         file_str.write("Partitions:\n")
-        l = len(data.ptable)
+        l = len(self.I.ptable)
         for i in range(0,l-2,2):
-            file_str.write((("%2.2d. " % i) + data.ptable[i] + "    "))
-            file_str.write((("%2.2d. " % (i+1)) + data.ptable[i+1] + "\n"))
+            file_str.write((("%2.2d. " % i) + self.I.ptable[i] + "    "))
+            file_str.write((("%2.2d. " % (i+1)) + self.I.ptable[i+1] + "\n"))
 
         if l % 2 == 0:
-            file_str.write((("%2.2d. " % (l-2)) + data.ptable[l-2] + "    "))
-        file_str.write((("%2.2d. " % (l-1)) + data.ptable[l-1] + "\n"))
+            file_str.write((("%2.2d. " % (l-2)) + self.I.ptable[l-2] + "    "))
+        file_str.write((("%2.2d. " % (l-1)) + self.I.ptable[l-1] + "\n"))
 
-        file_str.write("Number of bins: %d\n" % data.bins)
-        file_str.write("Number of indexed fragments: %d\n" % data.fragments)
-        file_str.write("Indexed fragment length: %d\n\n" % data.indexed_fragment_length)
+        file_str.write("Number of bins: %d\n" % self.I.bins)
+        file_str.write("Number of indexed fragments: %d\n" % self.I.fragments)
+        file_str.write("Indexed fragment length: %d\n\n" % self.I.indexed_fragment_length)
         
         return file_str.getvalue()
 

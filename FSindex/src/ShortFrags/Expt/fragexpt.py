@@ -25,8 +25,7 @@ import os.path
 import types
 import sys
 import md5
-from ShortFrags import FS
-from hit_list import *
+#from hit_list import *
 from index import IndexedDb
 from DirichletMix import DirichletMix, freq_counts, henikoff_weights
 from DirichletMix import BKGRND_PROBS as bg_dict
@@ -42,13 +41,15 @@ from Bio.SubsMat.FreqTable import FreqTable, FREQ
 from Bio.Alphabet import IUPAC
 from Bio.Align import Generic, AlignInfo
 
+from matrix import Smatrix, QUASI, MAX, AVG
+
 
 RNG_SRCH = 0
 KNN_SRCH = 1
 REL_SRCH = 2
 
-MATRIX_CTYPE = {'None': 0, 'Quasi': FS.QUASI,
-                'Avg': FS.AVG, 'Max': FS.MAX}
+MATRIX_CTYPE = {'None': 0, 'Quasi': QUASI,
+                'Avg': AVG, 'Max': MAX}
 		
 matrix_cache = {}
 
@@ -82,7 +83,7 @@ def _get_converted_matrix(matrix, conv_type, scale=1.0, weight_type=None,
             bprobs = DM.block_probs(bcounts)
             bkgrnd = DM.aa_vector(bg_dict)
             PM = DM.block2pssm(DM.block_log_odds(bprobs, bkgrnd, scale), seqs[0])
-            M0 = FS.Smatrix_pssm(PM.pssm)
+            M0 = Smatrix(PM.pssm)
 
         else: # Score matrix 
             align = Generic.Alignment(IUPAC.protein)
@@ -98,13 +99,14 @@ def _get_converted_matrix(matrix, conv_type, scale=1.0, weight_type=None,
             arm = SubsMat.SeqMat(summary_align.replacement_dictionary())
             lom = SubsMat.make_log_odds_matrix(arm, ftab, factor=scale,
                                                round_digit=0, keep_nd=0)
-            M0 = FS.Smatrix(lom)
+            print type(lom)
+            M0 = Smatrix(lom)
 
     elif matrix in matrix_cache:
         M0 = matrix_cache[matrix]
     else:
         if matrix in MatrixInfo.__dict__:
-            M0 = FS.Smatrix(MatrixInfo.__dict__[matrix])
+            M0 = Smatrix(MatrixInfo.__dict__[matrix])
             matrix_cache[matrix] = M0
         else:
             return ""
@@ -382,14 +384,14 @@ class FullExpt:
 	"""
         return self.E[self.len_index(l)][f]
 
-    def _assign_iter(self, l, f, i, hits_dict):
+    def _assign_iter(self, l, f, i, HL):
   
         iters = self.get_iters(l,f)
         if len(iters) > i:
             del(iters[i:])
         else:
             i = len(iters)
-        iters.append(HitList(hits_dict))
+        iters.append(HL)
 
     def _current_iter(self, l, f, i):
         
@@ -453,8 +455,8 @@ class FullExpt:
         elif ctype == KNN_SRCH:
             HL=I.kNN_srch(qseq, M, r0)
 
-        HL['matrix_name'] = job['matrix']
-        HL['matrix'] = PM
+        HL.matrix_name = job['matrix']
+        HL.matrix = PM
         return HL
 
     def _threaded_search_setup(self, jobs):
@@ -499,8 +501,8 @@ class FullExpt:
 
     def _threaded_search_assign(self, jobs, keys, res):
         for i,k  in enumerate(keys):
-            res[i]['matrix_name'] = jobs[k]['matrix']
-            res[i]['matrix'] = jobs[k]['PM']
+            res[i].matrix_name = jobs[k]['matrix']
+            res[i].matrix = jobs[k]['PM']
             self._assign_iter(k[0], k[1], v['iter'], res[i])
             del(jobs[k])
 

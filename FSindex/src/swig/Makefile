@@ -3,8 +3,8 @@ VPATH = ../lib:../sarray
 all: _FS.so
 
 FS_wrap.c: FS.i
-	swig -python FS.i;\
-	cp FS.py ../ShortFrags;
+	swig -python -modern -new_repr -noproxy -v FS.i;\
+#	cp FS.py ../ShortFrags;
 
 FS_wrap.o: FS_wrap.c
 	$(CC) $(CFLAGS) -fPIC -c FS_wrap.c -I$(PYDIR)

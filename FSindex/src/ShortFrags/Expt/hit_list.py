@@ -27,7 +27,7 @@ B{Functions}:
 
 from cStringIO import StringIO
 
-class Hit:
+class Hit(object):
 
     """
     Defines a dictionary for each hit [a fragment of the sequence].
@@ -70,7 +70,6 @@ class Hit:
     Idata = None
     attr = {'defline': 'self.Idata.get_def(self.seq_id)',
             'seq': 'self.Idata.get_frag(self.seq_id, self.seq_from, self.seq_to)',
-            'cluster': 'self.Idata.seq2cluster(self.seq_id)',
             'accession': 'self.Idata.get_accession(self.seq_id)',
             }
 	    
@@ -168,7 +167,7 @@ def description(hits, query_seq, qs=0):
         
     return file_str.getvalue()
 
-class HitList:
+class HitList(object):
 
     """
     Provides the list of hits.
@@ -177,7 +176,7 @@ class HitList:
     print full details for all hits, and to print performance statistics.  
     The class also provides the functions necessary to sort and print 
     the results by priority, similarity score, distance, 
-    sequence(alphabetical), sequence id, and by orthologous cluster.
+    sequence(alphabetical and sequence id.
     
     This class uses Idata.  B{Idata} is assigned dynamically in B{index.py}
     and provides the index information.  This includes the following 
@@ -301,23 +300,22 @@ class HitList:
         if Idata == None or Idata.I == None:
             perc_func = lambda val, item: "\n"
         else:
-            index_data = Idata.I.get_data()
             file_str.write(Idata.print_str())
             perc_func = lambda val, item: " (%.2f %%)\n" \
-                        % (100.0 * val / index_data[item])
+                        % (100.0 * val / item)
 
         file_str.write("***** Index Performance *****\n")
         file_str.write("Number of checked bins : %d" % self.bins_visited)
-        file_str.write(perc_func(self.bins_visited, 'bins'))
+        file_str.write(perc_func(self.bins_visited, Idata.I.bins))
         file_str.write("Number of accepted bins : %d" % self.bins_hit)
-        file_str.write(perc_func(self.bins_hit, 'bins'))
+        file_str.write(perc_func(self.bins_hit, Idata.I.bins))
         file_str.write("Accepted out of generated bins:  %.2f %%\n\n" \
                        % (100.0 * self.bins_hit / self.bins_visited))
         
         file_str.write("Number of checked fragments : %d" % self.frags_visited)
-        file_str.write(perc_func(self.frags_visited, 'fragments'))
+        file_str.write(perc_func(self.frags_visited, Idata.I.fragments))
         file_str.write("Number of accepted fragments : %d" % self.frags_hit)
-        file_str.write(perc_func(self.frags_hit, 'fragments'))
+        file_str.write(perc_func(self.frags_hit, Idata.I.fragments))
         file_str.write("Accepted out of generated fragments:  %.2f %%\n\n" \
                        % (100.0 * self.frags_hit / self.frags_visited))
 
@@ -325,10 +323,10 @@ class HitList:
 #              file_str.write("Number of checked distinct fragments : %d" %\
 #                             self.unique_frags_visited)
 #              file_str.write(perc_func(self.unique_frags_visited,
-#                                       'unique_fragments'))
+#                                       Idata.I.unique_fragments))
 #              file_str.write("Number of accepted distinct fragments : %d" %\
 #                             self.unique_frags_hit)
-#              file_str.write(perc_func(self.unique_frags_hit, 'unique_fragments'))
+#              file_str.write(perc_func(self.unique_frags_hit, Idata.I.unique_fragments))
 #              file_str.write("Accepted out of generated distinct fragments:  %.2f %%\n\n" \
 #                             % (100.0 * self.unique_frags_hit / self.unique_frags_visited))
 
@@ -413,18 +411,6 @@ class HitList:
         """
         
         attribs = ['seq_id',
-                   'seq_from',
-                   'seq_to',
-                   ]
-        self._sort_hits(incr, attribs)
-
-    def sort_by_orthologs(self, incr=True):
-        """
-        Sort hits by orthologous cluster.
-        """
-
-        attribs = ['cluster',
-                   'seq_id',
                    'seq_from',
                    'seq_to',
                    ]
