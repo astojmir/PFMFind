@@ -69,6 +69,7 @@ class Hit(object):
         self.__dict__ = dict
 
     defline = property(fget=lambda hit : hit.accession)
+    cluster = property(fget=lambda hit : hit.accession)
     keywords = property(fget=lambda hit : [])
 
 
@@ -291,13 +292,15 @@ class HitList(list):
         file_str.write("***** Index Performance *****\n")
         file_str.write("Number of checked bins : %d\n" % self.bins_visited)
         file_str.write("Number of accepted bins : %d\n" % self.bins_hit)
-        file_str.write("Accepted out of generated bins:  %.2f %%\n\n" \
-                       % (100.0 * self.bins_hit / self.bins_visited))
+        if self.bins_visited != 0:
+            file_str.write("Accepted out of generated bins:  %.2f %%\n\n" \
+                           % (100.0 * self.bins_hit / self.bins_visited))
         
         file_str.write("Number of checked fragments : %d\n" % self.frags_visited)
         file_str.write("Number of accepted fragments : %d\n" % self.frags_hit)
-        file_str.write("Accepted out of generated fragments:  %.2f %%\n\n" \
-                       % (100.0 * self.frags_hit / self.frags_visited))
+        if self.frags_visited != 0:
+            file_str.write("Accepted out of generated fragments:  %.2f %%\n\n" \
+                           % (100.0 * self.frags_hit / self.frags_visited))
 
 #         if self.unique_frags_visited:
 #              file_str.write("Number of checked distinct fragments : %d\n" %\
@@ -367,6 +370,15 @@ class HitList(list):
                    ]
         self._sort_hits(incr, attribs)
 
+    def sort_by_distance_only(self, incr=True):
+        """
+        Sort hits solely by distance.
+        """
+        
+        attribs = ['dist',
+                   ]
+        self._sort_hits(incr, attribs)
+
     def sort_by_seq(self, incr=True):
         """
         Sort hits by sequence (alphabetical).
@@ -380,6 +392,17 @@ class HitList(list):
         self._sort_hits(incr, attribs)
 
     def sort_by_seqid(self, incr=True):
+        """
+        Sort hits by sequence id.
+        """
+        
+        attribs = ['accession',
+                   'seq_from',
+                   'seq_to',
+                   ]
+        self._sort_hits(incr, attribs)
+
+    def sort_by_cluster(self, incr=True):
         """
         Sort hits by sequence id.
         """
@@ -407,3 +430,7 @@ class HitList(list):
 	"""
         deflines = [ht.defline for ht in self]
         return deflines
+
+    def get_clusters(self):
+        clusters = [ht.cluster for ht in self]
+        return clusters
