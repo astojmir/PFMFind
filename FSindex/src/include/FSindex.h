@@ -169,6 +169,11 @@ int SSCAN_has_neighbour(SEQUENCE_DB *s_db,  SCORE_MATRIX_t *D,
 /********************************************************************/    
 typedef void FS_INDEX_profile_process_func(FS_SEQ_t FSneighbour); 
 
+typedef int FS_INDEX_profile_range_convert_func(POS_MATRIX *PS0, 
+						BIOSEQ *query0,
+						int cutoff);	
+
+
 
 int FS_INDEX_profile_search(HIT_LIST_t *hit_list0, BIOSEQ *query0, 
 			    POS_MATRIX *PS0, POS_MATRIX *PD0, 
@@ -177,11 +182,10 @@ int FS_INDEX_profile_search(HIT_LIST_t *hit_list0, BIOSEQ *query0,
 			    FS_INDEX_range_convert_func *cfunc);
 
 /* Process bin functions */
-
 FS_INDEX_profile_process_func FS_INDEX_profile_S_process_bin;
 FS_INDEX_profile_process_func FS_INDEX_profile_D_process_bin;
 
-
+/* Conversion functions */
 
 
 #ifndef DEBUG
