@@ -14,11 +14,16 @@ all: $(FSLIB) \
      Sscan_eps_net \
      print_matrices \
      QD_ddist \
+     split_db \
+     check_db \
 #     FSindex_delta \
 #     cluster_test \
 #     FSindex_rand_perf \
 #     FSindex_benchmark \
 #     FSindex_eps_net1 \
+check_db:
+
+split_db:
 
 cluster_test: 
 
