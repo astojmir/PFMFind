@@ -606,7 +606,6 @@ void check_bins(FS_SEQ_t FS_neighbour, int i, int dist)
 /*      Processing functions                                        */
 /********************************************************************/ 
 
-inline
 void FS_INDEX_QD_process_bin(FS_SEQ_t FS_query)
 {
   ULINT n = FS_HASH_TABLE_get_no_seqs(HT, FS_query);

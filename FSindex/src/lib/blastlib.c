@@ -163,7 +163,6 @@ int seedhist_clear1(SEED_HIST *hist)
   return 1;
 }
 
-inline 
 void seedhist_add_acount(SEED_HIST *hist, SLINT bin)
 {
   SLINT old_no_bins;
@@ -673,8 +672,8 @@ void *run_blast(struct blast_params *BP, struct blastlib_params *BLP)
 
 
 static
-int get_next_tag_item(FILE *stream, unsigned char **tag, int *taglen, 
-                      unsigned char **value, int *valuelen, int *level)
+int get_next_tag_item(FILE *stream, char **tag, int *taglen, 
+                      char **value, int *valuelen, int *level)
 {
   int c;
   int i = 0;
@@ -1219,19 +1218,19 @@ void *get_seed_stat(char *out_filename, void *params)
 
 #define ALIGN_SIZE 20
   ULINT qseq_len = ALIGN_SIZE;
-  unsigned char *qseq = mallocec(qseq_len);
+  char *qseq = mallocec(qseq_len);
   ULINT hseq_len = ALIGN_SIZE;
-  unsigned char *hseq = mallocec(hseq_len);
+  char *hseq = mallocec(hseq_len);
   ULINT line_len = 0;
 
-  unsigned char *qseq0;
-  unsigned char *hseq0;
+  char *qseq0;
+  char *hseq0;
 
 
   /* xml field variables */
-  unsigned char *tag;
+  char *tag;
   int taglen = 0;
-  unsigned char *value;
+  char *value;
   int valuelen = 0;
   int level = 0;
 
