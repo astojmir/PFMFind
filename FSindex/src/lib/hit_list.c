@@ -159,6 +159,8 @@ void HIT_LIST_reset(HIT_LIST_t *HL, BIOSEQ *query,
   HL->index_seqs_total = 0;
   HL->seqs_visited = 0;
   HL->seqs_hits = 0;
+  HL->useqs_visited = 0;
+  HL->useqs_hits = 0;
   HL->start_time = time(NULL);
   HL->end_time = 0;
   HL->search_time = 0;
@@ -319,6 +321,17 @@ void HIT_LIST_count_seq_hit(HIT_LIST_t *HL, ULINT count)
   HL->seqs_hits += count;
 }
 
+void HIT_LIST_count_useq_visited(HIT_LIST_t *HL, ULINT count)
+{
+  HL->useqs_visited += count;
+}
+
+void HIT_LIST_count_useq_hit(HIT_LIST_t *HL, ULINT count)
+{
+  HL->useqs_hits += count;
+}
+
+
 void HIT_LIST_stop_timer(HIT_LIST_t *HL)
 {
   HL->end_time = time(NULL);
@@ -417,6 +430,11 @@ void HIT_LIST_print(HIT_LIST_t *HL, FILE *stream,
   fprintf(stream, "Number of accepted fragments: %ld (%.2f %%)\n",  
 	  HL->seqs_hits,
 	  (double) HL->actual_seqs_hits * 100 / no_frags);
+  fprintf(stream, "Number of checked distinct fragments: %ld\n", 
+	  HL->useqs_visited);
+  fprintf(stream, "Number of accepted distinct fragments: %ld\n",  
+	  HL->useqs_hits);
+
   fprintf(stream, "Number of displayed hits: %ld\n", 
 	  HL->actual_seqs_hits);
   fprintf(stream, "Search time: %.2f sec. \n", HL->search_time);
