@@ -354,10 +354,6 @@ void FS_INDEX_create(const char *database, ULINT flen,
 	  added_frags++;
 	  FS_HASH_TABLE_insert_seq(HT, i, FS_seq);
 	}
-      else
-	{
-	  fprintf(stderr, "%ld %.*s\n", j, (int) frag->len, frag->start);
-	}
 
       /* Print progress bar */
       if (FS_INDEX_PRINT_BAR > 0)
@@ -373,8 +369,6 @@ void FS_INDEX_create(const char *database, ULINT flen,
   db_no_frags = no_frags;
 
   /* Print statistics */
-  fprintf(stderr, "added_frags = %d, HT->no_seqs=%d"
-	  " before printing\n", added_frags, HT->no_seqs);
   if (FS_INDEX_VERBOSE > 0)
     FS_INDEX_print_stats(stdout, j, dt); 
 
