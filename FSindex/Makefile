@@ -5,6 +5,7 @@ SHELL=/bin/sh
 SRCDIR = src/
 PROGSDIR = src/progs/
 LIBSDIR = src/lib/
+SWIGDIR = src/swig/
 BINDIR = bin/
 LIBDIR = ../lib
 INCLUDEDIR = src/include/
@@ -33,11 +34,16 @@ progs: libs
 	if [ ! -d  $(BINDIR) ]; then \
 	   mkdir $(BINDIR); \
 	fi 
-	cd $(PROGSDIR); \
-	make CC=$(CC) CFLAGS=$(CFLAGS) LDFLAGS=$(LDFLAGS) LDLIBS=$(LDLIBS); \
-	for x in *; do if [ -x $$x -a -f $$x.c ]; \
-	then mv $$x "../../$(BINDIR)"; fi done; \
-	cd ..; \
+#	cd $(PROGSDIR); \
+#	make CC=$(CC) CFLAGS=$(CFLAGS) LDFLAGS=$(LDFLAGS) LDLIBS=$(LDLIBS); \
+#	for x in *; do if [ -x $$x -a -f $$x.c ]; \
+#	then mv $$x "../../$(BINDIR)"; fi done; \
+#	cd ..; \
+
+swig:
+	cd $(SWIGDIR); \
+	make; \
+	cd ../..;\
 
 libs:
 	cd $(LIBSDIR); \
