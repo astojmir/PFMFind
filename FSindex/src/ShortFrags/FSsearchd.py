@@ -1,7 +1,8 @@
-#!/usr/bin/env python
+#!/usr/local/bin/python
 
-from ShortFrags.Expt import SearchServer
-import sys, os, signal, os.path, string
+import sys, os, signal, os.path, string, resource, socket
+
+
 
 # Based on Chad J. Schroeder's recipe: http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/278731 
 
@@ -17,23 +18,7 @@ class Log:
         self.f.write(s)
         self.f.flush()
 
-def read_config(serverfile):
-    fp = file(serverfile, 'r')
-    servers = []
-    for line in fp:
-        sp_line = string.split(line)
-        host = sp_line[0]
-        port = int(sp_line[1])
-        workdir = sp_line[2]
-        if len(sp_line) > 3:
-            index = sp_line[3]
-        else:
-            index = ''
-        servers.append((host, port, workdir, index))
-    fp.close()
-    return servers
-
-def create_daemon(serverfile):
+def create_daemon(daemonid, port, workpath, indexfile, pythonpath=None):
     """Disk And Execution MONitor (Daemon)
 
     Default daemon behaviors (they can be modified):
@@ -52,6 +37,10 @@ def create_daemon(serverfile):
     http://www.erlenstar.demon.co.uk/unix/faq_2.html#SEC16
     """
     
+    if pythonpath != None:
+        sys.path.append(pythonpath)
+    workpath = os.path.expanduser(workpath)
+
     try:
         # Fork a child process so the parent can exit.  This will return control
         # to the command line or shell.  This is required so that the new process
@@ -95,20 +84,21 @@ def create_daemon(serverfile):
             # Give the child complete control over permissions.
             os.umask(0)
         else:
-            pidfile = os.path.join(os.path.split(serverfile)[0], "FSsearchd.pid")
-            open(pidfile,'w').write("%d\n" % pid) # Write pid of the daemon
-            os._exit(0)      # Exit parent (the first child) of the second child.
+            pidfile = os.path.join(workpath, "FSsearchd_%s.pid" % daemonid)
+            pid_fp = file(pidfile,'w')
+            pid_fp.write("%d\n" % pid) # Write pid of the daemon
+            pid_fp.write("%s\n" % socket.gethostname()) 
+            pid_fp.write("%s\n" % string.join(sys.argv, ' ')) # Write the command line
+            pid_fp.close()
+            os._exit(0)     # Exit parent (the first child) of the second child.
     else:
         os._exit(0)         # Exit parent of the first child.
 
 
-    # Read the configuration file
-    servers = read_config(serverfile)
 
-    # Change to data directory
-    datadir = os.path.expanduser(servers[0][2])
-    logfile = os.path.join(datadir, "FSsearchd.log")
-    os.chdir(datadir)
+    # Change to working directory
+    logfile = os.path.join(workpath, "FSsearchd_%s.log" % daemonid)
+    os.chdir(workpath)
 
     # Close all open files.  Try the system configuration variable, SC_OPEN_MAX,
     # for the maximum number of open files to close.  If it doesn't exist, use
@@ -130,10 +120,21 @@ def create_daemon(serverfile):
     os.open(logfile, os.O_CREAT|os.O_APPEND|os.O_RDWR) # standard output (1)
     os.open(logfile, os.O_CREAT|os.O_APPEND|os.O_RDWR) # standard error  (2)
 
-    # Start the SearchServer 
-    SrchS = SearchServer.SearchServer(servers)
-    SrchS.start()
+    # Set resource limits
+    if 'RLIMIT_DATA' in dir(resource):
+        lim = resource.getrlimit(resource.RLIMIT_DATA)
+        resource.setrlimit(resource.RLIMIT_DATA, (lim[1],lim[1]))
+    if 'RLIMIT_RSS' in dir(resource):
+        lim = resource.getrlimit(resource.RLIMIT_RSS)
+        resource.setrlimit(resource.RLIMIT_RSS, (lim[1],lim[1]))
+    if 'RLIMIT_MEMLOCK' in dir(resource): 
+        lim = resource.getrlimit(resource.RLIMIT_MEMLOCK)
+        resource.setrlimit(resource.RLIMIT_MEMLOCK, (lim[1],lim[1]))
 
+    # Start the SearchServer 
+    from ShortFrags.Expt import SearchServer
+    SrchS = SearchServer.SearchServer(port, indexfile)
 
 if __name__ == "__main__":
-    create_daemon(sys.argv[1])
+    args = tuple(sys.argv[1:])
+    create_daemon(*args)
