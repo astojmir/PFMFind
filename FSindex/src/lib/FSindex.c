@@ -928,7 +928,7 @@ void FS_INDEX_profile_S_process_bin(FS_SEQ_t FS_query)
     }
 }
 
-
+/* This is no longer active but left just in case */
 void FS_INDEX_profile_D_process_bin(FS_SEQ_t FS_query)
 {
   ULINT n = FS_HASH_TABLE_get_no_seqs(HT, FS_query);
@@ -966,7 +966,7 @@ void check_bins_profile(FS_SEQ_t FS_neighbour, int i, int dist)
 
   for (k=i+1; k < frag_len; k++)
     {
-      if (dist + PD->pMclosest[k] <= D_cutoff)
+      if (dist + PS->pMclosest[k] <= D_cutoff)
 	{      
 	  for (j=1; j < K; j++)
 	    {
@@ -974,7 +974,7 @@ void check_bins_profile(FS_SEQ_t FS_neighbour, int i, int dist)
 	      R_offset = 
 		FS_PARTITION_get_poffset(ptable, R);
 	      FS_neighbour1 = FS_neighbour + R * FS_KK[k];
-	      dist1 = dist + PD->pM[PM_pM(k, R_offset)]; 
+	      dist1 = dist + PS->pM[PM_pM(k, R_offset)]; 
 	      HIT_LIST_count_FS_seq_visited(hit_list, 1);
 	      if (dist1 <= D_cutoff)
 		{
@@ -993,8 +993,7 @@ void check_bins_profile(FS_SEQ_t FS_neighbour, int i, int dist)
 /*                 Search functions  profiles                       */
 /********************************************************************/ 
 
-int FS_INDEX_profile_search(HIT_LIST_t *hit_list0, BIOSEQ *query0, 
-			    POS_MATRIX *PS0, POS_MATRIX *PD0, 
+int FS_INDEX_profile_search(HIT_LIST_t *hit_list0, POS_MATRIX *PS0, 
 			    ULINT Pfrom0, ULINT Pto0, int cutoff, 
 			    FS_INDEX_profile_process_func *ppfunc0, 
 			    FS_INDEX_range_convert_func *cfunc)
@@ -1005,9 +1004,8 @@ int FS_INDEX_profile_search(HIT_LIST_t *hit_list0, BIOSEQ *query0,
 
   /* Copy arguments into global variables */
   hit_list = hit_list0;
-  query = query0;
+  query = PS0->query;
   PS = PS0;
-  PD = PD0;
   Pfrom = Pfrom0;
   Pto = Pto0;
   ppfunc = ppfunc0;
