@@ -18,11 +18,13 @@
 #include <stdio.h>
 #include <math.h>
 #include <unistd.h>
+#include "partition.h"
 
 #define DEFAULT_SEG_LENGTH (2 << 22)
 #define DEFAULT_SEQ_LENGTH 2048
 #define MAX_BINS 500
 
+int FS_PARTITION_VERBOSE = 0;
 
 struct unique_fragment
   {
@@ -73,35 +75,54 @@ static
 struct avl_table *load_fragment_tree(SEQUENCE_DB *s_db, ULINT m, 
 				     ULINT *total_frags)
 {
-  ULINT i;
-  char *pseq;
-  char *pend;
+  ULINT i,j;
   struct unique_fragment *frag;
   struct unique_fragment **tree_item;
   struct avl_table *tree;
+  BIOSEQ *bfrag = mallocec(sizeof(BIOSEQ));
+  char *c;
+  char *c1;
+  int valid_frag;
+  ULINT no_frags;
+  ULINT one_percent_fragments;
+  FS_PARTITION_t *ptable = 
+    FS_PARTITION_create("STANILVMKRDEQWFYHGPC", '#'); 
 
   /* Load tree */
   *total_frags = 0;
   tree = avl_create(compare_frags, NULL, NULL);
   frag = mallocec(sizeof(struct unique_fragment));
-  for (i=0; i < s_db->no_seq; i++)
+
+  no_frags = fastadb_count_Ffrags(s_db, m);
+  one_percent_fragments = (ULINT) (((double) no_frags) / 100);
+  fastadb_init_Ffrags(s_db, m);
+  j = 0;
+
+  while (fastadb_get_next_Ffrag(s_db, m, bfrag, &i, 1))  
     {
-      pseq=s_db->seq[i].start;
-      pend=s_db->seq[i].start + s_db->seq[i].len - m + 1;
-      while (pseq < pend)
- 	{
+      j++;
+      valid_frag = 1;
+      for (c=bfrag->start, c1=c+m; c < c1; c++)
+	if (ptable->partition_table[*c & A_SIZE_MASK] == -1) 
+	  valid_frag = 0;
+
+      if (valid_frag)
+	{
 	  (*total_frags)++;
-	  frag->seq = pseq;
+	  frag->seq = bfrag->start;
 	  frag->len = m;
 	  frag->counter = 0;
 	  tree_item = (struct unique_fragment **) 
 	    avl_probe (tree, frag);	  
 	  (*tree_item)->counter++;
 	  if ((*tree_item) == frag)
-	    frag = mallocec(sizeof(struct unique_fragment));
-	  pseq++;
+	    frag = mallocec(sizeof(struct unique_fragment));	  
 	}
-    }
+
+      /* Print progress bar */
+      printbar(stdout, j+1, one_percent_fragments, 50);  
+    } 
+  free(bfrag);
   return tree;
 }
 
@@ -271,6 +292,7 @@ int main(int argc, char **argv)
     }
   else
     tree = load_fragment_tree(s_db, frag_len, &total_frags);
+    
 
   /* Count fragments */
   fprintf(stdout, "  Counting Fragments\n");
