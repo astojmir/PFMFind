@@ -1,16 +1,41 @@
 #include "misclib.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "fastadb.h"
 #include "blastlib.h"
 #include "FSindex.h"
 #include "clusters.h"
 
+#define TOO_BIG (1 << 14) 
 
 int FS_PARTITION_VERBOSE = 0;
 int SCORE_MATRIX_VERBOSE = 0;
 int FS_INDEX_VERBOSE = 0;
 int FS_INDEX_PRINT_BAR = 1;
+
+static 
+void print_help(const char *progname)
+{
+  fprintf(stderr, "Usage: %s options\n"
+	  "\n"
+	  "Mandatory:\n"
+	  "-F  f   Use FSindex index file f\n"
+	  "-M  f   Use score matrix file f\n"
+	  "-T  n   Maximum diameter n\n"
+	  "-K  n   Minimum seqs per cluster n\n"
+	  "-o  f   Write results to file f\n"
+	  "Optional:\n"
+	  "-d  f   Write debug info to file f\n"
+	  "-c  f   Write clusters (seqs) to file f\n"
+	  "-b  f   Don't print progress bar\n"
+	  "\n"
+	  ,progname);
+}
+
+
+
+
 
 int main(int argc, char **argv)
 {
@@ -45,17 +70,35 @@ int main(int argc, char **argv)
   SEED_HIST *unclassified_size = seedhist_init(0, 5000);
   SEED_HIST *overall_size = seedhist_init(0, 5000);
   
+  /* Getopt variables */
+  int c;                              /* Option character          */ 
+  extern char *optarg;                /* Option argument           */
+  extern int optind;
+  extern int optopt;
+  extern int opterr;  
+  int errflg = 0;                     /* Option error flag         */
   
-  
-
   ULINT i;
   int j;
   ULINT s;
   ULINT one_percent_bins;
-  const char *outfile;
-  const char *outfile1;
+  const char *outfile = NULL;
+  const char *outfile1 = NULL;
+  const char *debug_file = NULL;
   FILE *stream;
   FILE *stream1;
+  FILE *stream2;
+
+
+  int index_flag = 0;
+  int matrix_flag = 0;
+  int diameter_flag = 0;
+  int minsize_flag = 0;
+  int outfile_flag = 0;
+  int debug_flag = 0;
+  int clusters_flag = 0;
+  int nobar_flag = 0;
+
 
   /* Input params;
      - index_file
@@ -66,31 +109,72 @@ int main(int argc, char **argv)
      - interesting bins output file
   */
 
-  if (argc < 7)
-    {
-      fprintf(stderr,"Insufficient arguments \n");
-      fprintf(stderr,"Usage: %s index_file matrix_file T K outfile"
-	      " outfile1 \n", argv[0]);  
-      exit(EXIT_FAILURE);
-    }
+  while ((c = getopt(argc, argv, "F:M:T:K:o:d:c:b")) != EOF)
+    switch (c) 
+      {
+      case 'F':
+	filename = optarg;
+	index_flag++;
+	break;
+      case 'M':
+	matrix_full = optarg;
+	matrix_flag++;
+	break;
+      case 'T':
+	T = atoi(optarg);
+	diameter_flag = 1;
+	break;
+      case 'K':
+	K = atoi(optarg);
+	minsize_flag = 1;
+	break;
+      case 'o':
+	outfile = optarg;
+	if((stream = fopen(outfile, "w")) == NULL)
+	  {
+	    fprintf(stderr, 
+		    "Could not open output file %s!\n", outfile);
+	    exit(EXIT_FAILURE);
+	  }
+	outfile_flag = 1;
+	break;
+      case 'c':
+	outfile1 = optarg;
+	if((stream1 = fopen(outfile1, "w")) == NULL)
+	  {
+	    fprintf(stderr, 
+		    "Could not open output file %s!\n", outfile1);
+	    exit(EXIT_FAILURE);
+	  }
+	clusters_flag = 1;
+	break;
+      case 'd':
+	debug_file = optarg;
+	if((stream2 = fopen(debug_file, "w")) == NULL)
+	  {
+	    fprintf(stderr, 
+		    "Could not open output file %s!\n", debug_file);
+	    exit(EXIT_FAILURE);
+	  }
+	debug_flag = 1;
+	break;
+      case 'b':
+	nobar_flag = 1;
+	break;
+      case '?':
+      default:
+	errflg++;
+	break;
+      }
 
-  filename = argv[1];
-  matrix_full = argv[2];
-  T = atoi(argv[3]);
-  K = atoi(argv[4]);
-  outfile = argv[5];
-  outfile1 = argv[6];
-   
-  if((stream = fopen(outfile, "w")) == NULL)
+  if (!(index_flag || matrix_flag || diameter_flag || minsize_flag ||
+	outfile_flag))
+    errflg++;
+
+  if (errflg)
     {
-      fprintf(stderr, 
-	      "Could not open output file %s!\n", outfile);
-      exit(EXIT_FAILURE);
-    }
-  if((stream1 = fopen(outfile1, "w")) == NULL)
-    {
-      fprintf(stderr, 
-	      "Could not open output file %s!\n", outfile1);
+      fprintf(stderr,"Error: Insufficient or invalid arguments \n");
+      print_help(argv[0]);
       exit(EXIT_FAILURE);
     }
 
@@ -120,9 +204,15 @@ int main(int argc, char **argv)
   while (1)
     {
       /* Print bar */
-      printbar(stdout, i+1, one_percent_bins, 50);  
-
-      if (no_seqs > 0)
+      if (!nobar_flag)
+	printbar(stdout, i+1, one_percent_bins, 50);  
+      /* Print debug info */
+      if (debug_flag)
+	{
+	  rewind(stream2);
+	  fprintf(stream2, "Last bin:%d, Size: %ld\n", i, no_seqs);
+	}
+      if (no_seqs > 0 && no_seqs < TOO_BIG)
 	{
 	  SEQ_CLUSTERS_CLT_cluster(sclusters, cbin, T, K); 	       
 	  seedhist_add_acount(clusters_per_bin, cbin->no_clusters);
@@ -139,16 +229,22 @@ int main(int argc, char **argv)
 	  seedhist_add_acount(overall_size, cbin->no_seq - s);
 
 	  /* If the bin is interesting, print it */
-	  if (cbin->no_seq > 100)
+
+	  if (clusters_flag && (cbin->no_seq > 100))
 	    CLUSTER_BIN_print(cbin, frag_len, s_db, ptable, stream1);
 
 	  free(cbin->cluster_size);
 	  free(cbin->cluster_pattern);
 	  free(cbin->seqs); 
 	}
-      else
+      else if (no_seqs == 0)
 	seedhist_add_acount(overall_size, 0);
-
+      else if (no_seqs >= TOO_BIG)
+	{
+	  seedhist_add_ucount(overall_size);
+	  seedhist_add_acount(overall_size, no_seqs);
+	}
+      
       if (++i >= no_bins)
 	break;
       no_seqs = FS_HASH_TABLE_get_no_seqs(HT, i); 
