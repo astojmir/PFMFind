@@ -8,6 +8,8 @@ LIBSDIR = src/lib/
 BINDIR = bin/
 LIBDIR = ../lib
 INCLUDEDIR = src/include/
+GSLINCLUDE = -I /u/students/aleksand/exec/include/
+GSLLIB = -L /u/students/aleksand/exec/lib
 
 DEBUG=-g -D DEBUG=2
 MPATROL = -D USE_MPATROL
@@ -20,9 +22,9 @@ WARNINGS = -pipe -Wall -Wno-char-subscripts -Wshadow \
 
 CC = gcc
 
-CFLAGS = "-I ../include -Werror $(WARNINGS) $(MAXOPT)"
+CFLAGS = "-I ../include -Werror $(WARNINGS) $(DEBUG)"
 LDFLAGS = "-L $(LIBDIR)"
-LDLIBS = "-lm -lFSindex"
+LDLIBS = "-lm -lFSindex -lmd"
 
 
 all: progs
