@@ -25,17 +25,30 @@
 /********************************************************************/    
 /********************************************************************/    
 
-
-
-typedef struct 
+struct POS_MATRIX_s 
 {
   SSINT *M;                 /* Pure alphabet matrix: len * A_SIZE */
   SSINT *pM;                /* Pattern matrix: len * P_SIZE */
   SSINT *pMclosest;         /* Changed pos array */
   ULINT len;
-  char similarity_flag;
-  FS_PARTITION_t *ptable;  
-} POS_MATRIX;
+  FS_PARTITION_t *ptable;   /* Partition table */
+  double lambda;            /* Scaling factor */
+  double *bkgrnd;           /* Background probabilities */
+  double *count;            /* Weighted frequency counts */  
+  void (*pcnf) (struct POS_MATRIX_s *);
+  /* pseudo_counts_func *pcnf; */
+  void *params;             /* Parameters of pseudo count functions */  
+  BIOSEQ *query;
+  int no_seqs;
+  int max_no_seqs;
+  BIOSEQ *seq;
+  double *weight;
+  int iteration;
+};
+
+typedef struct POS_MATRIX_s POS_MATRIX;
+
+typedef void pseudo_counts_func(POS_MATRIX *PS);
 
 
 /* Similarity to distance cutoff conversion function type */
@@ -49,14 +62,30 @@ typedef int POS_MATRIX_range_convert_func(POS_MATRIX *PS,
 POS_MATRIX *POS_MATRIX_load(const char *filename,
 			    FS_PARTITION_t *ptable); 
 
-POS_MATRIX *POS_MATRIX_create(ULINT no_seq, BIOSEQ *seq,
-			      ULINT *Pfrom, ULINT *Pto,
-			      FS_PARTITION_t *ptable); 
+void POS_MATRIX_init(POS_MATRIX *PS, double lambda,
+		     pseudo_counts_func *pcnf, 
+		     const char *freq_filename);
+
+void POS_MATRIX_update(POS_MATRIX *PS);
 
 POS_MATRIX *SCORE_2_POS_MATRIX(SCORE_MATRIX_t *S, BIOSEQ *query);
 
+
+
 /* Destructor */
 void POS_MATRIX_destroy(POS_MATRIX *PS);
+
+/* Pseudo-count functions */
+
+pseudo_counts_func POS_MATRIX_simple_pseudo_counts;
+void POS_MATRIX_simple_pseudo_counts_init(POS_MATRIX *PS, double A);
+
+/* Weight functions */
+void POS_MATRIX_equal_weights(POS_MATRIX *PS);
+
+/* Load background frequences */
+double *load_bkgrnd_probs(const char *filename);
+
 
 /* Read, Write */
 int POS_MATRIX_write(POS_MATRIX *PS, FILE *stream); 
@@ -67,7 +96,6 @@ void POS_MATRIX_print(POS_MATRIX *PS, FILE *stream,
 			const char *title);
 
 /* Set members */
-void POS_MATRIX_set_sim_flag(POS_MATRIX *PS, char sim_flag);
 void POS_MATRIX_set_ptable(POS_MATRIX *PS, 
 			   FS_PARTITION_t *ptable);
 
@@ -80,7 +108,7 @@ int PM_pM(int i, int j);
 
 
 /* Similarities to Distances */
-POS_MATRIX *POS_MATRIX_S_2_D(POS_MATRIX *PS, BIOSEQ *query);
+void POS_MATRIX_S_2_D(POS_MATRIX *PS);
 
 /* Cutoff value conversion */
 
@@ -88,7 +116,8 @@ int POS_MATRIX_id_convert(POS_MATRIX *PS, BIOSEQ *query, int cutoff,
 			  ULINT Pfrom, ULINT Pto); 
 
 int POS_MATRIX_S2D_convert(POS_MATRIX *PS, BIOSEQ *query, int cutoff,
-			   ULINT Pfrom, ULINT Pto); 
+			   ULINT Pfrom, ULINT Pto);
+ 
  /* Evaluation of similarities, distances */
 int POS_MATRIX_evaluate(POS_MATRIX *PS, BIOSEQ *subject, 
 			ULINT Pfrom, ULINT Pto);
@@ -133,13 +162,6 @@ int POS_MATRIX_verify_pos(POS_MATRIX *PD, ULINT Pfrom, ULINT Pto,
 
 #ifdef POS_MATRIX_INLINE
 /* Set members */
-
-MY_INLINE
-void POS_MATRIX_set_sim_flag(POS_MATRIX *PS, char sim_flag)
-{
-  PS->similarity_flag = sim_flag;
-}
-
 
 MY_INLINE
 void POS_MATRIX_set_ptable(POS_MATRIX *PS, FS_PARTITION_t *ptable)
