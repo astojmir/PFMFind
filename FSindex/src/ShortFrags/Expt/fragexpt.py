@@ -1,3 +1,8 @@
+"""
+
+B{Exceptions:}
+    - IOError
+"""
 import os
 import os.path
 import types
@@ -32,6 +37,18 @@ matrix_cache = {}
 
 def get_converted_matrix(matrix, conv_type, scale=1.0, weight_type=None,
                          dirichlet_type=None, FE=None, coords=None):
+
+    """
+    @param matrix: Similarity matrix.
+    @param conv_type: Similarity matrix type. Possible types are 
+    contained in the dictionary B{MATRIX_CTYPE}.
+    @param scale:
+    @param weight_type: May be none or Henikoff.
+    @param dirichlet_type: Name of Dirichlet mixture matrix.  
+    Must be contained in B{NAMES} list.
+    @param FE: An instance of the B{FullExpt} class.
+    @param coords: 
+    """
     PM = None
 
     if weight_type != None: # Iterated search
@@ -96,12 +113,21 @@ def get_converted_matrix(matrix, conv_type, scale=1.0, weight_type=None,
 
 def print_matrix(matrix, conv_type, scale=1.0, weight_type=None,
                  dirichlet_type=None, FE=None, coords=None):
+    """
+    Print the converted matrix.
+    
+    @param matrix: Similarity matrix.
+    @param conv_type: Similarity matrix type. Possible types are 
+    contained in the dictionary B{MATRIX_CTYPE}.
+    @param scale:
+    @param weight_type: May be None or Henikoff.
+    @param dirichlet_type: Name of Dirichlet mixture matrix.  
+    Must be contained in B{NAMES} list.
+    @param FE: An instance of the B{FullExpt} class.
+    @param coords: 
+    """		 
     M, ctype, PM = get_converted_matrix(matrix, conv_type, scale, weight_type,
                                         dirichlet_type, FE, coords)
-					
-		"""
-		Print the converted matrix.
-		"""
     return M.__str__()
 
 def print_align(weight_type, dirichlet_type, FE, coords):
@@ -149,10 +175,6 @@ def load_FE(filename):
     """
     Load a saved full experiment file.
     
-    Exceptions:
-        - IOError exception will occur if the file cannot
-	be loaded.
-    
     @return:  Return the full experiment.
     """
     try:
@@ -173,25 +195,7 @@ def load_FE(filename):
 
 class FullExpt:
     """
-    
-    Methods:
-        - __init__(self)
-        - set_params(self, qseq, qdef='', qrange=None, lrange=None)
-        - load_fastadb(self, filename)
-	- load_index(self, filename)
-	- load_descriptions(self, filename)
-	- save(self, filename)
-	- len_index(self, l)
-	- get_iters(self, l,f)
-	- assign_iter(self, l, f, i, hits_dict)
-	- current_iter(self, l, f, i)
-	- serial_search(self, jobs, update_func = None)
-	- run_search(self, coords, job, I)
-	- threaded_search_setup(self, jobs)
-	- threaded_search_assign(self, jobs, keys, res)
-	- threaded_search(self, jobs, I)
-	- full_view_by_seqid(self, l, iter)
-	- full_view_by_cluster(self, l, iter)
+   
     """
     def __init__(self):
         self.mcache = {}

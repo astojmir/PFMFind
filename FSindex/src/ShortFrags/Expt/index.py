@@ -1,26 +1,37 @@
 """
-This module loads the index and returns a string of information
-which may be printed.
+This module provides the code to work with index fragment databases.
 
-Only one instance of IndexedDb should be instantiated, the Idata (index data) 
-will be set by the most recent index.  
+Only one instance of B{IndexedDb} should be instantiated, 
+the B{Idata} (index data) will be set by the most recent index.  
 
-This module may be used to load an index and run a search.  It may also
-be used to load a fasta database to look at the results of a previous 
-search.  Primary use of this module is to define index information
-for hit_list.
+B{Idata} is assigned dynamically and contains the index information.
+This includes the following attributes:
+    - B{I}
+        - The index.
+	- Includes the index name, alphabet, and partitions.
+    - B{get_frag}
+        - The sequence fragment.
+    - B{deflines}
+        - Default line width.
+    - B{accessions}
+        - Accession numbers.
+    - B{sdb}
+        - Pointer to FASTA database.
+    
+This module may be used to load an index and run a search.  To 
+look at the results of a previous search only a FASTA database must 
+be loaded.  Primary use of this module is to define index information
+B{Idata} for hit_list.
 
-Exceptions:
+B{Exceptions}:
     - RuntimeError
     - IOError
 
-Classes:
+B{Classes}:
    - IndexedDb  
-         -  Load the databases and print the index.
+         -  Class contains the functions to load the databases and 
+         print the index.
 
-Functions:
-   - md5digest(filename) 
-         - Read a file in as a message digest.
 """
 
 from cStringIO import StringIO
@@ -32,17 +43,9 @@ from ShortFrags import FS
 import hit_list
 
 
-BLOCKSIZE = 1024*1024
-def md5digest(filename):
-    """
-    Open a file and read it in as a new message digest.
-    
-    The md5digest is used to ensure consistency in the loaded
-    databases.
-
-    @return: Return a message digest as a string of length 
-    32 with only hexadecimal digits.
-    """
+def _md5digest(filename):
+ 
+    BLOCKSIZE = 1024*1024
     fp = open(filename, "rb")
     sum = md5.new()
     while 1:
@@ -60,16 +63,14 @@ class IndexedDb:
     Class contains the functions to load the databases and 
     print the index.
     
-    Methods:
-        - __init__(self)
-        - load_fasta_db(self, filename, md5sum = None)
-        - load_index(self, filename, md5sum = None)
-        - load_descriptions(self, filename)
-        - print_str(self)
+    B{Exceptions:}
+	    - RuntimeError
+	    - IOError
+    
     """
     def __init__(self):
         """
-        Constructor, sets values and initializes 
+        Constructor, initializes 
 	Idata for hit_list.
         """
         self.I = None
@@ -86,22 +87,20 @@ class IndexedDb:
 
     def load_fasta_db(self, filename, md5sum = None):
         """
-	Load the fasta database.
+	Load the FASTA database.
+	    
+	@return: Return the new message digest.
 	
-	The files are compared to ensure that the database being opened 
-	is the same one that was opened previously.  If the value
-	for md5sum is None or the databases are the same then the 
-	check is completed successfully.
-	
-	Exceptions:
-	    - Throws a RuntimeError exception if the loaded 
-	    database does not match the database given as 
-	    an argument.
+	@param filename: Name of the FASTA file.
+	@param md5sum:  Compared (if provided) with the md5 digest of 
+	the B{filename}.  RuntimeError raised if the two digests do not 
+	match. This can help ensure that the database being opened 
+	is the same one that was opened previously.
 	
 	@return: Return the new message digest.
 	"""
-        # Do md5digest and compare - throw exception if bad
-        new_md5sum = md5digest(filename)
+        # Do _md5digest and compare - throw exception if bad
+        new_md5sum = _md5digest(filename)
         if md5sum != None and new_md5sum != md5sum:
             raise RuntimeError, 'Digests for FASTA database do not match.'
 
@@ -125,16 +124,11 @@ class IndexedDb:
         """
 	Load the index.
 	
-	The files are compared to ensure that the index being opened 
-	is the same one that was opened previously.  If the value
-	for md5sum is None or the indexes are the same then the 
-	check is completed successfully.
-	
-	Exceptions: 
-	    - Throws a RuntimeError exception if the loaded 
-	    database does not match the fasta database given
-	    previously.
-	    - Throws an IOError if the index file cannot be loaded.
+	@param filename: Name of the FASTA file.
+	@param md5sum:  Compared (if provided) with the md5 digest of 
+	the B{filename}.  RuntimeError raised if the two digests do 
+	not match. This can help ensure that the database being opened 
+	is the same one that was opened previously.
 	
 	@return: Return the new message digest.
         """
@@ -150,8 +144,8 @@ class IndexedDb:
         head, tail = os.path.split(filename)
         fasta_path = os.path.join(head, s)
 
-        # Do md5digest and compare - throw exception if bad
-        new_md5sum = md5digest(fasta_path)
+        # Do _md5digest and compare - throw exception if bad
+        new_md5sum = _md5digest(fasta_path)
         if md5sum != None and new_md5sum != md5sum:
             raise RuntimeError, 'Digests for FASTA database do not match.'
 
@@ -176,9 +170,6 @@ class IndexedDb:
         return new_md5sum
 
     def load_descriptions(self, filename):
-        """
-	Does nothing, method employs pass statement.
-	"""
         pass
 
     def _default_deflines(self):
@@ -198,7 +189,8 @@ class IndexedDb:
 
     def print_str(self):
         """
-	Return a string with the index's information, which may be printed.
+	Return a string with the index's information, which may be 
+	printed.
 	
 	An empty string will be returned if no index is loaded.
 	

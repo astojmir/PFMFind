@@ -1,34 +1,25 @@
 """
-This module contains the classes and functions needed to print 
-and manipulate hit results.
+This module contains classes to define a hit and construct a 
+string to print its information.
 
-Hits are from the searched database.  The class is derived from 
-a list of hits.
+Hits are fragments from the searched database.
 
-For each hit a dictionary is defined.  Each class will have its
-own dictionary containing dictionaries for individual hits.
-The dictionary for each hit contains the following information:
-    - seq  
-    - seq_id 
-    - seq_to 
-    - seq_from
-    - dist
-    - sim 
-
-Exceptions:
+B{Exceptions}:
     - KeyError
 
-Classes:
+B{Classes}:
     - Hit  
-        -  Define dictionary for possible values of name.
+        - A class that defines an instance of Hit [a hit is
+        a fragment of the sequence].
     - HitList  
-        -  More options for printing and sorting hit results.
+        - Contains the functions needed to print and sort the hit results.
 
-Functions:
+B{Functions}:
     - description(hits, query_seq, qs=0):
-        - Print details for hits.
+        - Return a string containing full details for a list of hits that 
+	may be printed.
     - summary(hits, show_rank=0, defline_width=DEFLINE_MAX, rank_offset=0)
-        - Print summary for  hits.
+        - A list of hit class instances to be displayed.
     
 """
 
@@ -38,15 +29,39 @@ from cStringIO import StringIO
 class Hit:
 
     """
-    Class Hit will define the dictionary and find the correct 
-    dictionary entry for a given name.
+    A class that defines an instance of Hit [a hit is
+    a fragment of the sequence].	
     
-    Exceptions that may be thrown:
+    For each hit a dictionary is defined.  Each class 
+    contains a list of dictionaries for individual hits. 
+    The dictionary for each hit contains the following 
+    attributes:
+        - defline
+	     - Default line width.
+             - I{*Assigned dynamically*} the database must
+	     be loaded for defline to be available.
+        - accession
+	     - Key to uniquely identify protein.
+             - I{*Assigned dynamically*} the database must
+	     be loaded for accession to be available.
+        - seq  
+	     - The sequence.
+             - I{*Assigned dynamically*} the database must 
+	     be loaded for seq to be available.
+        - seq_id 
+	     - Sequence identifier.
+        - seq_to 
+	     - End of sequence. 
+        - seq_from
+	     - Starting point for sequence.
+        - dist
+	     - Distance.
+        - sim 
+             - Similarity score.
+	     
+    B{Exceptions:}
         - KeyError
     
-    Methods:
-        - __init__(self, dict)
-        - __getattr__(self, name)
     """     
 
     Idata = None
@@ -58,14 +73,14 @@ class Hit:
 	    
     def __init__(self, dict):
         """
-	Constructor, assigns the dictionary.
+	Constructor, contains all non dynamic attributes.
+	See class description for details on which attributes
+	are dynamic.
 	"""
         self.__dict__ = dict
 
     def __getattr__(self, name):
-        """
-	Check dictionary for given attribute (name).
-	"""
+  
         try:
             val = eval(self.attr[name])
         except KeyError:
@@ -76,14 +91,18 @@ class Hit:
 # Functions for printing hits (as dictionaries) and
 # their lists
 
-DEFLINE_MAX = 57
-
 def summary(hits,
 	    show_rank=0,
-	    defline_width=DEFLINE_MAX,
+	    defline_width=57,
             rank_offset=0):
     """
-    Return a string containing the summary of a list of hits that may be printed.
+    A list of hit class instances to be displayed.
+    
+        @param hits: The hit to be displayed.
+        @param show_rank: Display the rank of the hits if true.
+	@param defline_width: Default line width.
+	@param rank_offset: Control how much space is between
+	the rank and the hit.
     """
 	
     file_str = StringIO()
@@ -114,7 +133,12 @@ def summary(hits,
 
 def description(hits, query_seq, qs=0):
     """
-    Return a string containing full details for a list of hits that may be printed.
+    Return a string containing full details for a list of hits that 
+    may be printed.
+    
+    @param hits: The hit to be displayed.
+    @param query_seq: Fragment of a sequence.
+    @param qs:  Query start (beginning of the sequence).   
     """
     file_str = StringIO()
 
@@ -137,34 +161,20 @@ def description(hits, query_seq, qs=0):
 class HitList:
 
     """
-    Contains the functions needed to print and sort the hit results
-    in a variety of ways.
+    Contains the functions needed to print and sort the hit results.
     
     The class may be used to print query details, print a full summary, 
     print full details for all hits, and to print performance statistics.  
     The class also contains the functions necessary to sort and print 
     the results by priority, similarity score, distance, 
     sequence(alphabetical), sequence id, and by orthologous cluster.
-    
-    Methods:
-        - __init__(self, dict)
-        - __str__(self)
-        - header_str(self)
-        - summary_str(self)
-        - full_str(self)
-        - perf_str(self, Idata=None)
-        - print_str(self, Idata=None, qs=0)
-        - sort_by_similarity(self, incr=True)
-        - sort_by_distance(self, incr=True)
-        - sort_by_seq(self, incr=True)
-        - sort_by_seqid(self, incr=True)
-        - sort_by_orthologs(self, incr=True)
-    
     """
     
     def __init__(self, dict):
         """
-	Constructor, assigns the dictionary.
+	Constructor, create a list of B{Hit} instances.
+	Each instance of B{Hit} will contain a list of 
+        dictionaries for individual hits.
 	"""
         self.__dict__ = dict
         tmphits = [Hit(ht) for ht in self.hits]
@@ -172,7 +182,7 @@ class HitList:
 	
     def __str__(self):
         """
-        Call print_str and return the string generated.
+        Call B{print_str} and return the string generated.
         """
         return self.print_str()
 
@@ -206,7 +216,10 @@ class HitList:
 
     def full_str(self, qs=0):
         """
-        Return a string containing full details for all hits that may be printed.
+        Return a string containing full details for all hits that may be 
+	printed.
+	
+	@param qs: Query start.
         """
 
         file_str = StringIO()
@@ -217,7 +230,10 @@ class HitList:
 
     def perf_str(self, Idata=None):
         """
-        Return a string containing performance statistics that may be printed.
+        Return a string containing performance statistics that may be 
+	printed.
+	
+	@param Idata: Index data.
         """
 
         file_str = StringIO()
@@ -260,8 +276,11 @@ class HitList:
     
     def print_str(self, Idata=None, qs=0):
         """
-	Return a string containing the header, summary, full details, and performance 
-	statistics that may be printed.
+	Return a string containing the header, summary, full details, 
+	and performance statistics that may be printed.
+	
+	@param Idata: Index data.
+	@param qs: Query start.
 	"""
         file_str = StringIO()
         file_str.write(self.header_str())
