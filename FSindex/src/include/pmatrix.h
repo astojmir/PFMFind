@@ -33,6 +33,7 @@ struct POS_MATRIX_s
   SSINT *M;                 /* Pure alphabet matrix: len * A_SIZE */
   SSINT *pM;                /* Pattern matrix: len * P_SIZE */
   SSINT *pMclosest;         /* Changed pos array */
+  SSINT *S;                 /* Positional self-similarities */
   ULINT len;
   FS_PARTITION_t *ptable;   /* Partition table */
   double lambda;            /* Scaling factor */
