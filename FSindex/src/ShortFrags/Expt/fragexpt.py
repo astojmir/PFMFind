@@ -1,5 +1,4 @@
 """
-
 B{Exceptions:}
     - IOError
 """
@@ -32,22 +31,24 @@ REL_SRCH = 2
 
 MATRIX_CTYPE = {'None': 0, 'Quasi': FS.QUASI,
                 'Avg': FS.AVG, 'Max': FS.MAX}
-
+		
 matrix_cache = {}
 
 def get_converted_matrix(matrix, conv_type, scale=1.0, weight_type=None,
                          dirichlet_type=None, FE=None, coords=None):
 
     """
-    @param matrix: Similarity matrix.
-    @param conv_type: Similarity matrix type. Possible types are 
+    Convert matrix to distance matrix. 
+    
+    @param matrix: The matrix.
+    @param conv_type: Matrix type. Possible types are 
     contained in the dictionary B{MATRIX_CTYPE}.
     @param scale:
     @param weight_type: May be none or Henikoff.
     @param dirichlet_type: Name of Dirichlet mixture matrix.  
-    Must be contained in B{NAMES} list.
-    @param FE: An instance of the B{FullExpt} class.
-    @param coords: 
+    Must be contained in B{NAMES} list from DirichletMix.py.
+    @param FE: A loaded experiment.
+    @param coords:  
     """
     PM = None
 
@@ -109,12 +110,12 @@ def get_converted_matrix(matrix, conv_type, scale=1.0, weight_type=None,
         M1 = M0.matrix_conv('')
     else:
         M1 = M0
-    return M1, ctype, PM
+    return M1, ctyconvertedpe, PM
 
 def print_matrix(matrix, conv_type, scale=1.0, weight_type=None,
                  dirichlet_type=None, FE=None, coords=None):
     """
-    Print the converted matrix.
+    Return the distance matrix to be printed.
     
     @param matrix: Similarity matrix.
     @param conv_type: Similarity matrix type. Possible types are 
@@ -122,8 +123,8 @@ def print_matrix(matrix, conv_type, scale=1.0, weight_type=None,
     @param scale:
     @param weight_type: May be None or Henikoff.
     @param dirichlet_type: Name of Dirichlet mixture matrix.  
-    Must be contained in B{NAMES} list.
-    @param FE: An instance of the B{FullExpt} class.
+    Must be contained in B{NAMES} list in DirichletMix.py.
+    @param FE: A loaded experiment.
     @param coords: 
     """		 
     M, ctype, PM = get_converted_matrix(matrix, conv_type, scale, weight_type,
@@ -167,15 +168,27 @@ def print_align(weight_type, dirichlet_type, FE, coords):
     return file_str.getvalue()
 
 def filter_ext(s, ext):
+    """
+    Check to make sure that the file extension is 
+    correct.  The file path and extension are passed
+    into the function.  The ext passed into the 
+    function is compared against the one in the file
+    path and the result of that comparison is returned.
+    
+    @param s: The file path.
+    @param ext: The file extension.
+    """
     from os.path import splitext
     fsplit = splitext(s)
     return fsplit[1] == ext
 
 def load_FE(filename):
     """
-    Load a saved full experiment file.
+    Load a saved experiment file.
     
-    @return:  Return the full experiment.
+    @param filename: The name of the experiment file to load.
+    
+    @return:  Return the opened experiment file.
     """
     try:
         fp = gzip.GzipFile(filename, 'rb')
@@ -195,7 +208,7 @@ def load_FE(filename):
 
 class FullExpt:
     """
-   
+    
     """
     def __init__(self):
         self.mcache = {}
@@ -224,6 +237,14 @@ class FullExpt:
                   for j in range(lsize)]
 
     def load_fastadb(self, filename):
+       """
+       Load the FASTA database.  The function initializes 
+       B{Idata} by instantiating an instance of B{IndexedDb}.
+       The database is then loaded by calling the B{load_fasta_db} 
+       function in B{IndexedDb}.
+       
+       @param filename:  The name of the FASTA database to be loaded. 
+       """
         if self.Idata == None:
             self.Idata = IndexedDb()
         self.index_filename = None
@@ -233,6 +254,14 @@ class FullExpt:
         self.fasta_filename = filename
         
     def load_index(self, filename):
+       """
+       Load the index.  The function initializes B{Idata} by 
+       instantiating an instance of B{IndexedDb}.  The index is 
+       then loaded by calling the B{load_index} function in 
+       B{IndexedDb}.
+       
+       @param filename: The name of the index to be loaded.
+       """
         if self.Idata == None:
             self.Idata = IndexedDb()
         self.index_filename = None
@@ -242,6 +271,15 @@ class FullExpt:
         self.index_filename = filename
        
     def load_descriptions(self, filename):
+       """
+       Load the descriptions.  The function initializes B{Idata} by 
+       instantiating an instance of B{IndexedDB}. The descriptions
+       are then loaded by calling the B{load_descriptions} function
+       in B{IndexedDb}.
+       
+       @param filename: The name of the file containing the descriptions
+       to be loaded.
+       """
         if self.Idata == None:
             self.Idata = IndexedDb()
         self.desc_filename = None
@@ -249,6 +287,14 @@ class FullExpt:
         self.desc_filename = filename
 
     def save(self, filename):
+       """
+       Gunzip the file and save under the given filename.
+       Will raise an exception if the file cannot
+       be saved.  Idata still contains the index information
+       after saving to B{filename}.
+       
+       @param filename: The name the file will be saved under.
+       """
         tmp = self.Idata
         self.Idata = None
         try:
@@ -388,7 +434,7 @@ class FullExpt:
 
     def full_view_by_seqid(self, l, iter):
         """
-	Display 
+	
 	"""
         dict = {}
         for f, frag in enumerate(self.E[self.len_index(l)]):

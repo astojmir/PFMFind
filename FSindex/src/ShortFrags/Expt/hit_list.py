@@ -36,27 +36,27 @@ class Hit:
     contains a list of dictionaries for individual hits. 
     The dictionary for each hit contains the following 
     attributes:
-        - defline
+        - B{defline}
 	     - Description of the hit.
              - I{*Assigned dynamically*} the database must
 	     be loaded for defline to be available.
-        - accession
+        - B{accession}
 	     - Key to uniquely identify protein.
              - I{*Assigned dynamically*} the database must
 	     be loaded for accession to be available.
-        - seq  
+        - B{seq}  
 	     - The sequence.
              - I{*Assigned dynamically*} the database must 
 	     be loaded for seq to be available.
-        - seq_id 
+        - B{seq_id} 
 	     - Sequence description.
-        - seq_to 
+        - B{seq_to} 
 	     - End of sequence. 
-        - seq_from
+        - B{seq_from}
 	     - Starting point for sequence.
-        - dist
+        - B{dist}
 	     - Distance.
-        - sim 
+        - B{sim} 
              - Similarity score.
 	     
     B{Exceptions:}
@@ -180,29 +180,29 @@ class HitList:
 	is called to create a list of B{Hit} instances.  The 
 	information contained in the hits dictionary includes the 
 	following attributes:
-	    - query_seq
+	    - B{query_seq}
 	        - The query fragment.
-	    - query_def
+	    - B{query_def}
 	        - The query description.
-	    - conv_type
+	    - B{conv_type}
 	        - Matrix conversion type.
-	    - sim_range
+	    - B{sim_range}
 	        - Similarity score range.
-	    - dist_range
+	    - B{dist_range}
 	        - Distance range.
-	    - kNN
+	    - B{kNN}
 	        - Nearest neighbor cutoff.
-	    - bins_visited
+	    - B{bins_visited}
 	        - Bins checked.
-	    - bins_hit
+	    - B{bins_hit}
 	        - Accepted bins.
-	    - frags_visited
+	    - B{frags_visited}
 	        - Number of checked fragments.
-	    - frags_hit 
+	    - B{frags_hit} 
 	        - Number of accepted fragments.
-	    - search_time
+	    - B{search_time}
 	        - Time to complete the search.
-	    - hits
+	    - B{hits}
 	        - A list holding individual dictionaries for each hit.  
 		For the attributes contained in the dictionary of 
 		each hit please refer to the help for class B{Hit}.

@@ -12,7 +12,7 @@ This includes the following attributes:
     - B{get_frag}
         - The sequence fragment.
     - B{deflines}
-        - Default line width.
+        - Description of the hit.
     - B{accessions}
         - Accession numbers.
     - B{sdb}
