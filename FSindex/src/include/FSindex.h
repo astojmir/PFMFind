@@ -23,6 +23,23 @@
 /********************************************************************/    
 /********************************************************************/    
 
+/********************************************************************/    
+/*                                                                  */
+/*                     UFRAG                                        */ 
+/*                                                                  */
+/********************************************************************/    
+
+typedef union
+{
+  SEQ_index_t *p; /* Pointer to the array of fragments */
+  SEQ_index_t s;  /* Only fragment */
+} FRAG_HNDL; 
+
+typedef struct
+{
+  int n;
+  FRAG_HNDL frag; 
+} UFRAG;
 
 
 /********************************************************************/    
@@ -35,45 +52,55 @@ typedef struct
 {
   ULINT no_bins;
   ULINT no_seqs;
-  ULINT max_seqs_per_bin;
-  ULINT *freq_seqs_per_bin;
+  ULINT no_useqs;
+  ULINT shist_len;              /* Length of shist */
+  ULINT *shist;                 /* Histogram of bin sizes */
+  ULINT uhist_len;              /* Length of uhist */
+  ULINT *uhist;                 /* Histogram of bin sizes 
+				   - unique sequences */
   ULINT *bin_size;
   ULINT *max_bin_size;
   SEQ_index_t **bin;
-  SEQ_index_t largest_bin;
+  SEQ_index_t binL;             /* Largest bin */
   SEQ_index_t *heap;
+  ULINT *u_size;
+  int **u;
+  int *u_heap;
+  SEQ_index_t uL;               /* Largest bin - unique seqs */
 } FS_HASH_TABLE_t;
 
 /* Main constructor */
 FS_HASH_TABLE_t *FS_HASH_TABLE_create(ULINT no_bins, ULINT def_size); 
 
 /* Destructor */
-void FS_HASH_TABLE_destroy(FS_HASH_TABLE_t *FS_HT);
+void FS_HASH_TABLE_destroy(FS_HASH_TABLE_t *HT);
 
 /* Insertion */
-void FS_HASH_TABLE_count_seq(FS_HASH_TABLE_t *FS_HT, ULINT i,
+void FS_HASH_TABLE_count_seq(FS_HASH_TABLE_t *HT, ULINT i,
 			     SEQ_index_t seq_i);
-void FS_HASH_TABLE_allocate_bins(FS_HASH_TABLE_t *FS_HT);
-void FS_HASH_TABLE_insert_seq(FS_HASH_TABLE_t *FS_HT, ULINT i,
+void FS_HASH_TABLE_allocate_bins(FS_HASH_TABLE_t *HT);
+void FS_HASH_TABLE_insert_seq(FS_HASH_TABLE_t *HT, ULINT i,
 			      SEQ_index_t seq_i);
-void FS_HASH_TABLE_resize(FS_HASH_TABLE_t *FS_HT);
+void FS_HASH_TABLE_add_bin_stats(FS_HASH_TABLE_t *HT,
+				 SEQ_index_t seq_i);
+void FS_HASH_TABLE_resize(FS_HASH_TABLE_t *HT);
 
 /* Element access */
-ULINT FS_HASH_TABLE_get_no_bins(FS_HASH_TABLE_t *FS_HT);
-ULINT FS_HASH_TABLE_get_total_seqs(FS_HASH_TABLE_t *FS_HT);
-ULINT FS_HASH_TABLE_get_no_seqs(FS_HASH_TABLE_t *FS_HT, ULINT i);
-SEQ_index_t FS_HASH_TABLE_retrieve_seq(FS_HASH_TABLE_t *FS_HT, ULINT i, 
+ULINT FS_HASH_TABLE_get_no_bins(FS_HASH_TABLE_t *HT);
+ULINT FS_HASH_TABLE_get_total_seqs(FS_HASH_TABLE_t *HT);
+ULINT FS_HASH_TABLE_get_no_seqs(FS_HASH_TABLE_t *HT, ULINT i);
+SEQ_index_t FS_HASH_TABLE_retrieve_seq(FS_HASH_TABLE_t *HT, ULINT i, 
 				       ULINT j);
-SEQ_index_t *FS_HASH_TABLE_get_all_seqs(FS_HASH_TABLE_t *FS_HT, 
+SEQ_index_t *FS_HASH_TABLE_get_all_seqs(FS_HASH_TABLE_t *HT, 
 					ULINT i);
 
 
 /* Reading, writing to file */
-int FS_HASH_TABLE_write(FS_HASH_TABLE_t *FS_HT, FILE *stream);
+int FS_HASH_TABLE_write(FS_HASH_TABLE_t *HT, FILE *stream);
 FS_HASH_TABLE_t *FS_HASH_TABLE_read(FILE *stream);
 
 /* Statistics */
-void FS_HASH_TABLE_print_stats(FS_HASH_TABLE_t *FS_HT, FILE *stream,
+void FS_HASH_TABLE_print_stats(FS_HASH_TABLE_t *HT, FILE *stream,
 			       FS_PARTITION_t *FS_partition, 
 			       ULINT frag_len);
 
@@ -214,6 +241,9 @@ FS_INDEX_profile_process_func FS_INDEX_profile_D_process_bin;
 
 #define FS_HASH_TABLE_get_no_seqs(HT, i) \
         ((HT)->bin_size[(i)])
+
+#define FS_HASH_TABLE_get_no_useqs(HT, i) \
+        ((HT)->u_size[(i)])
 
 #define FS_HASH_TABLE_retrieve_seq(HT, i, j) \
         ((HT)->bin[(i)][(j)])

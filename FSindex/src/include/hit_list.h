@@ -69,6 +69,8 @@ typedef struct
   ULINT index_seqs_total;
   ULINT seqs_visited;
   ULINT seqs_hits;
+  ULINT useqs_visited;
+  ULINT useqs_hits;
   double start_time;
   double end_time;
   double search_time;
@@ -101,6 +103,8 @@ void HIT_LIST_count_FS_seq_visited(HIT_LIST_t *HIT_list, ULINT count);
 void HIT_LIST_count_FS_seq_hit(HIT_LIST_t *HIT_list, ULINT count);
 void HIT_LIST_count_seq_visited(HIT_LIST_t *HIT_list, ULINT count);
 void HIT_LIST_count_seq_hit(HIT_LIST_t *HIT_list, ULINT count);
+void HIT_LIST_count_useq_visited(HIT_LIST_t *HIT_list, ULINT count);
+void HIT_LIST_count_useq_hit(HIT_LIST_t *HIT_list, ULINT count);
 
 void HIT_LIST_insert_seq_hit(HIT_LIST_t *HIT_list, BIOSEQ *subject, 
 			     float value); 
