@@ -550,6 +550,11 @@ int FS_INDEX_get_frag_len(void)
   return frag_len;
 }
 
+FS_HASH_TABLE_t *FS_INDEX_get_hash_table(void)
+{
+  return HT;
+}
+
 
 /* Search */
 
