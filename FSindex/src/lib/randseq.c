@@ -3,7 +3,7 @@
 /*                     RANDOM SEQUENCES module                      */ 
 /*                                                                  */
 /********************************************************************/    
-
+#include <time.h>
 #include "randseq.h"
 #include "fastadb.h"
 #include "partition.h"
