@@ -39,7 +39,7 @@ int main(int argc, char **argv)
   char *matrix_full;
   char *matrix_base;
   char *matrix_dir;
-  int no_args = 5;
+  int no_args = 7;
 
   int K0;
   int K1;
