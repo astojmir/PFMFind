@@ -41,7 +41,8 @@ from Bio.SubsMat.FreqTable import FreqTable, FREQ
 from Bio.Alphabet import IUPAC
 from Bio.Align import Generic, AlignInfo
 
-from matrix import Smatrix, QUASI, MAX, AVG
+from matrix import ScoreMatrix, ProfileMatrix
+from matrix import QUASI, MAX, AVG
 
 
 RNG_SRCH = 0
@@ -51,7 +52,6 @@ REL_SRCH = 2
 MATRIX_CTYPE = {'None': 0, 'Quasi': QUASI,
                 'Avg': AVG, 'Max': MAX}
 		
-matrix_cache = {}
 
 def _get_converted_matrix(matrix, conv_type, scale=1.0, weight_type=None,
                          dirichlet_type=None, FE=None, coords=None):
@@ -83,7 +83,7 @@ def _get_converted_matrix(matrix, conv_type, scale=1.0, weight_type=None,
             bprobs = DM.block_probs(bcounts)
             bkgrnd = DM.aa_vector(bg_dict)
             PM = DM.block2pssm(DM.block_log_odds(bprobs, bkgrnd, scale), seqs[0])
-            M0 = Smatrix(PM.pssm)
+            M0 = ProfileMatrix(PM.pssm)
 
         else: # Score matrix 
             align = Generic.Alignment(IUPAC.protein)
@@ -100,20 +100,21 @@ def _get_converted_matrix(matrix, conv_type, scale=1.0, weight_type=None,
             lom = SubsMat.make_log_odds_matrix(arm, ftab, factor=scale,
                                                round_digit=0, keep_nd=0)
             print type(lom)
-            M0 = Smatrix(lom)
+            M0 = ScoreMatrix(lom)
 
-    elif matrix in matrix_cache:
-        M0 = matrix_cache[matrix]
+    elif FE != None and matrix in FE.matrix_cache:
+        M0 = FE.matrix_cache[matrix]
     else:
         if matrix in MatrixInfo.__dict__:
-            M0 = Smatrix(MatrixInfo.__dict__[matrix])
-            matrix_cache[matrix] = M0
+            M0 = ScoreMatrix(MatrixInfo.__dict__[matrix])
+            if FE != None:
+                FE.matrix_cache[matrix] = M0
         else:
             return ""
     ctype = MATRIX_CTYPE[conv_type]
     if ctype:
         M0.conv_type = ctype
-        M1 = M0.matrix_conv('')
+        M1 = M0.matrix_conv()
     else:
         M1 = M0
     return M1, ctype, PM
@@ -254,7 +255,7 @@ class FullExpt:
 	already saved instance of FE load_FE must be 
 	called. 
 	"""
-        self.mcache = {}
+        self.matrix_cache = {}
         self.Idata = None
         self.index_filename = None
         self.fasta_filename = None
@@ -349,8 +350,10 @@ class FullExpt:
        
         @param filename: The name the file will be saved under.
         """
-        tmp = self.Idata
+        tmp_Idata = self.Idata
         self.Idata = None
+        tmp_matrix_cache = self.matrix_cache
+        self.matrix_cache = {}
         try:
             fp = gzip.GzipFile(filename, 'wb')
             fp.write(cPickle.dumps(self, 2))
@@ -360,8 +363,8 @@ class FullExpt:
             raise IOError, 'Could not save the file %s.' % filename
 
         fp.close()
-        self.Idata = tmp
-
+        self.Idata = tmp_Idata
+        self.matrix_cache = tmp_matrix_cache
     def len_index(self, l):
         """
 	Return the fragment length minus the lower bound of the
@@ -544,7 +547,7 @@ class FullExpt:
         for f, frag in enumerate(self.E[self.len_index(l)]):
             if not len(frag): continue 
             if iter >= len(frag): iter = len(frag)-1
-            for ht in frag[iter].hits:
+            for ht in frag[iter]:
                 seqid = ht.seq_id
                 if seqid not in dict:
                     dict[seqid] = {f:[[ht],0]} 
