@@ -305,6 +305,6 @@ int main(int argc, char **argv)
   /* Clean up */
   avl_destroy (tree, free_fragment);
   free(freq);
-  exit(EXIT_SUCCESS);
+  return EXIT_SUCCESS;
 }
 
