@@ -62,12 +62,12 @@ int main(int argc, char **argv)
   int j;
   ULINT frag_offset;
   BIOSEQ subject;
-  int m;
+  int m=0;
   char sc[2];
   int C;
   int K;
   int KK;
-  char *seq;
+  char *seq = NULL;
   ULINT id;
   ULINT from;
   char *defline;
