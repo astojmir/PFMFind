@@ -4,11 +4,12 @@ INCLUDES= ../include/misclib.h ../include/fastadb.h \
           ../include/bioseq.h \
 	  ../include/partition.h \
 	  ../include/FSindex.h ../include/hit_list.h \
-          ../include/smatrix.h ../include/avl.h 
+          ../include/smatrix.h ../include/avl.h \
+          ../include/mvptree.h
 
 
 OBJECTS= misclib.o fastadb.o  bioseq.o partition.o FSindex.o hit_list.o \
-         smatrix.o avl.o 
+         smatrix.o avl.o mvptree.o
 
 all: libFSindex.a
 
