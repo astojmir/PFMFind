@@ -1,11 +1,11 @@
 """
-This module provides the code to work with index fragment databases.
+Provides the code to work with index fragment databases.
 
 Only one instance of B{IndexedDb} should be instantiated, 
 the B{Idata} (index data) will be set by the most recent index.  
 
-B{Idata} is assigned dynamically and contains the index information.
-This includes the following attributes:
+Idata from hit_list.py is assigned dynamically in this module.  
+Idata includes the following attributes:
     - B{I}
         - The index.
 	- Includes the index name, alphabet, and partitions.
@@ -19,7 +19,7 @@ This includes the following attributes:
         - Pointer to FASTA database.
     
 This module may be used to load an index and run a search.  To 
-look at the results of a previous search only a FASTA database must 
+look at the results of a previous search only a FASTA database need 
 be loaded.  Primary use of this module is to define index information
 B{Idata} for hit_list.
 
@@ -29,7 +29,7 @@ B{Exceptions}:
 
 B{Classes}:
    - IndexedDb  
-         -  Class contains the functions to load the databases and 
+         -  Class provides the functions to load the databases and 
          print the index.
 
 """
@@ -60,7 +60,7 @@ def _md5digest(filename):
 class IndexedDb:
 
     """
-    Class contains the functions to load the databases and 
+    Provides the functions to load the databases and 
     print the index.
     
     B{Exceptions:}
@@ -88,8 +88,6 @@ class IndexedDb:
     def load_fasta_db(self, filename, md5sum = None):
         """
 	Load the FASTA database.
-	    
-	@return: Return the new message digest.
 	
 	@param filename: Name of the FASTA file.
 	@param md5sum:  Compared (if provided) with the md5 digest of 
@@ -189,8 +187,7 @@ class IndexedDb:
 
     def print_str(self):
         """
-	Return a string with the index's information, which may be 
-	printed.
+	Return a printable string with the index's information.
 	
 	An empty string will be returned if no index is loaded.
 	

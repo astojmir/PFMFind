@@ -101,7 +101,7 @@ class DirichletMix:
             self.order[a] = i
         self.num_distr = len(self.mixture)
 
-    def print_as_PyDict(self, indent=0, floats_per_row=10, fp=sys.stdout,
+    def _print_as_PyDict(self, indent=0, floats_per_row=10, fp=sys.stdout,
                         indent_first_row=True):
         if indent_first_row: indent1 = indent
         else: indent1 = 0
@@ -152,7 +152,7 @@ class DirichletMix:
         return freq_counts(seqs, self.alphabet, weights)
 
         
-    def pos_probs(self, counts):
+    def _pos_probs(self, counts):
         n = array(counts)
         sum_n = sum(n)
 
@@ -172,15 +172,15 @@ class DirichletMix:
         #print "coeff=", coeff
         return [self._probs(i, coeff, n) for i in range(len(counts))]
 
-    def pos_log_odds(self, pos_probs, bkgrnd, scale=1.0):
-        n = len(pos_probs)
-        return [scale * log(pos_probs[i]/bkgrnd[i]) / log(2.0) for i in range(n)]
+    def _pos_log_odds(self, _pos_probs, bkgrnd, scale=1.0):
+        n = len(_pos_probs)
+        return [scale * log(_pos_probs[i]/bkgrnd[i]) / log(2.0) for i in range(n)]
 
     def block_probs(self, block_counts):
-        return [self.pos_probs(counts) for counts in block_counts]
+        return [self._pos_probs(counts) for counts in block_counts]
 
     def block_log_odds(self, block_probs, bkgrnd, scale=1.0):
-        return [self.pos_log_odds(probs, bkgrnd, scale) for probs in block_probs]
+        return [self._pos_log_odds(probs, bkgrnd, scale) for probs in block_probs]
     
     def block2pssm(self, block_data, seq):
         pssm_info  = []
@@ -209,7 +209,7 @@ class DirichletMix:
             file_str.write("\n")
         return file_str.getvalue()
                       
-def Comp2PyScript(path, filename=None):
+def _Comp2PyScript(path, filename=None):
     """
     Converts all Dirichlet mixtures files (ending in comp)
     in the path to Python dictionaries and stores them
@@ -242,14 +242,14 @@ def Comp2PyScript(path, filename=None):
     fp.write("    '%s': " % names[0])
     DM = DirichletMix()
     DM.read(names[0])
-    DM.print_as_PyDict(4+len(names[0])+4, 4, fp, False)
+    DM._print_as_PyDict(4+len(names[0])+4, 4, fp, False)
     fp.write(",\n")
     
     for s in names[1:]:
         fp.write("%*s'%s': " % (4, "", s))
         DM = DirichletMix()
         DM.read(s)
-        DM.print_as_PyDict(4+len(s)+4, 4, fp, False)                
+        DM._print_as_PyDict(4+len(s)+4, 4, fp, False)                
         fp.write(",\n")
     fp.write("           }\n")
     

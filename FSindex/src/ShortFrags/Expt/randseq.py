@@ -1,10 +1,9 @@
 """
-This module contains the functions to generate a random 
-sequence based on letter composition.
+Provides the code enabling generation of a random sequence.
 
 Classes:
     - RandFrag  
-        - This class contains the functions which will 
+        - Provides the functions which will 
 	generate a random sequence of letters based on 
 	letter composition.
 	
@@ -20,17 +19,17 @@ from string import join
 
 class RandFrag:
     """
-    This class contains the functions which will generate a random
+    Provides the functions which will generate a random
     sequence of letters based on letter composition.
 
     """
 
     def __init__(self, probs_dict):
         """
-        Constructor, creates dictionary of probabilities. Initializes 
-        a list containing all of the dictionaries (B{cum_probs}).
-        Sets the last item in the list to be exactly 1.0.
-    
+        Constructor, accepts a dictionary of probabilities.  The keys 
+	should be strings and the values should be probabilities that
+	add up to 1.
+	
         @param probs_dict: A dictionary of probabilities.  
         """
         self.probs_dict = probs_dict
