@@ -20,7 +20,7 @@ WARNINGS = -pipe -Wall -Wshadow -Wpointer-arith \
 
 CC = gcc
 
-CFLAGS = "-I ../include $(WARNINGS) $(MAXOPT)"
+CFLAGS = "-I ../include $(WARNINGS) $(DEBUG)"
 LDFLAGS = "-L $(LIBDIR)"
 LDLIBS = "-lm -lFSindex"
 
@@ -32,22 +32,22 @@ progs: libs
 	   mkdir $(BINDIR); \
 	fi 
 	cd $(PROGSDIR); \
-	gmake CC=$(CC) CFLAGS=$(CFLAGS) LDFLAGS=$(LDFLAGS) LDLIBS=$(LDLIBS); \
+	make CC=$(CC) CFLAGS=$(CFLAGS) LDFLAGS=$(LDFLAGS) LDLIBS=$(LDLIBS); \
 	for x in *; do if [ -x $$x -a -f $$x.c ]; \
 	then mv $$x "../../$(BINDIR)"; fi done; \
 	cd ..; \
 
 libs:
 	cd $(LIBSDIR); \
-	gmake CC=$(CC) CFLAGS=$(CFLAGS) \
+	make CC=$(CC) CFLAGS=$(CFLAGS) \
 
 clean:
 	rm -f core; \
 	cd $(PROGSDIR); \
-	gmake clean; \
+	make clean; \
 	cd ../..; \
 	cd $(LIBSDIR); \
-	gmake clean; \
+	make clean; \
 	cd ../..; \
 	cd $(BINDIR); \
 	rm -f core; \
@@ -58,10 +58,10 @@ clean:
 srcclean:
 	rm -f *~; \
 	cd $(PROGSDIR); \
-	gmake srcclean; \
+	make srcclean; \
 	cd ../..; \
 	cd $(LIBSDIR); \
-	gmake srcclean; \
+	make srcclean; \
 	cd ../..; \
 	cd $(INCLUDEDIR); \
 	rm -f *~; \
