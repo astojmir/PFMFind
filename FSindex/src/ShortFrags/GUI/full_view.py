@@ -107,8 +107,8 @@ class FullView(Tkinter.Frame, View):
             self.state = state
 
         self.FE = state['FE']
-        self.defline_func = self.FE.Idata.get_def
-        self.rqseq = self.FE.rqseq
+        self.defline_func = lambda acc, ddict=self.FE.Idata.defline : ddict.get(acc, acc) 
+        self.rqseq = self.FE.data.rqseq
         l, f = state['coords']
         iter = state['iter']
         group = self.vGroup.get()
@@ -237,8 +237,8 @@ class FullView(Tkinter.Frame, View):
     def _enter_event(self, event):
         (x1,y1) = self._get_pos(event.x, event.y)
         if y1 < len(self.grp):
-            seqid = self.grp[y1][1]
-            self.msg_func(self.defline_func(seqid))        
+            acc = self.grp[y1][1]
+            self.msg_func(self.defline_func(acc))        
 
     def _leave_event(self, event):
         self.msg_func("")        

@@ -7,5 +7,5 @@ class IndexView(TextDisplay, View):
         View.__init__(self)
 
     def reset(self, state):
-        text = state['FE'].Idata.I.print_stats()
+        text = state['FE'].search_client.index_data_str()
         self.set_text('Index', text)
