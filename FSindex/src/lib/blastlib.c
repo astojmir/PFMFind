@@ -677,7 +677,7 @@ int get_next_tag_item(FILE *stream, unsigned char **tag, int *taglen,
                       unsigned char **value, int *valuelen, int *level)
 {
   int c;
-  int i;
+  int i = 0;
   enum {LEADING_BLANK, OPEN_TAG, IS_VALUE, VALUE, CLOSE_TAG,
 	TRAILING_BLANK}
       part;
@@ -1215,7 +1215,7 @@ void *get_seed_stat(char *out_filename, void *params)
   /* Binary search variables */
   ULINT k, low, mid;
 
-  float evalue;
+  float evalue = 0.0;
 
 #define ALIGN_SIZE 20
   ULINT qseq_len = ALIGN_SIZE;
@@ -1254,7 +1254,7 @@ void *get_seed_stat(char *out_filename, void *params)
   SLINT D0;
 
   SLINT gapS;
-  ULINT last_gap;
+  ULINT last_gap = 0;
 
   /* Allocate cumulative score vectors  */
   SLINT *min_Ig = mallocec(Stats->nm*sizeof(SLINT));
