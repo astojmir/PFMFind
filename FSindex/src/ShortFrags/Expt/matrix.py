@@ -192,8 +192,7 @@ class ScoreMatrix(Smatrix):
             return ScoreMatrix(FS.Smatrix_matrix_conv(self, seq),
                                new=False)
     def _calc_mean(self):
-        return 0
-##         sum = 0
+        sum = 0
 ##         for i in self.alphabet:
 ##             for j in self.alphabet:
 ##                 sum += bg_dict[i] * bg_dict[j] * self[i][j] 
@@ -286,6 +285,12 @@ class ProfileMatrix(Smatrix):
         return ProfileMatrix(FS.Smatrix_matrix_conv(self, ''),
                              new=False)
 
+    def _calc_mean(self):
+        sum = 0
+##         for i in self.alphabet:
+##             for j in self.alphabet:
+##                 sum += bg_dict[i] * bg_dict[j] * self[i][j] 
+        return sum 
 
 
 
