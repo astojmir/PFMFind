@@ -283,11 +283,16 @@ int fastadb_load_next_seq(SEQUENCE_DB *s_db)
   if (feof(s_db->dbfile))
     return 0;
 
+  if (s_db->keep_oldseqs == NO)
+    {
+      s_db->deflines_len = 0;
+      s_db->seq_data_len = 0;      
+      s_db->length = 0;
+    }
+
   /* The heap rows as well as the s_db->seq must be allocated before
      entering here */
-
-  /* TO DO: to make this routine actually overwrite the previous
-     sequence if so specified by options */
+  fastadb_check_array_size(s_db);
 
   /* Process the comment line */
   if (s_db->retrieve_deflines)
@@ -377,6 +382,7 @@ int fastadb_count_next_seq(SEQUENCE_DB *s_db)
 
   /* s_db->seq must be allocated before
      entering here */
+  fastadb_check_array_size(s_db);
 
   /* Process the comment line */
   while (1)
@@ -460,15 +466,18 @@ int fastadb_count_next_seq(SEQUENCE_DB *s_db)
 		            memory;
 		 * RANDOM - retrieve each sequence from the file as
 		            needed.
+		 * SEQUENTIAL - retrieve sequences one by one. Use
+		                single pass only. 
+			    
      Default: MEMORY.
 
    KEEP_OLDSEQS - Associated with keep_oldseqs field. Only relevant if
-                  access type is RANDOM. The values are:
+                  access type is SEQUENTIAL. The values are:
 		 * NO - Overwrite the previous sequence in memory as
 	 	   the next one is loaded.
 		 * YES - Keep all sequences in memory until the
 		         database is closed.
-     Default: YES. The NO option is not yet implemented.
+     Default: YES. 
 
    RETRIEVE_DEFLINES - Retrieve the comment lines from the FASTA file.
                        Associated with retrieve_deflines field.
@@ -495,17 +504,24 @@ int fastadb_count_next_seq(SEQUENCE_DB *s_db)
 SEQUENCE_DB *fastadb_open(const char *db_name, fastadb_arg *argt, 
 			  fastadb_argv_t *argv)
 {
-  FILE *stream =  fopen(db_name, "r");
+  FILE *stream;
   SEQUENCE_DB *s_db;  
+  int real_file = 1;
 
-  /* Try to open db_name - if failed exit */
-  if (stream == NULL)
+  if (db_name == NULL)
     {
-      fprintf(stderr, 
-	      "fastadb_open(): Could not open fasta database %s!\n", 
-	      db_name);
-      exit(EXIT_FAILURE);
+      stream = stdin;
+      db_name = "stdin";
+      real_file = 0;
     }
+  else if ((stream = fopen(db_name, "r")) == NULL)
+      {
+	fprintf(stderr, 
+		"fastadb_open(): Could not open fasta database %s!\n", 
+		db_name);
+	exit(EXIT_FAILURE);
+      }
+
   /* Allocate and set defaults */
   s_db = mallocec(sizeof(SEQUENCE_DB));
   s_db->db_name = db_name;
@@ -526,6 +542,7 @@ SEQUENCE_DB *fastadb_open(const char *db_name, fastadb_arg *argt,
   s_db->deflines_max_len = s_db->seq_data_max_len / 4;
 
   s_db->dbfile = stream;
+  s_db->real_file = real_file;
   s_db->current_seq=0;
   s_db->access_type = MEMORY;
   s_db->keep_oldseqs = YES;
@@ -558,13 +575,14 @@ SEQUENCE_DB *fastadb_open(const char *db_name, fastadb_arg *argt,
 	  s_db->seq_data_max_len = argv->max_row_length;
 	  break;
 	default:
-	  free(s_db);
-	  return NULL;
+	  fprintf(stderr, 
+		  "fastadb_open(): Unreckognised option!\n");
+	  exit(EXIT_FAILURE);
 	}
       argt++;
       argv++;
     }
-  if (s_db->access_type == MEMORY)
+  if (s_db->access_type == MEMORY || s_db->access_type == RANDOM)
     s_db->keep_oldseqs = YES;
 
   /* Allocate the storage heap */
@@ -581,22 +599,21 @@ SEQUENCE_DB *fastadb_open(const char *db_name, fastadb_arg *argt,
     {
       while(1)
 	{
-	  fastadb_check_array_size(s_db);
 	  if(!fastadb_load_next_seq(s_db))
 	    break;
 	  s_db->start_pts[s_db->no_seq] = s_db->length;
 	  s_db->length += s_db->seq[s_db->current_seq-1].len;
 	  s_db->no_seq++;
 	}
-      fclose(s_db->dbfile);
+      if (s_db->real_file)
+	fclose(s_db->dbfile);
       s_db->dbfile = NULL;
       s_db->start_pts[s_db->no_seq] = s_db->length;
     }
-  else
+  else if (s_db->access_type == RANDOM)
     {
       while(1)
 	{
-	  fastadb_check_array_size(s_db);
 	  s_db->offset[s_db->current_seq]=ftell(s_db->dbfile);
 	  if(!fastadb_count_next_seq(s_db))
 	    break;
@@ -608,13 +625,16 @@ SEQUENCE_DB *fastadb_open(const char *db_name, fastadb_arg *argt,
       s_db->start_pts[s_db->no_seq] = s_db->length;
       s_db->current_seq = 0;
     }
-  /* Trim memory segments */
-  fastadb_reduce_array_size(s_db);
-  s_db->seq_data = reallocec(s_db->seq_data, s_db->seq_data_len);
-  s_db->seq_data_max_len = s_db->seq_data_len;
-  s_db->deflines = reallocec(s_db->deflines, s_db->deflines_len);
-  s_db->deflines_max_len = s_db->deflines_len;
 
+  if (s_db->access_type != SEQUENTIAL)
+    {
+      /* Trim memory segments */
+      fastadb_reduce_array_size(s_db);
+      s_db->seq_data = reallocec(s_db->seq_data, s_db->seq_data_len);
+      s_db->seq_data_max_len = s_db->seq_data_len;
+      s_db->deflines = reallocec(s_db->deflines, s_db->deflines_len);
+      s_db->deflines_max_len = s_db->deflines_len;
+    }
   return s_db;
 }
 
@@ -648,7 +668,7 @@ int fastadb_close(SEQUENCE_DB *s_db)
   s_db->start_pts = NULL;
 
   /* Close the file if needed */
-  if (s_db->dbfile != NULL)
+  if (s_db->dbfile != NULL && s_db->real_file)
     fclose(s_db->dbfile);
 
   /* Free s_db */
@@ -730,16 +750,24 @@ int fastadb_get_seq(SEQUENCE_DB *s_db, ULINT seq_no, BIOSEQ **seq)
   if (!(seq_no < s_db->no_seq))
     return 0;
 
+  if (s_db->access_type == SEQUENTIAL)
+    {
+      if (s_db->current_seq != seq_no)
+	return 0;
+      else return fastadb_get_next_seq(s_db, seq);
+    }
+
   s_db->current_seq = seq_no;
   if (s_db->access_type == MEMORY)
     {
       s_db->current_seq++;
     }
-  else
+  else if (s_db->access_type == RANDOM)
     {
       fseek(s_db->dbfile, s_db->offset[seq_no], SEEK_SET); 
       fastadb_load_next_seq(s_db);
     }
+
   *seq = s_db->seq+seq_no;
   return 1;
 }
@@ -766,13 +794,25 @@ int fastadb_get_seq(SEQUENCE_DB *s_db, ULINT seq_no, BIOSEQ **seq)
 int fastadb_get_next_seq(SEQUENCE_DB *s_db, BIOSEQ **seq)
 {
   ULINT i = s_db->current_seq;
-  if (!(s_db->current_seq < s_db->no_seq))
-    return 0;
 
-  if (s_db->access_type == MEMORY)
-    s_db->current_seq++;
+  if (s_db->access_type == SEQUENTIAL)
+    {
+      if(!fastadb_load_next_seq(s_db))
+	return 0;
+      s_db->start_pts[s_db->no_seq] = s_db->length;
+      s_db->length += s_db->seq[s_db->current_seq-1].len;
+      s_db->no_seq++;
+    }
   else
-    fastadb_load_next_seq(s_db);
+    {
+      if (!(s_db->current_seq < s_db->no_seq))
+	return 0;
+
+      if (s_db->access_type == MEMORY)
+	s_db->current_seq++;
+      else if (s_db->access_type == RANDOM)
+	fastadb_load_next_seq(s_db);
+    }
   
   *seq = s_db->seq+i;
   return 1;
