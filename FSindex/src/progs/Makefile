@@ -18,6 +18,7 @@ all: $(FSLIB) \
      check_db \
      print_doublets \
      FSindex_delta \
+     FSindex_delta1 \
      FSindex_rand_perf \
      FSindex_rand_perf1 \
      FSindex_rand_perf2 \
