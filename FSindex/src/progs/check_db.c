@@ -95,5 +95,5 @@ int main(int argc, char **argv)
 	}
     }
   printf("j = %ld; c4 = %ld; c5 = %ld\n",j,c4,c5);   
-  exit(EXIT_SUCCESS);
+  return EXIT_SUCCESS;
 }

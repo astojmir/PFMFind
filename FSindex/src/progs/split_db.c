@@ -78,6 +78,6 @@ int main(int argc, char **argv)
 	}
       fputc(c, outstream);      
     }
-  exit(EXIT_SUCCESS);
+  return EXIT_SUCCESS;
 
 }

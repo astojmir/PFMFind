@@ -85,6 +85,5 @@ int main(int argc, char **argv)
 		 (((float)letter_count[i])/((float) sum))*100); 
 	}
     }
-  exit(EXIT_SUCCESS);
-
+  return EXIT_SUCCESS;
 }

@@ -74,8 +74,8 @@ int main(int argc, char **argv)
   const char *out_file = NULL;
   FILE *out_stream = stdout;
   SEQUENCE_DB *input_db = NULL;
-  fastadb_arg fastadb_argt[4];
-  fastadb_argv_t fastadb_argv[4];
+  fastadb_arg fastadb_argt[5];
+  fastadb_argv_t fastadb_argv[5];
 
   char *matrix_full = NULL;
   char *matrix_base = NULL;
@@ -222,6 +222,7 @@ int main(int argc, char **argv)
   fastadb_argt[1] = RETREIVE_DEFLINES;
   fastadb_argt[2] = MAX_ROW_LENGTH;
   fastadb_argt[3] = KEEP_OLDSEQS;
+  fastadb_argt[4] = NONE;
   fastadb_argv[0].access_type = SEQUENTIAL;
   fastadb_argv[1].retrieve_deflines = YES;
   fastadb_argv[2].max_row_length = 1 << 16; /* 2^16 - 65 kB */ 
