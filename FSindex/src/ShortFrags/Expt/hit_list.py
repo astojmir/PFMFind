@@ -4,8 +4,6 @@ string to print its information.
 
 Hits are fragments from the searched database.
 
-Idata is assigned dynamically in B{index.py}.
-
 B{Exceptions}:
     - KeyError
 
@@ -57,22 +55,11 @@ class Hit(object):
             - Description of the hit.
         - B{accession}
 	    - Key to uniquely identify protein.
-        - B{seq}  
-	    - The sequence of the hit fragment.
  
     B{Exceptions:}
         - KeyError
     
     """     
-
-
-    
-    Idata = None
-    attr = {'defline': 'self.Idata.get_def(self.seq_id)',
-            'seq': 'self.Idata.get_frag(self.seq_id, self.seq_from, self.seq_to)',
-            'accession': 'self.Idata.get_accession(self.seq_id)',
-            }
-	    
     def __init__(self, dict):
         """
 	Constructor, assigns all non dynamic attributes.
@@ -81,21 +68,14 @@ class Hit(object):
 	"""
         self.__dict__ = dict
 
-    def __getattr__(self, name):
-  
-        try:
-            val = eval(self.attr[name])
-        except KeyError:
-            raise AttributeError
-        return val
+    defline = property(fget=lambda hit : hit.accession)
+    keywords = property(fget=lambda hit : [])
 
 
 # Functions for printing hits (as dictionaries) and
 # their lists
 
-def summary(hits,
-	    show_rank=0,
-	    defline_width=57,
+def summary(hits, show_rank=0, defline_width=57,
             rank_offset=0):
     """
     Construct a printable string from a list of 
@@ -114,26 +94,35 @@ def summary(hits,
     file_str = StringIO()
 
     if show_rank:
-        line_func = lambda i,  w, defline, dist, sim:\
-                        '%4d. %-*.*s %4d %4d' % (i, w, w, defline, dist, sim)   
+        line_func = lambda i,  w, defline, dist, sim, pvalue, Evalue:\
+                        '%4d. %-*.*s %4d %4d %8.2e %8.2e' % (i, w, w, defline,
+                                                             dist, sim, pvalue, Evalue)   
         if len(hits) > 1:
-            file_str.write('%4.4s  %-*.*s %4.4s %4.4s\n' %\
+            file_str.write('%4.4s  %-*.*s %4.4s %4.4s %8.8s %8.8s\n' %\
                            ('Rank', defline_width, defline_width,
-                            'Description', 'Dist', 'Sim'))
+                            'Description', 'Dist', 'Sim', 'Pvalue', 'Evalue'))
     else:
-        line_func = lambda i,  w, defline, dist, sim:\
-                    '%-*.*s %4d %4d' % (w, w, defline, dist, sim)   
+        line_func = lambda i,  w, defline, dist, sim, pvalue, Evalue:\
+                    '%-*.*s %4d %4d %8.2e %8.2e' % (w, w, defline,
+                                        dist, sim, pvalue, Evalue)   
         if len(hits) > 1:
-            file_str.write('%-*.*s %4.4s %4.4s\n' %\
+            file_str.write('%-*.*s %4.4s %4.4s %8.8s %8.8s\n' %\
                            (defline_width, defline_width,
-                            'Description', 'Dist', 'Sim'))
+                            'Description', 'Dist', 'Sim', 'Pvalue', 'Evalue'))
 
     for j, ht in enumerate(hits):
         defline = ht.defline
         if len(defline) > defline_width:
             defline = defline[:defline_width-3] + '...'
+        if 'pvalue' in ht.__dict__:
+            pval = ht.pvalue
+            Eval = ht.Evalue
+        else:
+            pval = 0.0
+            Eval = 0.0
+
         file_str.write(line_func(j+rank_offset, defline_width,
-                                 defline, ht.dist, ht.sim))
+                                 defline, ht.dist, ht.sim, pval, Eval))
         if len(hits) > 1: file_str.write('\n')
     return file_str.getvalue()
 
@@ -156,11 +145,29 @@ def description(hits, query_seq, qs=0):
         a = qs
         b = qs + len(query_seq)
         file_str.write('%s\n' % defline)
-        file_str.write('dist = %d  sim = %d\n\n' % (ht.dist,
+
+        K = ht.keywords
+
+        file_str.write('Keywords: ')
+        for k in K[0:4]:
+            file_str.write('%s; ' % k)
+        file_str.write('\n')
+
+        file_str.write('          ')
+        for k in K[4:8]:
+            file_str.write('%s; ' % k)
+        file_str.write('\n')
+
+        file_str.write('          ')
+        for k in K[8:]:
+            file_str.write('%s; ' % k)
+        file_str.write('\n')
+
+        file_str.write('dist = %d  sim = %d\n' % (ht.dist,
                                                     ht.sim))
         file_str.write('Query: %5d %s %5d\n' % (a, query_seq, b))
         file_str.write('Sbjct: %5d %s %5d\n' % (ht.seq_from,
-                                                ht.seq,
+                                                ht.sequence,
                                                 ht.seq_to,
                                                 ))
         file_str.write('\n')
@@ -178,21 +185,6 @@ class HitList(list):
     the results by priority, similarity score, distance, 
     sequence(alphabetical and sequence id.
     
-    This class uses Idata.  B{Idata} is assigned dynamically in B{index.py}
-    and provides the index information.  This includes the following 
-    attributes:
-    
-        - B{I}
-            - The index.
-	    - Includes the index name, alphabet, and partitions.
-        - B{get_frag}
-            - The sequence fragment.
-        - B{deflines}
-            - Description of the hit.
-        - B{accessions}
-            - Accession numbers.
-        - B{sdb}
-            - Pointer to FASTA database.
     """
     
     def __init__(self, dict):
@@ -251,7 +243,8 @@ class HitList(list):
         file_str.write("***** Query Parameters *****\n")
         file_str.write("Query fragment: %s\n" % self.query_seq)
         file_str.write("Query decription: %s\n" % self.query_def)
-        file_str.write("Score matrix: %s\n" % self.matrix_name)
+        if 'matrix_name' in self.__dict__:
+            file_str.write("Score matrix: %s\n" % self.matrix_name)
         file_str.write("Matrix conversion type: %s\n" % self.conv_type)
         file_str.write("Distance range: %d\n" % self.dist_range)
         file_str.write("Similarity score range: %d\n" % self.sim_range)
@@ -287,61 +280,41 @@ class HitList(list):
         file_str.write('\n')
         return file_str.getvalue()
 
-    def perf_str(self, Idata=None):
+    def perf_str(self):
         """
         Return a printable string with performance statistics.
-	
-	@param Idata: Index data.  Please see the HitList 
-	class help for more information on what attributes 
-	are provided by Idata.
-	@return: String providing performance statistics.
+        @return: String providing performance statistics.
         """
 
         file_str = StringIO()
-        if Idata == None or Idata.I == None:
-            perc_func = lambda val, item: "\n"
-        else:
-            file_str.write(Idata.print_str())
-            perc_func = lambda val, item: " (%.2f %%)\n" \
-                        % (100.0 * val / item)
 
         file_str.write("***** Index Performance *****\n")
-        file_str.write("Number of checked bins : %d" % self.bins_visited)
-        file_str.write(perc_func(self.bins_visited, Idata.I.bins))
-        file_str.write("Number of accepted bins : %d" % self.bins_hit)
-        file_str.write(perc_func(self.bins_hit, Idata.I.bins))
+        file_str.write("Number of checked bins : %d\n" % self.bins_visited)
+        file_str.write("Number of accepted bins : %d\n" % self.bins_hit)
         file_str.write("Accepted out of generated bins:  %.2f %%\n\n" \
                        % (100.0 * self.bins_hit / self.bins_visited))
         
-        file_str.write("Number of checked fragments : %d" % self.frags_visited)
-        file_str.write(perc_func(self.frags_visited, Idata.I.fragments))
-        file_str.write("Number of accepted fragments : %d" % self.frags_hit)
-        file_str.write(perc_func(self.frags_hit, Idata.I.fragments))
+        file_str.write("Number of checked fragments : %d\n" % self.frags_visited)
+        file_str.write("Number of accepted fragments : %d\n" % self.frags_hit)
         file_str.write("Accepted out of generated fragments:  %.2f %%\n\n" \
                        % (100.0 * self.frags_hit / self.frags_visited))
 
 #         if self.unique_frags_visited:
-#              file_str.write("Number of checked distinct fragments : %d" %\
+#              file_str.write("Number of checked distinct fragments : %d\n" %\
 #                             self.unique_frags_visited)
-#              file_str.write(perc_func(self.unique_frags_visited,
-#                                       Idata.I.unique_fragments))
-#              file_str.write("Number of accepted distinct fragments : %d" %\
+#              file_str.write("Number of accepted distinct fragments : %d\n" %\
 #                             self.unique_frags_hit)
-#              file_str.write(perc_func(self.unique_frags_hit, Idata.I.unique_fragments))
 #              file_str.write("Accepted out of generated distinct fragments:  %.2f %%\n\n" \
 #                             % (100.0 * self.unique_frags_hit / self.unique_frags_visited))
 
         file_str.write("Search time: %.2f sec.\n" % self.search_time)
         return file_str.getvalue()
     
-    def print_str(self, Idata=None, qs=0):
+    def print_str(self, qs=0):
         """
 	Return a printable string with the header, summary, full details, 
 	and performance statistics.
 	
-	@param Idata: Index data.  Please see the HitList 
-	class help for more information on what attributes 
-	are provided by Idata.
 	@param qs: Starting offset of query fragment in B{query_seq}. The 
         length of the query fragment is the same as the length of the hit.
 	
@@ -352,7 +325,7 @@ class HitList(list):
         file_str.write(self.header_str())
         file_str.write(self.summary_str())
         file_str.write(self.full_str(qs))
-        file_str.write(self.perf_str(Idata))
+        file_str.write(self.perf_str())
         return file_str.getvalue()
         
     
@@ -376,7 +349,7 @@ class HitList(list):
         """
 
         attribs = ['sim',
-                   'seq_id',
+                   'accession',
                    'seq_from',
                    'seq_to',
                    ]
@@ -388,7 +361,7 @@ class HitList(list):
         """
         
         attribs = ['dist',
-                   'seq_id',
+                   'accession',
                    'seq_from',
                    'seq_to',
                    ]
@@ -399,8 +372,8 @@ class HitList(list):
         Sort hits by sequence (alphabetical).
         """
 
-        attribs = ['seq',
-                   'seq_id',
+        attribs = ['sequence',
+                   'accession',
                    'seq_from',
                    'seq_to',
                    ]
@@ -411,7 +384,7 @@ class HitList(list):
         Sort hits by sequence id.
         """
         
-        attribs = ['seq_id',
+        attribs = ['accession',
                    'seq_from',
                    'seq_to',
                    ]
@@ -423,7 +396,7 @@ class HitList(list):
 	
 	@return: Sequences from hits.
 	"""
-        seqs = [ht.seq for ht in self]
+        seqs = [ht.sequence for ht in self]
         return seqs
 
     def get_deflines(self):
