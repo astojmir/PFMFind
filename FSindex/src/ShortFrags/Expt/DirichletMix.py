@@ -213,7 +213,7 @@ def Comp2PyScript(path, filename=None):
     """
     Converts all Dirichlet mixtures files (ending in comp)
     in the path to Python dictionaries and stores them
-    in filename.
+    in filename if provided (otherwise prints to stdout).
     """
 
     if filename == None:

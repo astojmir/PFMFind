@@ -2,6 +2,19 @@
 This module contains the classes and functions needed to print 
 and manipulate hit results.
 
+Hits are from the searched database.  The class is derived from 
+a list of hits.
+
+For each hit a dictionary is defined.  Each class will have its
+own dictionary containing dictionaries for individual hits.
+The dictionary for each hit contains the following information:
+    - seq  
+    - seq_id 
+    - seq_to 
+    - seq_from
+    - dist
+    - sim 
+
 Exceptions:
     - KeyError
 
@@ -13,9 +26,9 @@ Classes:
 
 Functions:
     - description(hits, query_seq, qs=0):
-        - Print details for hits
+        - Print details for hits.
     - summary(hits, show_rank=0, defline_width=DEFLINE_MAX, rank_offset=0)
-        - Print summary for  hits
+        - Print summary for  hits.
     
 """
 
@@ -28,9 +41,8 @@ class Hit:
     Class Hit will define the dictionary and find the correct 
     dictionary entry for a given name.
     
-    Class Hit will raise a KeyError exception in __getattr__ if the name
-    cannot be found in the dictionary attr.  If the name is found it will
-    be returned.
+    Exceptions that may be thrown:
+        - KeyError
     
     Methods:
         - __init__(self, dict)
@@ -45,9 +57,15 @@ class Hit:
             }
 	    
     def __init__(self, dict):
+        """
+	Constructor, assigns the dictionary.
+	"""
         self.__dict__ = dict
 
     def __getattr__(self, name):
+        """
+	Check dictionary for given attribute (name).
+	"""
         try:
             val = eval(self.attr[name])
         except KeyError:
@@ -65,7 +83,7 @@ def summary(hits,
 	    defline_width=DEFLINE_MAX,
             rank_offset=0):
     """
-    Print the summary of a list of hits
+    Return a string containing the summary of a list of hits that may be printed.
     """
 	
     file_str = StringIO()
@@ -96,7 +114,7 @@ def summary(hits,
 
 def description(hits, query_seq, qs=0):
     """
-    Print full details for a list of hits.
+    Return a string containing full details for a list of hits that may be printed.
     """
     file_str = StringIO()
 
@@ -136,7 +154,6 @@ class HitList:
         - full_str(self)
         - perf_str(self, Idata=None)
         - print_str(self, Idata=None, qs=0)
-        - _sort_hits(self, incr, attribs)
         - sort_by_similarity(self, incr=True)
         - sort_by_distance(self, incr=True)
         - sort_by_seq(self, incr=True)
@@ -146,16 +163,22 @@ class HitList:
     """
     
     def __init__(self, dict):
+        """
+	Constructor, assigns the dictionary.
+	"""
         self.__dict__ = dict
         tmphits = [Hit(ht) for ht in self.hits]
         self.hits = tmphits
 	
     def __str__(self):
+        """
+        Call print_str and return the string generated.
+        """
         return self.print_str()
 
     def header_str(self):
         """
-        Print the query details.
+        Return a string containing the query details that may be printed.
         """
 
         file_str = StringIO()
@@ -172,7 +195,7 @@ class HitList:
 
     def summary_str(self):
         """
-        Print the full summary.
+        Return a string containing the full summary that may be printed.
         """
 
         file_str = StringIO()
@@ -183,7 +206,7 @@ class HitList:
 
     def full_str(self, qs=0):
         """
-        Print full details for all hits.
+        Return a string containing full details for all hits that may be printed.
         """
 
         file_str = StringIO()
@@ -194,7 +217,7 @@ class HitList:
 
     def perf_str(self, Idata=None):
         """
-        Index performance statistics as string which can be printed.
+        Return a string containing performance statistics that may be printed.
         """
 
         file_str = StringIO()
@@ -237,7 +260,8 @@ class HitList:
     
     def print_str(self, Idata=None, qs=0):
         """
-	Print the header, summary, full details, and performance statistics.
+	Return a string containing the header, summary, full details, and performance 
+	statistics that may be printed.
 	"""
         file_str = StringIO()
         file_str.write(self.header_str())
@@ -321,9 +345,15 @@ class HitList:
         self._sort_hits(incr, attribs)
 
     def get_seqs(self):
+        """
+	Extract sequences of all hits.
+	"""
         seqs = [ht.seq for ht in self.hits]
         return seqs
 
     def get_deflines(self):
+        """
+	Extract deflines of all hits.
+	"""
         deflines = [ht.defline for ht in self.hits]
         return deflines

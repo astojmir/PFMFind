@@ -98,6 +98,10 @@ def print_matrix(matrix, conv_type, scale=1.0, weight_type=None,
                  dirichlet_type=None, FE=None, coords=None):
     M, ctype, PM = get_converted_matrix(matrix, conv_type, scale, weight_type,
                                         dirichlet_type, FE, coords)
+					
+		"""
+		Print the converted matrix.
+		"""
     return M.__str__()
 
 def print_align(weight_type, dirichlet_type, FE, coords):
@@ -142,6 +146,15 @@ def filter_ext(s, ext):
     return fsplit[1] == ext
 
 def load_FE(filename):
+    """
+    Load a saved full experiment file.
+    
+    Exceptions:
+        - IOError exception will occur if the file cannot
+	be loaded.
+    
+    @return:  Return the full experiment.
+    """
     try:
         fp = gzip.GzipFile(filename, 'rb')
         buffer = ""
@@ -159,6 +172,27 @@ def load_FE(filename):
     return FE
 
 class FullExpt:
+    """
+    
+    Methods:
+        - __init__(self)
+        - set_params(self, qseq, qdef='', qrange=None, lrange=None)
+        - load_fastadb(self, filename)
+	- load_index(self, filename)
+	- load_descriptions(self, filename)
+	- save(self, filename)
+	- len_index(self, l)
+	- get_iters(self, l,f)
+	- assign_iter(self, l, f, i, hits_dict)
+	- current_iter(self, l, f, i)
+	- serial_search(self, jobs, update_func = None)
+	- run_search(self, coords, job, I)
+	- threaded_search_setup(self, jobs)
+	- threaded_search_assign(self, jobs, keys, res)
+	- threaded_search(self, jobs, I)
+	- full_view_by_seqid(self, l, iter)
+	- full_view_by_cluster(self, l, iter)
+    """
     def __init__(self):
         self.mcache = {}
         self.Idata = None
@@ -349,6 +383,9 @@ class FullExpt:
 
 
     def full_view_by_seqid(self, l, iter):
+        """
+	Display 
+	"""
         dict = {}
         for f, frag in enumerate(self.E[self.len_index(l)]):
             if not len(frag): continue 

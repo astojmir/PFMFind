@@ -1,5 +1,14 @@
 """
-This module loads and prints the index.
+This module loads the index and returns a string of information
+which may be printed.
+
+Only one instance of IndexedDb should be instantiated, the Idata (index data) 
+will be set by the most recent index.  
+
+This module may be used to load an index and run a search.  It may also
+be used to load a fasta database to look at the results of a previous 
+search.  Primary use of this module is to define index information
+for hit_list.
 
 Exceptions:
     - RuntimeError
@@ -12,8 +21,6 @@ Classes:
 Functions:
    - md5digest(filename) 
          - Read a file in as a message digest.
-
-
 """
 
 from cStringIO import StringIO
@@ -29,6 +36,9 @@ BLOCKSIZE = 1024*1024
 def md5digest(filename):
     """
     Open a file and read it in as a new message digest.
+    
+    The md5digest is used to ensure consistency in the loaded
+    databases.
 
     @return: Return a message digest as a string of length 
     32 with only hexadecimal digits.
@@ -58,6 +68,10 @@ class IndexedDb:
         - print_str(self)
     """
     def __init__(self):
+        """
+        Constructor, sets values and initializes 
+	Idata for hit_list.
+        """
         self.I = None
         self.sdb = None
         self.get_frag = lambda i, a, b: 'X'*(b-a)
@@ -73,6 +87,11 @@ class IndexedDb:
     def load_fasta_db(self, filename, md5sum = None):
         """
 	Load the fasta database.
+	
+	The files are compared to ensure that the database being opened 
+	is the same one that was opened previously.  If the value
+	for md5sum is None or the databases are the same then the 
+	check is completed successfully.
 	
 	Exceptions:
 	    - Throws a RuntimeError exception if the loaded 
@@ -106,9 +125,15 @@ class IndexedDb:
         """
 	Load the index.
 	
+	The files are compared to ensure that the index being opened 
+	is the same one that was opened previously.  If the value
+	for md5sum is None or the indexes are the same then the 
+	check is completed successfully.
+	
 	Exceptions: 
 	    - Throws a RuntimeError exception if the loaded 
-	    database does not match the fasta database.
+	    database does not match the fasta database given
+	    previously.
 	    - Throws an IOError if the index file cannot be loaded.
 	
 	@return: Return the new message digest.
@@ -173,9 +198,9 @@ class IndexedDb:
 
     def print_str(self):
         """
-	Print the index's information.
+	Return a string with the index's information, which may be printed.
 	
-	Will print nothing if index does not exist.
+	An empty string will be returned if no index is loaded.
 	
 	@return: Return file string.
 	"""
