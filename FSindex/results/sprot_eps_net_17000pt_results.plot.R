@@ -1,0 +1,6 @@
+data <- read.table("sprot_eps_net_17000pt_results.txt", skip = 3)
+postscript("sprot_eps_net_17000pt_results.eps", horizontal=FALSE, onefile=TRUE, pointsize=10)
+par(mfrow=c(2,1), oma=c(5,2,10,2))
+plot(data[,1],data[,3],type="o", ylab=expression(mu(N[epsilon](X))), xlab=expression(epsilon), main="Growth of the neighbourhood of the SwissProt dataset \n(unfiltered fragments of length 10) with BLOSUM62-derived quasi-metric")
+plot(data[,1],data[,3],type="o", ylab=expression(mu(N[epsilon](X))), xlab=expression(epsilon), main="Growth of the neighbourhood of the SwissProt dataset \n(unfiltered fragments of length 10) with BLOSUM62-derived quasi-metric\n(log-log scale)",log="xy")
+dev.off()

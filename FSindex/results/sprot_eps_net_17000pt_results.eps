@@ -1,0 +1,430 @@
+%!PS-Adobe-3.0
+%%DocumentNeededResources: font Helvetica
+%%+ font Helvetica-Bold
+%%+ font Helvetica-Oblique
+%%+ font Helvetica-BoldOblique
+%%+ font Symbol
+%%DocumentMedia: a4 595 841 0 () ()
+%%Title: R Graphics Output
+%%Creator: R Software
+%%Pages: (atend)
+%%Orientation: Portrait
+%%BoundingBox: 18 18 577 824
+%%EndComments
+%%BeginProlog
+/bp  { gs gs } def
+% begin .ps.prolog
+/gs  { gsave } def
+/gr  { grestore } def
+/ep  { showpage gr gr } def
+/m   { moveto } def
+/l   { lineto } def
+/np  { newpath } def
+/cp  { closepath } def
+/f   { fill } def
+/o   { stroke } def
+/c   { newpath 0 360 arc } def
+/r   { 3 index 3 index moveto 1 index 4 -1 roll
+       lineto exch 1 index lineto lineto closepath } def
+/p1  { stroke } def
+/p2  { gsave bg setrgbcolor fill grestore newpath } def
+/p3  { gsave bg setrgbcolor fill grestore stroke } def
+/t   { 6 -2 roll moveto gsave rotate
+       ps mul neg 0 2 1 roll rmoveto
+       1 index stringwidth pop
+       mul neg 0 rmoveto show grestore } def
+/cl  { grestore gsave newpath 3 index 3 index moveto 1 index
+       4 -1 roll lineto  exch 1 index lineto lineto
+       closepath clip newpath } def
+/rgb { setrgbcolor } def
+/s   { scalefont setfont } def
+/R   { /Font1 findfont } def
+/B   { /Font2 findfont } def
+/I   { /Font3 findfont } def
+/BI  { /Font4 findfont } def
+/S   { /Font5 findfont } def
+1 setlinecap 1 setlinejoin
+% end   .ps.prolog
+%%IncludeResource: font Helvetica
+/Helvetica findfont
+dup length dict begin
+  {1 index /FID ne {def} {pop pop} ifelse} forall
+  /Encoding ISOLatin1Encoding def
+  currentdict
+  end
+/Font1 exch definefont pop
+%%IncludeResource: font Helvetica-Bold
+/Helvetica-Bold findfont
+dup length dict begin
+  {1 index /FID ne {def} {pop pop} ifelse} forall
+  /Encoding ISOLatin1Encoding def
+  currentdict
+  end
+/Font2 exch definefont pop
+%%IncludeResource: font Helvetica-Oblique
+/Helvetica-Oblique findfont
+dup length dict begin
+  {1 index /FID ne {def} {pop pop} ifelse} forall
+  /Encoding ISOLatin1Encoding def
+  currentdict
+  end
+/Font3 exch definefont pop
+%%IncludeResource: font Helvetica-BoldOblique
+/Helvetica-BoldOblique findfont
+dup length dict begin
+  {1 index /FID ne {def} {pop pop} ifelse} forall
+  /Encoding ISOLatin1Encoding def
+  currentdict
+  end
+/Font4 exch definefont pop
+%%IncludeResource: font Symbol
+/Symbol findfont
+dup length dict begin
+  {1 index /FID ne {def} {pop pop} ifelse} forall
+  currentdict
+  end
+/Font5 exch definefont pop
+%%EndProlog
+%%Page: 1 1
+bp
+91.20 452.14 528.08 654.69 cl
+0.0000 0.0000 0.0000 rgb
+0.75 setlinewidth
+[] 0 setdash
+np
+107.38 459.65 m
+120.43 459.67 l
+133.48 459.68 l
+146.53 459.67 l
+159.58 459.80 l
+172.62 459.95 l
+185.67 460.51 l
+198.72 461.11 l
+211.77 463.19 l
+224.82 466.89 l
+237.87 472.85 l
+250.92 482.30 l
+263.97 499.05 l
+277.02 517.69 l
+290.06 538.25 l
+303.11 562.40 l
+316.16 582.60 l
+329.21 601.97 l
+342.26 614.74 l
+355.31 626.78 l
+368.36 633.91 l
+381.41 639.26 l
+394.46 642.54 l
+407.50 644.54 l
+420.55 645.73 l
+433.60 646.31 l
+446.65 646.70 l
+459.70 646.81 l
+472.75 647.04 l
+485.80 647.13 l
+498.85 647.15 l
+511.90 647.19 l
+o
+107.38 459.65 2.25 c p1
+120.43 459.67 2.25 c p1
+133.48 459.68 2.25 c p1
+146.53 459.67 2.25 c p1
+159.58 459.80 2.25 c p1
+172.62 459.95 2.25 c p1
+185.67 460.51 2.25 c p1
+198.72 461.11 2.25 c p1
+211.77 463.19 2.25 c p1
+224.82 466.89 2.25 c p1
+237.87 472.85 2.25 c p1
+250.92 482.30 2.25 c p1
+263.97 499.05 2.25 c p1
+277.02 517.69 2.25 c p1
+290.06 538.25 2.25 c p1
+303.11 562.40 2.25 c p1
+316.16 582.60 2.25 c p1
+329.21 601.97 2.25 c p1
+342.26 614.74 2.25 c p1
+355.31 626.78 2.25 c p1
+368.36 633.91 2.25 c p1
+381.41 639.26 2.25 c p1
+394.46 642.54 2.25 c p1
+407.50 644.54 2.25 c p1
+420.55 645.73 2.25 c p1
+433.60 646.31 2.25 c p1
+446.65 646.70 2.25 c p1
+459.70 646.81 2.25 c p1
+472.75 647.04 2.25 c p1
+485.80 647.13 2.25 c p1
+498.85 647.15 2.25 c p1
+511.90 647.19 2.25 c p1
+18.00 18.00 577.28 823.89 cl
+0.0000 0.0000 0.0000 rgb
+0.75 setlinewidth
+[] 0 setdash
+np
+107.38 452.14 m
+498.85 452.14 l
+o
+np
+107.38 452.14 m
+107.38 446.14 l
+o
+np
+172.62 452.14 m
+172.62 446.14 l
+o
+np
+237.87 452.14 m
+237.87 446.14 l
+o
+np
+303.11 452.14 m
+303.11 446.14 l
+o
+np
+368.36 452.14 m
+368.36 446.14 l
+o
+np
+433.60 452.14 m
+433.60 446.14 l
+o
+np
+498.85 452.14 m
+498.85 446.14 l
+o
+/ps 10 def R 10 s
+107.38 430.54 (0) 0.50 0.00 0.00 t
+172.62 430.54 (5) 0.50 0.00 0.00 t
+237.87 430.54 (10) 0.50 0.00 0.00 t
+303.11 430.54 (15) 0.50 0.00 0.00 t
+368.36 430.54 (20) 0.50 0.00 0.00 t
+433.60 430.54 (25) 0.50 0.00 0.00 t
+498.85 430.54 (30) 0.50 0.00 0.00 t
+np
+91.20 459.65 m
+91.20 647.19 l
+o
+np
+91.20 459.65 m
+85.20 459.65 l
+o
+np
+91.20 497.15 m
+85.20 497.15 l
+o
+np
+91.20 534.66 m
+85.20 534.66 l
+o
+np
+91.20 572.17 m
+85.20 572.17 l
+o
+np
+91.20 609.68 m
+85.20 609.68 l
+o
+np
+91.20 647.19 m
+85.20 647.19 l
+o
+76.80 459.65 (0.0) 0.50 0.00 90.00 t
+76.80 497.15 (0.2) 0.50 0.00 90.00 t
+76.80 534.66 (0.4) 0.50 0.00 90.00 t
+76.80 572.17 (0.6) 0.50 0.00 90.00 t
+76.80 609.68 (0.8) 0.50 0.00 90.00 t
+76.80 647.19 (1.0) 0.50 0.00 90.00 t
+np
+91.20 452.14 m
+528.08 452.14 l
+528.08 654.69 l
+91.20 654.69 l
+91.20 452.14 l
+o
+42.00 390.94 553.28 703.89 cl
+/ps 12 def B 12 s
+0.0000 0.0000 0.0000 rgb
+309.64 682.18 (Growth of the neighbourhood of the SwissProt dataset ) 0.50 0.00 0.00 t
+309.64 667.78 (\(unfiltered fragments of length 10\) with BLOSUM62-derived quasi-metric) 0.50 0.00 0.00 t
+/ps 10 def S 10 s
+307.44 406.54 (e) 0.00 0.00 0.00 t
+52.80 533.40 (m) 0.00 0.00 90.00 t
+/ps 13 def S 13 s
+52.80 539.16 (\() 0.00 0.00 90.00 t
+/ps 10 def R 10 s
+52.80 543.49 (N) 0.00 0.00 90.00 t
+/ps 7 def S 7 s
+54.63 550.71 (e) 0.00 0.00 90.00 t
+/ps 13 def S 13 s
+52.80 553.78 (\() 0.00 0.00 90.00 t
+/ps 10 def R 10 s
+52.80 558.11 (X) 0.00 0.00 90.00 t
+/ps 13 def S 13 s
+52.80 564.78 (\)) 0.00 0.00 90.00 t
+52.80 569.11 (\)) 0.00 0.00 90.00 t
+91.20 528.08 139.20 341.74 cl
+91.20 139.20 528.08 341.74 cl
+0.0000 0.0000 0.0000 rgb
+0.75 setlinewidth
+[] 0 setdash
+np
+107.38 146.70 m
+189.03 160.82 l
+236.79 146.70 l
+270.68 189.04 l
+296.97 203.16 l
+318.45 224.66 l
+336.60 235.41 l
+352.33 253.43 l
+366.21 267.97 l
+378.62 280.21 l
+389.85 291.21 l
+400.10 302.47 l
+409.52 310.36 l
+418.25 316.54 l
+426.38 321.99 l
+433.98 325.65 l
+441.13 328.63 l
+447.86 330.38 l
+454.23 331.90 l
+460.27 332.75 l
+466.02 333.36 l
+471.50 333.73 l
+476.73 333.95 l
+481.75 334.08 l
+486.56 334.15 l
+491.18 334.19 l
+495.62 334.20 l
+499.91 334.23 l
+504.04 334.24 l
+508.03 334.24 l
+511.90 334.24 l
+o
+107.38 146.70 2.25 c p1
+189.03 160.82 2.25 c p1
+236.79 146.70 2.25 c p1
+270.68 189.04 2.25 c p1
+296.97 203.16 2.25 c p1
+318.45 224.66 2.25 c p1
+336.60 235.41 2.25 c p1
+352.33 253.43 2.25 c p1
+366.21 267.97 2.25 c p1
+378.62 280.21 2.25 c p1
+389.85 291.21 2.25 c p1
+400.10 302.47 2.25 c p1
+409.52 310.36 2.25 c p1
+418.25 316.54 2.25 c p1
+426.38 321.99 2.25 c p1
+433.98 325.65 2.25 c p1
+441.13 328.63 2.25 c p1
+447.86 330.38 2.25 c p1
+454.23 331.90 2.25 c p1
+460.27 332.75 2.25 c p1
+466.02 333.36 2.25 c p1
+471.50 333.73 2.25 c p1
+476.73 333.95 2.25 c p1
+481.75 334.08 2.25 c p1
+486.56 334.15 2.25 c p1
+491.18 334.19 2.25 c p1
+495.62 334.20 2.25 c p1
+499.91 334.23 2.25 c p1
+504.04 334.24 2.25 c p1
+508.03 334.24 2.25 c p1
+511.90 334.24 2.25 c p1
+18.00 18.00 577.28 823.89 cl
+0.0000 0.0000 0.0000 rgb
+0.75 setlinewidth
+[] 0 setdash
+np
+107.38 139.20 m
+460.27 139.20 l
+o
+np
+107.38 139.20 m
+107.38 133.20 l
+o
+np
+189.03 139.20 m
+189.03 133.20 l
+o
+np
+296.97 139.20 m
+296.97 133.20 l
+o
+np
+378.62 139.20 m
+378.62 133.20 l
+o
+np
+460.27 139.20 m
+460.27 133.20 l
+o
+/ps 10 def R 10 s
+107.38 117.60 (1) 0.50 0.00 0.00 t
+189.03 117.60 (2) 0.50 0.00 0.00 t
+296.97 117.60 (5) 0.50 0.00 0.00 t
+378.62 117.60 (10) 0.50 0.00 0.00 t
+460.27 117.60 (20) 0.50 0.00 0.00 t
+np
+91.20 146.70 m
+91.20 334.24 l
+o
+np
+91.20 146.70 m
+85.20 146.70 l
+o
+np
+91.20 193.59 m
+85.20 193.59 l
+o
+np
+91.20 240.47 m
+85.20 240.47 l
+o
+np
+91.20 287.36 m
+85.20 287.36 l
+o
+np
+91.20 334.24 m
+85.20 334.24 l
+o
+76.80 146.70 (1e-04) 0.50 0.00 90.00 t
+76.80 193.59 (1e-03) 0.50 0.00 90.00 t
+76.80 240.47 (1e-02) 0.50 0.00 90.00 t
+76.80 287.36 (1e-01) 0.50 0.00 90.00 t
+76.80 334.24 (1e+00) 0.50 0.00 90.00 t
+np
+91.20 139.20 m
+528.08 139.20 l
+528.08 341.74 l
+91.20 341.74 l
+91.20 139.20 l
+o
+42.00 78.00 553.28 390.94 cl
+/ps 12 def B 12 s
+0.0000 0.0000 0.0000 rgb
+309.64 376.44 (Growth of the neighbourhood of the SwissProt dataset ) 0.50 0.00 0.00 t
+309.64 362.04 (\(unfiltered fragments of length 10\) with BLOSUM62-derived quasi-metric) 0.50 0.00 0.00 t
+309.64 347.64 (\(log-log scale\)) 0.50 0.00 0.00 t
+/ps 10 def S 10 s
+307.44 93.60 (e) 0.00 0.00 0.00 t
+52.80 220.45 (m) 0.00 0.00 90.00 t
+/ps 13 def S 13 s
+52.80 226.21 (\() 0.00 0.00 90.00 t
+/ps 10 def R 10 s
+52.80 230.54 (N) 0.00 0.00 90.00 t
+/ps 7 def S 7 s
+54.63 237.76 (e) 0.00 0.00 90.00 t
+/ps 13 def S 13 s
+52.80 240.83 (\() 0.00 0.00 90.00 t
+/ps 10 def R 10 s
+52.80 245.16 (X) 0.00 0.00 90.00 t
+/ps 13 def S 13 s
+52.80 251.83 (\)) 0.00 0.00 90.00 t
+52.80 256.16 (\)) 0.00 0.00 90.00 t
+ep
+%%Trailer
+%%Pages: 1
+%%EOF
