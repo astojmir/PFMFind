@@ -340,6 +340,18 @@ extern Smatrix *Smatrix_pssm(int **M, int len, char *alphabet);
   void fprint(FILE *fp=stdout) {
     SCORE_MATRIX_fprint(self, fp);
   }
+  int score_get_item(char c1, char c2) {
+    return self->M[c1 & A_SIZE_MASK][c2 & A_SIZE_MASK];
+  }
+  int profile_get_item(int i1, char c2) {
+    return self->M[i1][c2 & A_SIZE_MASK];
+  }
+  void score_set_item(char c1, char c2, int val) {
+    self->M[c1 & A_SIZE_MASK][c2 & A_SIZE_MASK] = val;
+  }
+  void profile_set_item(int i1, char c2, int val) {
+    self->M[i1][c2 & A_SIZE_MASK] = val;
+  }
   int eval_score(char *s1, int l1, char *s2, int l2) {
     l2 = l1 < l2 ? l1 : l2;
     return self->eval_score(self, s1, s2, l2);
