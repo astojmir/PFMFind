@@ -12,15 +12,15 @@ INCLUDEDIR = src/include/
 DEBUG=-g -D DEBUG=2
 MPATROL = -D USE_MPATROL
 MPATROLLIBS = -lmpatrol -lbfd -liberty
-MAXOPT=-O3 -fomit-frame-pointer -finline-functions -funroll-loops 
+MAXOPT=-O3 -fomit-frame-pointer -finline-functions -funroll-loops -D GCC_INLINE
 GPROF = -pg
-WARNINGS = -pipe -Wall -Wshadow -Wpointer-arith \
+WARNINGS = -pipe -Wall -Wno-char-subscripts -Wshadow -Wpointer-arith \
           -Wwrite-strings -Wstrict-prototypes \
           -Wformat -Wmissing-prototypes -funsigned-char \
 
 CC = gcc
 
-CFLAGS = "-I ../include $(WARNINGS) $(DEBUG)"
+CFLAGS = "-I ../include -Werror $(WARNINGS) $(MAXOPT)"
 LDFLAGS = "-L $(LIBDIR)"
 LDLIBS = "-lm -lFSindex"
 
