@@ -144,9 +144,7 @@ int FS_INDEX_search(HIT_LIST_t *hit_list0, BIOSEQ *query0,
 /* Other Searches */
 int FS_INDEX_kNN_search(HIT_LIST_t *hit_list0, BIOSEQ *query0,
 			SCORE_MATRIX_t *S0, SCORE_MATRIX_t *D0,
-			ULINT k, int V0,
-			FS_INDEX_process_func *pfunc0, 
-			FS_INDEX_range_convert_func *cfunc);
+			ULINT k);
 
 
 /* Process bin functions */

@@ -39,6 +39,7 @@ int main(int argc, char **argv)
   SCORE_MATRIX_t *S;
   HIT_LIST_t *hit_list;
   FS_HASH_TABLE_t *HT;
+  int eps;
 
   if (argc < no_args+1)
     {
@@ -107,19 +108,34 @@ int main(int argc, char **argv)
 	  SEQ_GENERATOR_rand_seq(seq_generator, &query, len,
 				 seq_heap); 
 	  HIT_LIST_reset(hit_list, &query, FS_INDEX_get_database(),
-			 matrix_base, K0);
+			 matrix_base, 0);
 
-	  FS_INDEX_kNN_search(hit_list, &query, S, D, K0, 30,
-			      FS_INDEX_QD_process_bin,
-			      FS_INDEX_identity_convert);
-
+	  FS_INDEX_kNN_search(hit_list, &query, S, D, K0);
+	  eps = hit_list->range;
 	  fprintf(stream, "%*.*s %6d %6d %10ld %10ld %10.2f %10ld"
-		  " %10ld %10.2f\n", (int) len , (int) len, query.start,
+		  " %10ld %10.2f %10ld\n", (int) len , (int) len, query.start,
 		  K0, hit_list->range, hit_list->FS_seqs_visited,
 		  hit_list->FS_seqs_hits, 
 		  (double) hit_list->FS_seqs_visited / hit_list->FS_seqs_hits, 
 		  hit_list->seqs_visited, hit_list->seqs_hits,
-		  (double) hit_list->seqs_visited / hit_list->seqs_hits);
+		  (double) hit_list->seqs_visited / hit_list->seqs_hits,
+		  hit_list->actual_seqs_hits);
+
+	  HIT_LIST_reset(hit_list, &query, FS_INDEX_get_database(),
+			 matrix_base, eps);
+	  FS_INDEX_search(hit_list, &query, S, D, eps,
+			  FS_INDEX_QD_process_bin, 
+			  FS_INDEX_identity_convert);
+
+	  fprintf(stream, "%*.*s %6d %6d %10ld %10ld %10.2f %10ld"
+		  " %10ld %10.2f %10ld\n", (int) len , (int) len, query.start,
+		  K0, hit_list->range, hit_list->FS_seqs_visited,
+		  hit_list->FS_seqs_hits, 
+		  (double) hit_list->FS_seqs_visited / hit_list->FS_seqs_hits, 
+		  hit_list->seqs_visited, hit_list->seqs_hits,
+		  (double) hit_list->seqs_visited / hit_list->seqs_hits,
+		  hit_list->actual_seqs_hits);
+
 	  fflush(stream);
 	  /* Print progress bar */
 	  printbar(stdout, i+1, one_percent, 50);  

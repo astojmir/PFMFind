@@ -111,9 +111,7 @@ int main(int argc, char **argv)
       SEQ_GENERATOR_rand_seq(seq_generator, &query, len, seq_heap);  
 
       /* Find quasi-metric ball */
-      FS_INDEX_kNN_search(hit_list, &query, S, D, k_neighbours, 25,
-			  FS_INDEX_QD_process_bin, 
-			  FS_INDEX_identity_convert);
+      FS_INDEX_kNN_search(hit_list, &query, S, D, k_neighbours);
 
       eps = hit_list->range;
       qFS_visited = hit_list->FS_seqs_visited;

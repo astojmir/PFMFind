@@ -256,7 +256,7 @@ ULINT FS_HASH_TABLE_get_total_seqs(FS_HASH_TABLE_t *HT)
 */  
 
 static char *db_name;
-static char *matrix;
+/* static char *matrix; */
 static char *alphabet; 
 static char *index_name;
 static char separator;
@@ -274,6 +274,7 @@ static SCORE_MATRIX_t *S;
 static SCORE_MATRIX_t *D;
 static int S_cutoff;
 static int D_cutoff;
+static int kNN;
 static FS_INDEX_process_func *pfunc; 
 
 static POS_MATRIX *PS;
@@ -699,6 +700,32 @@ void FS_INDEX_QD_process_bin(FS_SEQ_t FS_query)
     }
 }
 
+static
+void FS_INDEX_kNN_QD_process_bin(FS_SEQ_t FS_query)
+{
+  ULINT n = FS_HASH_TABLE_get_no_seqs(HT, FS_query);
+  ULINT j;
+  ULINT frag_offset;
+  BIOSEQ subject;
+  int D_value;
+
+  for (j = 0; j < n; j++)
+    {
+      frag_offset = FS_HASH_TABLE_retrieve_seq(HT, FS_query, j);
+
+      fastadb_get_Ffrag(s_db, frag_len, &subject, frag_offset);
+      if (SCORE_MATRIX_evaluate_max(D, query, &subject, D_cutoff, &D_value) ||
+	  HIT_LIST_get_seqs_hits(hit_list) < kNN)
+	{
+	  HIT_LIST_count_seq_hit(hit_list, 1);
+	  D_cutoff = 
+	    HIT_LIST_insert_seq_hit_queue(hit_list, &subject, 
+					  (float) D_value); 	  
+	}
+      HIT_LIST_count_seq_visited(hit_list, 1);
+    }
+}
+
 void FS_INDEX_S_process_bin(FS_SEQ_t FS_query)
 {
   ULINT n = FS_HASH_TABLE_get_no_seqs(HT, FS_query);
@@ -836,6 +863,8 @@ int FS_INDEX_search(HIT_LIST_t *hit_list0, BIOSEQ *query0,
 
   /* Process the bin associated with the query sequence */
   pfunc(FS_query); 
+  HIT_LIST_count_FS_seq_visited(hit_list, 1);
+  HIT_LIST_count_FS_seq_hit(hit_list, 1);
 
   /* Process neighbouring bins - recursive */
   check_bins(0, -1, 0); 
@@ -847,52 +876,71 @@ int FS_INDEX_search(HIT_LIST_t *hit_list0, BIOSEQ *query0,
 
 int FS_INDEX_kNN_search(HIT_LIST_t *hit_list0, BIOSEQ *query0,
 			SCORE_MATRIX_t *S0, SCORE_MATRIX_t *D0,
-			ULINT k, int V0,
-			FS_INDEX_process_func *pfunc0, 
-			FS_INDEX_range_convert_func *cfunc)
+			ULINT k)
 {
-  /* For now this works only for distance searches */
-  int high = cfunc(S0, query0, V0);
-  int l = high/2;
-  ULINT size = 0;
-  SEQ_HIT_t *hit_k;
-  SEQ_HIT_t *hit_largest;
-  float d_k;
-  float d_largest;
+  int i;
+  ULINT powKtmp = 1;
+  FS_SEQ_t FS_query;
 
-  if (high != V0)
+  /* Copy arguments into global variables */
+  kNN = k;
+  hit_list = hit_list0;
+  HIT_LIST_set_kNN(hit_list, kNN); 
+  query = query0;
+  S = S0;
+  D = D0;
+  pfunc = FS_INDEX_kNN_QD_process_bin;
+  S_cutoff = 0;
+  D_cutoff = 0;
+  HIT_LIST_set_index_data(hit_list, index_name, alphabet, HT->no_bins,
+			  HT->no_seqs);
+
+  /* Check length of query */
+  if (query->len != frag_len)
     {
-      fprintf(stderr, "Can only run distance kNN searches!\n");
+      fprintf(stderr, 
+	      "FS_INDEX_search(): Query fragment length (%ld)"
+	      " different from\n index fragment length (%d)."
+	      "Query: %*s\n", query->len, frag_len, (int) query->len,
+	      query->start);
       exit(EXIT_FAILURE);
     }
 
-  do
+  /* Calculate FS_seq from seq */
+  if (!BIOSEQ_2_FS_SEQ(query, ptable, &FS_query))
     {
-      HIT_LIST_reset(hit_list0, query0, s_db,
-		     matrix, high);
-      FS_INDEX_search(hit_list0, query0, S0, D0, high,
-		      pfunc0, cfunc);
-      size = HIT_LIST_get_seqs_hits(hit_list0);
-      if (size >= k)
-	{
-	  HIT_LIST_sort_incr(hit_list0);
-	  hit_k = HIT_LIST_get_hit(hit_list0, k-1);
-	  hit_largest = HIT_LIST_get_hit(hit_list0, size-1);
-	  d_k = hit_k->value;
-	  d_largest = hit_largest->value;
-	  if (d_k < d_largest)
-	    {
-	      HIT_LIST_reset(hit_list0, query0, s_db,
-			     matrix, (int) d_k);
-	      FS_INDEX_search(hit_list0, query0, S0, D0, (int) d_k,
-			      pfunc, cfunc);
-	    }
-	  return 1;
-	}
-      else
-	  high += l;
+      fprintf(stderr, 
+	      "FS_INDEX_search(): Could not convert query"
+	      " to FS fragment\n Query: %*s\n", (int) query->len, 
+	      query->start);
+      exit(EXIT_FAILURE);
     }
-  while (1);
+  
+  /* Initialise variables */
+  for (i = 0; i < frag_len; i++)
+    {
+      qind[i] = query->start[i] & A_SIZE_MASK;
+      FS_Q[i] = FS_PARTITION_get_pttn(ptable, query->start[i]); 
+      powKtmp *= K;      
+      FS_DC[i] = FS_query % powKtmp - FS_query % FS_KK[i];
+    }
+  FS_REM[frag_len-1] = 0;  
+  for (i = frag_len-2; i >= 0; i--)
+    FS_REM[i] = FS_REM[i+1] + FS_DC[i+1];
+
+  /* Process the bin associated with the query sequence */
+  pfunc(FS_query); 
+  HIT_LIST_count_FS_seq_visited(hit_list, 1);
+  HIT_LIST_count_FS_seq_hit(hit_list, 1);
+
+  /* Process neighbouring bins - recursive */
+  check_bins(0, -1, 0); 
+
+  HIT_LIST_sort_kNN(hit_list);
+  HIT_LIST_set_converted_range(hit_list, D_cutoff);
+  HIT_LIST_stop_timer(hit_list);
+
+  return 1;
 }
 
 

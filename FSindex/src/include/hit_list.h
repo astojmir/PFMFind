@@ -60,7 +60,7 @@ typedef struct
   const char *matrix;
   int range;
   int converted_range;
-
+  ULINT kNN;
   const char *index_name;
   const char *alphabet;
   ULINT FS_seqs_total;
@@ -75,7 +75,12 @@ typedef struct
 
   ULINT max_hits;
   ULINT actual_seqs_hits;
-  SEQ_HIT_t *hits;  
+  SEQ_HIT_t *hits;
+  struct pqueue *p_queue;
+  ULINT max_tmp_hits;
+  ULINT no_tmp_hits;
+  SEQ_HIT_t *tmp_hits;
+ 
 } HIT_LIST_t;
 
 /* This type is presently not used */
@@ -99,6 +104,8 @@ void HIT_LIST_count_seq_hit(HIT_LIST_t *HIT_list, ULINT count);
 
 void HIT_LIST_insert_seq_hit(HIT_LIST_t *HIT_list, BIOSEQ *subject, 
 			     float value); 
+int HIT_LIST_insert_seq_hit_queue(HIT_LIST_t *HL, BIOSEQ *subject, 
+				  float value); 
 void HIT_LIST_stop_timer(HIT_LIST_t *HIT_list); 
 
 /* Printing */
@@ -108,6 +115,7 @@ void HIT_LIST_print(HIT_LIST_t *HIT_list, FILE *stream,
 /* Element Access */
 ULINT HIT_LIST_get_seqs_hits(HIT_LIST_t *HIT_list);
 SEQ_HIT_t *HIT_LIST_get_hit(HIT_LIST_t *HIT_list, ULINT i);
+void HIT_LIST_set_kNN(HIT_LIST_t *HIT_list, ULINT kNN);
 void HIT_LIST_set_converted_range(HIT_LIST_t *HIT_list, int crange);
 void HIT_LIST_set_index_data(HIT_LIST_t *HIT_list, 
 			     const char *index_name,
@@ -121,6 +129,7 @@ void HIT_LIST_get_hit_seqs(HIT_LIST_t *HIT_list, BIOSEQ **seqs,
 void HIT_LIST_sort_decr(HIT_LIST_t *HIT_list);
 void HIT_LIST_sort_incr(HIT_LIST_t *HIT_list);
 void HIT_LIST_sort_by_sequence(HIT_LIST_t *HIT_list);
+void HIT_LIST_sort_kNN(HIT_LIST_t *HL);
 
 /* Add p-values */
 void HIT_LIST_Gaussian_pvalues(HIT_LIST_t *HT, double mean, 

@@ -111,120 +111,241 @@ int SEQ_HIT_cmp_by_seq(const void *S1, const void *S2)
 /********************************************************************/    
 #define MAX_HITS 100
 
+#define PQDATUM SEQ_HIT_t 
+#define PQPRIO(p) (p.value) 
+
+#include "pqueue.h"
+
 /* Main constructor */
 HIT_LIST_t *HIT_LIST_create(BIOSEQ *query, SEQUENCE_DB *s_db, 
 			    const char *matrix, int range)
 {
-  HIT_LIST_t *HIT_list = callocec(1, sizeof(HIT_LIST_t));
-  HIT_list->query = query;
-  HIT_list->s_db = s_db;
-  HIT_list->matrix = matrix;
-  HIT_list->range = range;
-  HIT_list->start_time = time(NULL);
-  HIT_list->max_hits = MAX_HITS;
-  HIT_list->hits = mallocec(MAX_HITS * sizeof(SEQ_HIT_t));
+  HIT_LIST_t *HL = callocec(1, sizeof(HIT_LIST_t));
+  HL->query = query;
+  HL->s_db = s_db;
+  HL->matrix = matrix;
+  HL->range = range;
+  HL->start_time = time(NULL);
+  HL->max_hits = MAX_HITS;
+  HL->hits = mallocec(MAX_HITS * sizeof(SEQ_HIT_t));
+  HL->kNN = -1;
 
-  return HIT_list;
+  return HL;
 }  
 
 /* Reset list */
-void HIT_LIST_reset(HIT_LIST_t *HIT_list, BIOSEQ *query, 
+void HIT_LIST_reset(HIT_LIST_t *HL, BIOSEQ *query, 
 		    SEQUENCE_DB *s_db, const char *matrix, int range)
 {
-  free(HIT_list->hits);
-  memset(HIT_list, 0, sizeof(HIT_LIST_t));
-  HIT_list->query = query;
-  HIT_list->s_db = s_db;
-  HIT_list->matrix = matrix;
-  HIT_list->range = range;
-  HIT_list->start_time = time(NULL);
-  HIT_list->max_hits = MAX_HITS;
-  HIT_list->hits = mallocec(MAX_HITS * sizeof(SEQ_HIT_t));
+  ULINT i;
+  /* hits and tmp_hits are not reallocated */
+  /* Everything is set to 0 except max_hits and max_tmp_hits */
+
+  for (i=0; i <  HL->actual_seqs_hits; i++)
+    free(HL->hits[i].subject);
+
+  HL->query = query;
+  HL->frag_len = 0;
+  HL->s_db = s_db;
+  HL->matrix = matrix;
+  HL->range = range;
+  HL->converted_range = 0;
+  HL->kNN = -1;
+  HL->index_name = NULL;
+  HL->alphabet = NULL;
+  HL->FS_seqs_total = 0;
+  HL->FS_seqs_visited = 0;
+  HL->FS_seqs_hits = 0;
+  HL->index_seqs_total = 0;
+  HL->seqs_visited = 0;
+  HL->seqs_hits = 0;
+  HL->start_time = time(NULL);
+  HL->end_time = 0;
+  HL->search_time = 0;
+
+  HL->actual_seqs_hits = 0;
+  if (HL->p_queue != NULL)
+    {
+      free(HL->p_queue->d);
+      free(HL->p_queue);
+      HL->p_queue = NULL;
+    }
+  HL->no_tmp_hits = 0;
 }
 
 /* Destructor */
 
 /* We destroy all hits stored as well */
-void HIT_LIST_destroy(HIT_LIST_t *HIT_list)
+void HIT_LIST_destroy(HIT_LIST_t *HL)
 {
-  free(HIT_list->hits);
-  free(HIT_list);
+  ULINT i;
+  for (i=0; i <  HL->actual_seqs_hits; i++)
+    free(HL->hits[i].subject);
+  if (HL->p_queue != NULL)
+    {
+      free(HL->p_queue->d);
+      free(HL->p_queue);
+    }
+  free(HL->hits);
+  free(HL->tmp_hits);
+  free(HL);
 }
 
 /* Insertion */
-void HIT_LIST_insert_seq_hit(HIT_LIST_t *HIT_list, BIOSEQ *subject, 
+void HIT_LIST_insert_seq_hit(HIT_LIST_t *HL, BIOSEQ *subject, 
 			     float value) 
 {
   BIOSEQ *new_subject = mallocec(sizeof(BIOSEQ));
   memcpy(new_subject, subject, sizeof(BIOSEQ));
 
-  if (HIT_list->actual_seqs_hits >= HIT_list->max_hits)
+  if (HL->actual_seqs_hits >= HL->max_hits)
     {
-      HIT_list->max_hits += MAX_HITS;
-      HIT_list->hits = reallocec(HIT_list->hits, HIT_list->max_hits *
+      HL->max_hits += MAX_HITS;
+      HL->hits = reallocec(HL->hits, HL->max_hits *
 				 sizeof(SEQ_HIT_t));
     }
-  HIT_list->hits[HIT_list->actual_seqs_hits].subject = new_subject;
-  HIT_list->hits[HIT_list->actual_seqs_hits].value = value;
+  HL->hits[HL->actual_seqs_hits].subject = new_subject;
+  HL->hits[HL->actual_seqs_hits].value = value;
 
   /* TO DO: get sequence_id, sequence_from from database */
-  fastadb_find_Ffrag_seq(HIT_list->s_db, new_subject, 
-     &(HIT_list->hits[HIT_list->actual_seqs_hits].sequence_id),  
-     &(HIT_list->hits[HIT_list->actual_seqs_hits].sequence_from)); 
+  fastadb_find_Ffrag_seq(HL->s_db, new_subject, 
+     &(HL->hits[HL->actual_seqs_hits].sequence_id),  
+     &(HL->hits[HL->actual_seqs_hits].sequence_from)); 
 
-  HIT_list->hits[HIT_list->actual_seqs_hits].subject->id.defline
-    = HIT_list->s_db->seq[HIT_list->hits[HIT_list->actual_seqs_hits]
+  HL->hits[HL->actual_seqs_hits].subject->id.defline
+    = HL->s_db->seq[HL->hits[HL->actual_seqs_hits]
 			 .sequence_id].id.defline;
-  HIT_list->actual_seqs_hits++;
+  HL->actual_seqs_hits++;
 }
 
-void HIT_LIST_count_FS_seq_visited(HIT_LIST_t *HIT_list, ULINT count)
+int HIT_LIST_insert_seq_hit_queue(HIT_LIST_t *HL, 
+				   BIOSEQ *subject, 
+				   float value) 
 {
-  HIT_list->FS_seqs_visited += count;
+  BIOSEQ *new_subject = mallocec(sizeof(BIOSEQ));
+  struct pqueue *p_queue = HL->p_queue;
+  SEQ_HIT_t top;
+  SEQ_HIT_t temp;
+  SEQ_HIT_t new_hit;
+  int i;
+
+ *new_subject = *subject;
+
+  new_hit.subject = new_subject;
+  new_hit.value = value;
+
+  fastadb_find_Ffrag_seq(HL->s_db, new_subject, 
+     &(new_hit.sequence_id),  
+     &(new_hit.sequence_from)); 
+
+  new_hit.subject->id.defline
+    = HL->s_db->seq[new_hit.sequence_id].id.defline; 
+
+  if (HL->actual_seqs_hits < HL->kNN)
+    {
+      pqinsert(p_queue, new_hit);
+      
+      if (++HL->actual_seqs_hits == HL->kNN)
+	{
+	  pqpeek(p_queue, &top);
+	  HL->range = (int) top.value;
+	}
+      else
+	HL->range = INT_MAX;
+    }
+  else if (value < HL->range)
+    {
+      pqremove(p_queue, &temp);
+      pqinsert(p_queue, new_hit);
+
+      pqpeek(p_queue, &top);
+      HL->range = (int) top.value;
+
+      if (temp.value == top.value)
+	{
+	  if (HL->no_tmp_hits >= HL->max_tmp_hits)
+	    {
+	      HL->max_tmp_hits += HL->kNN;
+	      HL->tmp_hits = reallocec(HL->tmp_hits, 
+			HL->max_tmp_hits * sizeof(SEQ_HIT_t));
+	    }
+	  HL->tmp_hits[HL->no_tmp_hits] = temp;
+	  HL->no_tmp_hits++;
+	  HL->actual_seqs_hits++; 
+	}
+      else
+	{
+	  free(temp.subject);
+	  for (i=0; i < HL->no_tmp_hits; i++)
+	    free(HL->tmp_hits[i].subject);
+	  HL->no_tmp_hits = 0;
+	  HL->actual_seqs_hits = HL->kNN; 
+	}
+    }
+  else /* if (value == HL->range) */
+    {
+      if (HL->no_tmp_hits >= HL->max_tmp_hits)
+	{
+	  HL->max_tmp_hits += HL->kNN;
+	  HL->tmp_hits = reallocec(HL->tmp_hits, 
+	    HL->max_tmp_hits * sizeof(SEQ_HIT_t));
+	}
+      HL->tmp_hits[HL->no_tmp_hits] = new_hit;
+      HL->no_tmp_hits++;
+      HL->actual_seqs_hits++; 
+    }
+
+  return HL->range;
 }
 
-void HIT_LIST_count_FS_seq_hit(HIT_LIST_t *HIT_list, ULINT count)
+
+void HIT_LIST_count_FS_seq_visited(HIT_LIST_t *HL, ULINT count)
 {
-  HIT_list->FS_seqs_hits += count;
+  HL->FS_seqs_visited += count;
 }
 
-void HIT_LIST_count_seq_visited(HIT_LIST_t *HIT_list, ULINT count)
+void HIT_LIST_count_FS_seq_hit(HIT_LIST_t *HL, ULINT count)
 {
-  HIT_list->seqs_visited += count;
+  HL->FS_seqs_hits += count;
 }
 
-void HIT_LIST_count_seq_hit(HIT_LIST_t *HIT_list, ULINT count)
+void HIT_LIST_count_seq_visited(HIT_LIST_t *HL, ULINT count)
 {
-  HIT_list->seqs_hits += count;
+  HL->seqs_visited += count;
 }
 
-void HIT_LIST_stop_timer(HIT_LIST_t *HIT_list)
+void HIT_LIST_count_seq_hit(HIT_LIST_t *HL, ULINT count)
 {
-  HIT_list->end_time = time(NULL);
-  HIT_list->search_time = HIT_list->end_time - HIT_list->start_time; 
+  HL->seqs_hits += count;
+}
+
+void HIT_LIST_stop_timer(HIT_LIST_t *HL)
+{
+  HL->end_time = time(NULL);
+  HL->search_time = HL->end_time - HL->start_time; 
 }
 
 
 /* Printing */
-void HIT_LIST_print(HIT_LIST_t *HIT_list, FILE *stream, 
+void HIT_LIST_print(HIT_LIST_t *HL, FILE *stream, 
 		    HIT_LIST_PRINT_OPT_t *options)
 {
   int i;
   ULINT no_frags;
 
-  fastadb_init_Ffrags(HIT_list->s_db, HIT_list->query->len);
-  no_frags = fastadb_count_Ffrags(HIT_list->s_db,
-				  HIT_list->query->len); 
+  fastadb_init_Ffrags(HL->s_db, HL->query->len);
+  no_frags = fastadb_count_Ffrags(HL->s_db,
+				  HL->query->len); 
 
   fprintf(stream, "**** List of hits ****\n\n");
-  fprintf(stream, "Query = %s\n", HIT_list->query->id.defline); 
-  fprintf(stream, "        %*s\n", (int) HIT_list->query->len,
-	  HIT_list->query->start);
-  fprintf(stream, "        (%ld letters)\n\n", HIT_list->query->len); 
+  fprintf(stream, "Query = %s\n", HL->query->id.defline); 
+  fprintf(stream, "        %*s\n", (int) HL->query->len,
+	  HL->query->start);
+  fprintf(stream, "        (%ld letters)\n\n", HL->query->len); 
   
-  fprintf(stream, "Database: %s\n\n", HIT_list->s_db->db_name);
+  fprintf(stream, "Database: %s\n\n", HL->s_db->db_name);
   
-  if (HIT_list->actual_seqs_hits == 0)
+  if (HL->actual_seqs_hits == 0)
     fprintf(stream, "%25s\n --- No significant hits found ---\n\n",
 	    "");
   else {
@@ -232,121 +353,132 @@ void HIT_LIST_print(HIT_LIST_t *HIT_list, FILE *stream,
   fprintf(stream, "%76s P\n","");
   fprintf(stream, "%67s  Score Value\n", "");
 
-  for (i=0; i <  HIT_list->actual_seqs_hits; i++)
+  for (i=0; i <  HL->actual_seqs_hits; i++)
     {
       fprintf(stream, "%5d. ", i+1);
-      SEQ_HIT_print(HIT_list->hits +i, stream, 0); 
+      SEQ_HIT_print(HL->hits+i, stream, 0); 
     }
   fprintf(stream, "\n");
   fprintf(stream, "%25s **** Alignments ****\n\n", "");
-  for (i=0; i <  HIT_list->actual_seqs_hits; i++)
+  for (i=0; i <  HL->actual_seqs_hits; i++)
     {
       fprintf(stream, "%d. ", i+1);
-      SEQ_HIT_print_alignment(HIT_list->hits +i, stream, 
-			      HIT_list->query, 0);  
+      SEQ_HIT_print_alignment(HL->hits +i, stream, 
+			      HL->query, 0);  
     }
   fprintf(stream, "\n\n");}
 
   fprintf(stream, "**** Statistics ****\n\n");
-  fprintf(stream, "Database: %s\n", HIT_list->s_db->db_name);
+  fprintf(stream, "Database: %s\n", HL->s_db->db_name);
   fprintf(stream, "Number of letters in database: %ld\n", 
-	  HIT_list->s_db->length);
+	  HL->s_db->length);
   fprintf(stream, "Number of sequences in database: %ld\n", 
-	  HIT_list->s_db->no_seq);
+	  HL->s_db->no_seq);
   fprintf(stream, "\n");
   
-  if (HIT_list->index_name != NULL)
+  if (HL->index_name != NULL)
     {
-      fprintf(stream, "Index: %s\n", HIT_list->index_name);
+      fprintf(stream, "Index: %s\n", HL->index_name);
       fprintf(stream, "Alphabet Partitions: %s\n",
-	      HIT_list->alphabet); 
+	      HL->alphabet); 
     }
-  fprintf(stream, "Fragment Length: %ld\n", HIT_list->query->len);
+  fprintf(stream, "Fragment Length: %ld\n", HL->query->len);
   fprintf(stream, "Number of fragments in database: %ld\n", no_frags); 
-  if (HIT_list->index_name != NULL)
+  if (HL->index_name != NULL)
     {
       fprintf(stream, "Number of fragments in index: %ld\n", 
-	      HIT_list->index_seqs_total); 
+	      HL->index_seqs_total); 
       fprintf(stream, "Number of bins in index: %ld\n", 
-	      HIT_list->FS_seqs_total);
+	      HL->FS_seqs_total);
     } 
   fprintf(stream, "\n");
 
-  fprintf(stream, "Matrix: %s\n", HIT_list->matrix);
-  fprintf(stream, "Score cutoff value: %d\n", HIT_list->range);
+  fprintf(stream, "Matrix: %s\n", HL->matrix);
+  fprintf(stream, "Score cutoff value: %d\n", HL->range);
   fprintf(stream, "Distance cutoff value: %d\n", 
-	  HIT_list->converted_range);
-  if (HIT_list->index_name != NULL)
+	  HL->converted_range);
+  if (HL->index_name != NULL)
     {
       fprintf(stream, "Number of generated neighbour bins: %ld"
-	      " (%.2f %%)\n", HIT_list->FS_seqs_visited,
-	      (double) HIT_list->FS_seqs_visited * 100 /
-	      HIT_list->FS_seqs_total);
+	      " (%.2f %%)\n", HL->FS_seqs_visited,
+	      (double) HL->FS_seqs_visited * 100 /
+	      HL->FS_seqs_total);
       fprintf(stream, "Number of accepted neighbour bins: %ld "
-	      "(%.2f %%)\n", HIT_list->FS_seqs_hits,
-	      (double) HIT_list->FS_seqs_hits * 100 /
-	      HIT_list->FS_seqs_total);
+	      "(%.2f %%)\n", HL->FS_seqs_hits,
+	      (double) HL->FS_seqs_hits * 100 /
+	      HL->FS_seqs_total);
       fprintf(stream, "Accepted out of generated neighbour bins:"
-	      " %.2f %%\n", (double) HIT_list->FS_seqs_hits * 100 /
-	      HIT_list->FS_seqs_visited);
+	      " %.2f %%\n", (double) HL->FS_seqs_hits * 100 /
+	      HL->FS_seqs_visited);
     }
   fprintf(stream, "Number of checked fragments: %ld (%.2f %%)\n", 
-	  HIT_list->seqs_visited, 
-	  (double) HIT_list->seqs_visited * 100/ no_frags);
+	  HL->seqs_visited, 
+	  (double) HL->seqs_visited * 100/ no_frags);
   fprintf(stream, "Number of accepted fragments: %ld (%.2f %%)\n",  
-	  HIT_list->seqs_hits,
-	  (double) HIT_list->actual_seqs_hits * 100 / no_frags);
+	  HL->seqs_hits,
+	  (double) HL->actual_seqs_hits * 100 / no_frags);
   fprintf(stream, "Number of displayed hits: %ld\n", 
-	  HIT_list->actual_seqs_hits);
-  fprintf(stream, "Search time: %.2f sec. \n", HIT_list->search_time);
+	  HL->actual_seqs_hits);
+  fprintf(stream, "Search time: %.2f sec. \n", HL->search_time);
   fprintf(stream, "\n");
 }
 
 
 /* Element Access */
-ULINT HIT_LIST_get_seqs_hits(HIT_LIST_t *HIT_list)
+ULINT HIT_LIST_get_seqs_hits(HIT_LIST_t *HL)
 {
-  return HIT_list->actual_seqs_hits;
+  return HL->actual_seqs_hits;
 }
 
-SEQ_HIT_t *HIT_LIST_get_hit(HIT_LIST_t *HIT_list, ULINT i)
+SEQ_HIT_t *HIT_LIST_get_hit(HIT_LIST_t *HL, ULINT i)
 {
-  if (i < HIT_list->seqs_hits)
-    return HIT_list->hits+i;
+  if (i < HL->seqs_hits)
+    return HL->hits+i;
   else
     return NULL;
 }
 
-void HIT_LIST_set_converted_range(HIT_LIST_t *HIT_list, int crange)
+void HIT_LIST_set_kNN(HIT_LIST_t *HL, ULINT kNN)
 {
-  HIT_list->converted_range = crange;  
+  HL->kNN = kNN;
+  HL->p_queue = pqinit(NULL, kNN);
+  HL->max_tmp_hits = kNN;
+  HL->no_tmp_hits = 0;
+  HL->tmp_hits = 
+    reallocec(HL->tmp_hits, kNN * sizeof(SEQ_HIT_t));
 }
 
-void HIT_LIST_set_index_data(HIT_LIST_t *HIT_list, 
+
+void HIT_LIST_set_converted_range(HIT_LIST_t *HL, int crange)
+{
+  HL->converted_range = crange;  
+}
+
+void HIT_LIST_set_index_data(HIT_LIST_t *HL, 
 			     const char *index_name,
 			     const char *alphabet,
 			     ULINT FS_seqs_total,
 			     ULINT index_seqs_total)
 {
-  HIT_list->index_name = index_name;
-  HIT_list->alphabet = alphabet;
-  HIT_list->FS_seqs_total = FS_seqs_total;
-  HIT_list->index_seqs_total = index_seqs_total; 
+  HL->index_name = index_name;
+  HL->alphabet = alphabet;
+  HL->FS_seqs_total = FS_seqs_total;
+  HL->index_seqs_total = index_seqs_total; 
 }
 
-void HIT_LIST_get_hit_seqs(HIT_LIST_t *HIT_list, BIOSEQ **seqs,
+void HIT_LIST_get_hit_seqs(HIT_LIST_t *HL, BIOSEQ **seqs,
 			   int cutoff, int *n, int *max_n)
 {
   int i;
   SEQ_HIT_t *hit;
 
-  if (*max_n < HIT_list->actual_seqs_hits)
+  if (*max_n < HL->actual_seqs_hits)
     {
-      *max_n = HIT_list->actual_seqs_hits;
+      *max_n = HL->actual_seqs_hits;
       *seqs = reallocec(*seqs, *max_n * sizeof(BIOSEQ));
     }
 
-  for (i=0, *n=0, hit=HIT_list->hits; i < HIT_list->actual_seqs_hits; 
+  for (i=0, *n=0, hit=HL->hits; i < HL->actual_seqs_hits; 
        i++, hit++)
     {
       if (hit->value >= cutoff)
@@ -365,22 +497,42 @@ void HIT_LIST_get_hit_seqs(HIT_LIST_t *HIT_list, BIOSEQ **seqs,
 
 /* Sorting */
 
-void HIT_LIST_sort_decr(HIT_LIST_t *HIT_list)
+void HIT_LIST_sort_decr(HIT_LIST_t *HL)
 {
-  qsort(HIT_list->hits, HIT_list->actual_seqs_hits, 
+  qsort(HL->hits, HL->actual_seqs_hits, 
 	sizeof(SEQ_HIT_t), SEQ_HIT_cmp_decr);
 }
 
-void HIT_LIST_sort_incr(HIT_LIST_t *HIT_list)
+void HIT_LIST_sort_incr(HIT_LIST_t *HL)
 {
-  qsort(HIT_list->hits, HIT_list->actual_seqs_hits, 
+  qsort(HL->hits, HL->actual_seqs_hits, 
 	sizeof(SEQ_HIT_t), SEQ_HIT_cmp_incr);
 }
 
-void HIT_LIST_sort_by_sequence(HIT_LIST_t *HIT_list)
+void HIT_LIST_sort_by_sequence(HIT_LIST_t *HL)
 {
-  qsort(HIT_list->hits, HIT_list->actual_seqs_hits, 
+  qsort(HL->hits, HL->actual_seqs_hits, 
 	sizeof(SEQ_HIT_t), SEQ_HIT_cmp_by_seq);
+}
+
+void HIT_LIST_sort_kNN(HIT_LIST_t *HL)
+{
+  /* Assuming increasing order (distances) */
+  int i;
+  struct pqueue *p_queue = HL->p_queue;
+
+  if (HL->actual_seqs_hits > HL->max_hits)
+    {
+      HL->max_hits = HL->actual_seqs_hits;
+      HL->hits = reallocec(HL->hits, 
+	HL->max_hits * sizeof(SEQ_HIT_t));
+    }
+  for (i=0; i < HL->kNN; i++)
+    {
+      pqremove(p_queue, HL->hits + i);
+    }
+  memcpy(HL->hits + i, HL->tmp_hits, 
+	 HL->no_tmp_hits * sizeof(SEQ_HIT_t));
 }
 
 
