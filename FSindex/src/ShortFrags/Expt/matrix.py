@@ -159,8 +159,8 @@ class ScoreMatrix(Smatrix):
         " a filename, a dictionary"
         " and an instance of ScoreMatrix." 
 
-        self.mean = self._calc_mean()
         self.alphabet = FS.Smatrix_alphabet_get(self)
+        self.mean = self._calc_mean()
 
     def __len__(self):
         return len(self.alphabet)
@@ -192,12 +192,47 @@ class ScoreMatrix(Smatrix):
             return ScoreMatrix(FS.Smatrix_matrix_conv(self, seq),
                                new=False)
     def _calc_mean(self):
-        sum = 0
-        for i in self.alphabet:
-            for j in self.alphabet;
-            sum += bg_dict[i] * bg_dict[j] * self[i][j] 
+        return 0
+##         sum = 0
+##         for i in self.alphabet:
+##             for j in self.alphabet:
+##                 sum += bg_dict[i] * bg_dict[j] * self[i][j] 
         return sum 
 
+    def test_separation(self, alphabet=None):
+        V = {}
+        if alphabet == None:
+            alphabet = self.alphabet        
+        for x in alphabet:
+            t=0
+            sxx = self[x][x]
+            for y in alphabet:
+                if sxx <= self[x][y] and x != y:
+                    t = 1
+            if t:
+                V[x] = 1
+        return V
+
+    def test_triangle_ineq(self, alphabet=None):
+        V = {}
+        if alphabet == None:
+            alphabet = self.alphabet
+            
+        if self.Stype == FS.SIMILARITY:
+            ineq_func = lambda x,y,z: self[y][y] + self[x][z] -\
+                        self[x][y] - self[y][z]
+        else:
+            ineq_func = lambda x,y,z: self[x][y] + self[y][z] -\
+                        self[x][z]
+            
+        for x in alphabet:
+            for y in alphabet:
+                for z in alphabet:
+                    r = ineq_func(x,y,z)
+                    if r < 0:
+                        V[(x,y,z)] = r
+        return V
+                    
 
 
 class ProfileMatrix(Smatrix):
