@@ -8,14 +8,11 @@
 #include <mpatrol.h>
 #endif
 
-/* Optionally use inline support */
-
-#ifdef USE_INLINE
-#define __inline__ inline
+#ifdef GCC_INLINE
+#define MY_INLINE extern inline
 #else
-#define __inline__
+#define MY_INLINE static inline
 #endif
-
 
 /* Some typedefs */
 
@@ -85,19 +82,39 @@ int cat_base_dir(char **full_name, const char *basename,
 /********************************************************************/    
 /********************************************************************/    
 
-extern inline
+#define max(a, b)  ((a) > (b) ? (a) : (b))
+#define min(a, b)  ((a) < (b) ? (a) : (b))
+
+#define printbar(outstream, cntr, dispc, dpr) do { \
+  char dot = '.';                                  \
+  if(((cntr) % (dispc)) == 0)                      \
+    {                                              \
+      if (((cntr) % (10*(dispc))) == 0) dot = '*'; \
+      fputc(dot, (outstream));                     \
+      if (((cntr) % ((dpr)*(dispc))) == 0)         \
+        {                                          \
+          fprintf((outstream), " %ld\n", (cntr));  \
+        }                                          \
+      fflush((outstream));                         \
+    }                                              \
+  } while(0)        
+
+#ifdef  MY_INLINE
+
+#if 0
+MY_INLINE
 int max(int a, int b)
 {
   return a > b ? a : b;
 }
 
-extern inline
+MY_INLINE
 int min(int a, int b)
 {
   return a < b ? a : b;
 }
 
-extern inline
+MY_INLINE
 void printbar(FILE *outstream, ULINT cntr, ULINT dispc, 
 	      USINT dpr)  
 {
@@ -113,6 +130,9 @@ void printbar(FILE *outstream, ULINT cntr, ULINT dispc,
       fflush(outstream);
     }
 }         
+#endif
+
+#endif /* MISCLIB_INLINE */   
 
 
 #endif

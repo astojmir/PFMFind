@@ -101,6 +101,7 @@ void POS_MATRIX_set_ptable(POS_MATRIX *PS,
 			   FS_PARTITION_t *ptable);
 
 /* Element Access + Properties */
+MY_INLINE
 int POS_MATRIX_max_entry_pos(POS_MATRIX *PS, int pos, int *col);
 
 
@@ -111,26 +112,30 @@ int PM_pM(int i, int j);
 /* Similarities to Distances */
 void POS_MATRIX_S_2_D(POS_MATRIX *PS);
 
+
 /* Cutoff value conversion */
 
+MY_INLINE
 int POS_MATRIX_id_convert(POS_MATRIX *PS, BIOSEQ *query, int cutoff,
 			  ULINT Pfrom, ULINT Pto); 
 
+MY_INLINE
 int POS_MATRIX_S2D_convert(POS_MATRIX *PS, BIOSEQ *query, int cutoff,
 			   ULINT Pfrom, ULINT Pto);
  
  /* Evaluation of similarities, distances */
+MY_INLINE
 int POS_MATRIX_evaluate(POS_MATRIX *PS, BIOSEQ *subject, 
 			ULINT Pfrom, ULINT Pto);
-
+MY_INLINE
 int POS_MATRIX_evaluate_min(POS_MATRIX *PS, BIOSEQ *subject, 
 			    ULINT Pfrom, ULINT Pto,
 			    int Tmin, int *value); 
-
+MY_INLINE
 int POS_MATRIX_evaluate_max(POS_MATRIX *PS, BIOSEQ *subject,
 			    ULINT Pfrom, ULINT Pto,
 			    int Tmax, int *value);
-
+MY_INLINE
 int POS_MATRIX_verify_pos(POS_MATRIX *PD, ULINT Pfrom, ULINT Pto,
 			  USINT *TT, int k, int cutoff);
 
@@ -146,32 +151,17 @@ int POS_MATRIX_verify_pos(POS_MATRIX *PD, ULINT Pfrom, ULINT Pto,
 /********************************************************************/    
 /********************************************************************/    
 
-
-#ifdef MY_INLINE
 /* Set members */
+#define POS_MATRIX_set_ptable(PS, ptable) \
+        ((PS)->ptable = (ptable))
 
-MY_INLINE
-void POS_MATRIX_set_ptable(POS_MATRIX *PS, FS_PARTITION_t *ptable)
-{
-  PS->ptable = ptable;
-}
+/* Remember A_SIZE = 32 (5 bits) */ 
+#define PM_M(i, j) \
+       (((i) << 5) + (j))
 
-
-/* Element Access + Properties */
-MY_INLINE
-int PM_M(int i, int j)
-{
-  /* Remember A_SIZE = 32 (5 bits) */
-  return (i << 5) + j;
-}
-
-MY_INLINE
-int PM_pM(int i, int j)
-{
-  /* Remember P_SIZE = 256 (8 bits) */
-  return (i << 8) + j;
-}
-
+/* Remember P_SIZE = 256 (8 bits) */ 
+#define PM_pM(i, j) \
+        (((i) << 8) + (j))
 
 MY_INLINE
 int POS_MATRIX_max_entry_pos(POS_MATRIX *PS, int pos, int *col)
@@ -263,10 +253,5 @@ int POS_MATRIX_S2D_convert(POS_MATRIX *PS, BIOSEQ *query, int cutoff,
 {
   return POS_MATRIX_evaluate(PS, query, Pfrom, Pto) - cutoff;
 }
-
-
-
-
-#endif /* #ifdef POS_MATRIX_INLINE */
 
 #endif /* #ifndef _PMATRIX_H */

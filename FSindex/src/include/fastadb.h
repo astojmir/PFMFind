@@ -149,27 +149,25 @@ int fastadb_get_frag(SEQUENCE_DB *s_db, BIOSEQ *frag, ULINT frag_no,
 		     ULINT min_len, ULINT max_len);
 
 /* Ffragment functions */
-
+MY_INLINE
 void fastadb_init_Ffrags(SEQUENCE_DB *s_db, ULINT len);
-
+MY_INLINE
 ULINT fastadb_count_Ffrags(SEQUENCE_DB *s_db, ULINT len);
-
+MY_INLINE
 int fastadb_get_next_Ffrag(SEQUENCE_DB *s_db, ULINT len, 
 			   BIOSEQ *frag, ULINT *offset,
 			   int skip);
-
+MY_INLINE
 int fastadb_get_Ffrag(SEQUENCE_DB *s_db, ULINT len, 
 		      BIOSEQ *frag, ULINT offset);
-
+MY_INLINE
 int fastadb_find_Ffrag_seq(SEQUENCE_DB *s_db, BIOSEQ *frag, 
 			   ULINT *seq_id, ULINT *rel_offset);
-
+MY_INLINE
 int fastadb_get_Ffrag_seq(SEQUENCE_DB *s_db, BIOSEQ *frag, 
 			  ULINT seq_id, ULINT from, ULINT to);
 
 
-
-#ifdef  MY_INLINE
 /********************************************************************/    
 /********************************************************************/    
 /***                                                              ***/
@@ -289,9 +287,6 @@ int fastadb_get_Ffrag_seq(SEQUENCE_DB *s_db, BIOSEQ *frag,
   frag->start = s_db->seq[seq_id].start + from;
   return 1;
 }
-#endif /* #ifdef  FASTA_DB_INLINE */
-
-
 
 #endif /* #ifndef _FASTADB_H */ 
 

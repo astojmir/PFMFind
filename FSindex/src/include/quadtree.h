@@ -83,31 +83,9 @@ void print_levels(QUAD_TREE *qtree, FILE *stream);
 /***                                                              ***/
 /********************************************************************/    
 /********************************************************************/    
-#ifndef DEBUG
 
-#ifndef MY_INLINE
-#define MY_INLINE extern inline
-#endif
-
-#define QUAD_TREE_INLINE
-
-#else
-
-#ifndef MY_INLINE
-#define MY_INLINE 
-#endif
-
-#endif /* #ifndef DEBUG */
-
-#ifdef QUAD_TREE_INLINE
-
-
-MY_INLINE
-ULINT half_array(ULINT i, ULINT j)
-{
-  /* Assume j < i */
-  return (i*(i-1))/2 + j;
-}
-#endif /* #ifdef QUAD_TREE_INLINE */
+#define half_array(i, j) \
+       /* Assume j < i */ \
+       (((i)*((i)-1))/2 + (j))
 
 #endif /* #ifndef _QUADTREE_H */

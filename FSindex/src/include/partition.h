@@ -81,10 +81,12 @@ FS_PARTITION_t *FS_PARTITION_read(FILE *stream);
 
 /* Access and conversion */
 int FS_PARTITION_get_no_partitions(FS_PARTITION_t *FS_partition);
+MY_INLINE
 int BIOSEQ_2_FS_SEQ(BIOSEQ *seq, FS_PARTITION_t *FS_partition,
 		    FS_SEQ_t *FS_seq);
 char *FS_seq_print(FS_SEQ_t FS_seq, FS_PARTITION_t *FS_partition,
 		   ULINT frag_len);
+MY_INLINE
 int FS_PARTITION_check_seq(BIOSEQ *seq, FS_PARTITION_t *FS_partition);
 
 
@@ -102,7 +104,7 @@ int FS_PARTITION_get_letter(FS_PARTITION_t *ptable, int partition,
 
 /* Printing */
 void FS_PARTITION_print(FS_PARTITION_t *ptable, FILE *stream);
-
+MY_INLINE
 void FS_PARTITION_pletter_2_string(FS_PARTITION_t *ptable, int p,
 				   char *s);
 
@@ -115,19 +117,30 @@ void FS_PARTITION_pletter_2_string(FS_PARTITION_t *ptable, int p,
 /********************************************************************/    
 
 
-#ifdef  MY_INLINE
-
 /********************************************************************/    
 /*                                                                  */
 /*                    FS_PARTITION module                           */ 
 /*                                                                  */
 /********************************************************************/    
 
-MY_INLINE
-int FS_PARTITION_get_no_partitions(FS_PARTITION_t *FS_partition)
-{
-  return FS_partition->no_partitions;
-}
+#define FS_PARTITION_get_no_partitions(FS_partition) \
+        ((FS_partition)->no_partitions)
+
+#define FS_PARTITION_get_pttn(ptable, letter) \
+        ((ptable)->partition_table[(letter) & A_SIZE_MASK])
+
+#define FS_PARTITION_get_pos(ptable, letter) \
+        ((ptable)->partition_pos[(letter) & A_SIZE_MASK]) 
+
+#define FS_PARTITION_get_size(ptable, partition) \
+        ((ptable)->partition_size[(partition)]) 
+
+#define FS_PARTITION_get_poffset(ptable, partition) \
+        ((ptable)->partition_poffset[(partition)])
+
+#define FS_PARTITION_get_letter(ptable, partition, pos) \
+        ((int) \
+        ((ptable)->alphabet[ptable->partition_loffset[(partition)] + (pos)]))
 
 MY_INLINE
 int FS_PARTITION_check_seq(BIOSEQ *seq, FS_PARTITION_t *FS_partition)
@@ -169,39 +182,6 @@ int BIOSEQ_2_FS_SEQ(BIOSEQ *seq, FS_PARTITION_t *FS_partition,
 }
 
 MY_INLINE
-int FS_PARTITION_get_pttn(FS_PARTITION_t *ptable, int letter)
-{
-  return ptable->partition_table[letter & A_SIZE_MASK];
-}
-
-
-MY_INLINE
-int FS_PARTITION_get_pos(FS_PARTITION_t *ptable, int letter)
-{
-  return ptable->partition_pos[letter & A_SIZE_MASK];
-}
-
-MY_INLINE
-int FS_PARTITION_get_size(FS_PARTITION_t *ptable, int partition)
-{
-  return ptable->partition_size[partition];
-}
-
-MY_INLINE
-int FS_PARTITION_get_poffset(FS_PARTITION_t *ptable, int partition)
-{
-  return ptable->partition_poffset[partition];
-}
-
-MY_INLINE
-int FS_PARTITION_get_letter(FS_PARTITION_t *ptable, int partition, 
-			    int pos)
-{
-  return (int) 
-    (ptable->alphabet[ptable->partition_loffset[partition] + pos]);
-}
-
-MY_INLINE
 void FS_PARTITION_pletter_2_string(FS_PARTITION_t *ptable, int p,
 				   char *s)
 {
@@ -233,6 +213,4 @@ void FS_PARTITION_pletter_2_string(FS_PARTITION_t *ptable, int p,
 }
 
 
-
-#endif /* #ifdef  FS_PARTITION_INLINE */
 #endif /* #ifndef _FS_PARTITION_H */

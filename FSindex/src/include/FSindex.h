@@ -188,27 +188,10 @@ FS_INDEX_profile_process_func FS_INDEX_profile_D_process_bin;
 /* Conversion functions */
 
 
-#ifndef DEBUG
-
-#ifndef MY_INLINE
-#define MY_INLINE extern inline
-#endif
-#define FS_INDEX_INLINE
-
-#else
-
-#ifndef MY_INLINE
-#define MY_INLINE 
-#endif
-
-#endif
-
-
-#ifdef  FS_INDEX_INLINE
 /********************************************************************/    
 /********************************************************************/    
 /***                                                              ***/
-/***               INLINE FUNCTION DEFINITIONS                    ***/ 
+/***               INLINE FUNCTIONS AND MACROS                    ***/ 
 /***                                                              ***/
 /********************************************************************/    
 /********************************************************************/    
@@ -220,80 +203,18 @@ FS_INDEX_profile_process_func FS_INDEX_profile_D_process_bin;
 /*                                                                  */
 /********************************************************************/    
 
-/* Insertion */
-
-MY_INLINE
-void FS_HASH_TABLE_insert_seq(FS_HASH_TABLE_t *FS_HT, ULINT i,
-			      SEQ_index_t seq_i)
-{
-  ULINT old_seqs_per_bin;
-  FS_HT->freq_seqs_per_bin[FS_HT->bin_size[seq_i]]--;
-
-  FS_HT->bin[seq_i][FS_HT->bin_size[seq_i]] = i;
-  FS_HT->bin_size[seq_i]++;  
-  if (FS_HT->bin_size[seq_i] >=  FS_HT->max_bin_size[seq_i])
-    {
-      FS_HT->max_bin_size[seq_i] *= 2;
-      FS_HT->bin[seq_i] = reallocec(FS_HT->bin[seq_i], 
-			FS_HT->max_bin_size[seq_i] *
-				    sizeof(SEQ_index_t));   
-    }
-  FS_HT->no_seqs++;
-
-  if (FS_HT->bin_size[seq_i] >= FS_HT->max_seqs_per_bin)
-    {
-      old_seqs_per_bin = FS_HT->max_seqs_per_bin;
-      FS_HT->max_seqs_per_bin = FS_HT->bin_size[seq_i] + 1;       
-      FS_HT->freq_seqs_per_bin = reallocec(FS_HT->freq_seqs_per_bin,
-				   FS_HT->max_seqs_per_bin *
-					   sizeof(ULINT)); 
-      memset(FS_HT->freq_seqs_per_bin + old_seqs_per_bin, 0, 
-	     (FS_HT->max_seqs_per_bin - old_seqs_per_bin) 
-	     * sizeof(ULINT));
-      FS_HT->largest_bin = seq_i;
-    }
-  FS_HT->freq_seqs_per_bin[FS_HT->bin_size[seq_i]]++;
-}
-
-
 /* Element access */
-MY_INLINE
-ULINT FS_HASH_TABLE_get_no_bins(FS_HASH_TABLE_t *FS_HT)
-{
-  return FS_HT->no_bins;  
-}
+#define FS_HASH_TABLE_get_no_bins(HT) \
+        ((HT)->no_bins)
 
+#define FS_HASH_TABLE_get_no_seqs(HT, i) \
+        ((HT)->bin_size[(i)])
 
+#define FS_HASH_TABLE_retrieve_seq(HT, i, j) \
+        ((HT)->bin[(i)][(j)])
 
-MY_INLINE
-ULINT FS_HASH_TABLE_get_no_seqs(FS_HASH_TABLE_t *FS_HT, ULINT i)
-{
-  return FS_HT->bin_size[i];
-}
-
-
-MY_INLINE
-SEQ_index_t FS_HASH_TABLE_retrieve_seq(FS_HASH_TABLE_t *FS_HT, ULINT i, 
-				ULINT j)
-{
-  return FS_HT->bin[i][j];
-}
-
-MY_INLINE
-SEQ_index_t *FS_HASH_TABLE_get_all_seqs(FS_HASH_TABLE_t *FS_HT, 
-					ULINT i)
-{
-  return FS_HT->bin[i];
-}
-
-/********************************************************************/    
-/*                                                                  */
-/*                     FS_INDEX module                              */ 
-/*                                                                  */
-/********************************************************************/    
-
-#endif   
-
+#define FS_HASH_TABLE_get_all_seqs(HT, i) \
+        ((HT)->bin[(i)])
 
 
 #endif   
