@@ -2,7 +2,8 @@ SHELL=/bin/sh
 
 FSLIB=../lib/libFSindex.a
 
-all: FSindex_search \
+all: $(FSLIB) \
+     FSindex_search \
      FSindex_self_sim \
      FSindex_create \
      FSindex_stats \
@@ -17,31 +18,31 @@ all: FSindex_search \
 #     FSindex_benchmark \
 #     FSindex_eps_net1 \
 
-cluster_test: $(FSLIB)
+cluster_test: 
 
-FSindex_rand_perf: $(FSLIB)
+FSindex_rand_perf:
 
-FSindex_search: $(FSLIB)
+FSindex_search:
 
-FSindex_self_sim: $(FSLIB)
+FSindex_self_sim:  
 
-QD_ddist: $(FSLIB) 
+QD_ddist:   
 
-print_matrices: $(FSLIB) 
+print_matrices:   
 
-FSindex_create: $(FSLIB)
+FSindex_create:  
 
-FSindex_eps_net1: $(FSLIB)
+FSindex_eps_net1:  
 
-FSindex_delta: $(FSLIB)
+FSindex_delta:  
 
-FSindex_stats: $(FSLIB)
+FSindex_stats:  
 
-SS_search: $(FSLIB)
+SS_search:  
 
-Sscan_eps_net: $(FSLIB)
+Sscan_eps_net:  
 
-count_letters: $(FSLIB)
+count_letters:  
 
 clean:
 	for x in *; do [ -x $$x -a -f $$x.c ] && echo $$x; done\
