@@ -8,7 +8,7 @@
 
 #include "misclib.h"
 
-
+#define UFRAGDB
 #define MAX_STORAGE_ROWS 2
 #define MAX_SEQUENCES 10000
 
@@ -197,8 +197,6 @@ typedef struct
   char *db_name;         /* Fasta database name                     */
   int db_name_len;       /* Fasta db name length                    */
   SEQUENCE_DB *sdb;      /* Fasta database                          */
-  char *abet;            /* Valid alphabet                          */  
-  int abet_len;          /* Alphabet string length                  */
   ULINT frag_len;        /* Fragment length                         */
   int skip;              /* How many fragments to skip (1=none)     */
   FILE *fptr;            /* File handle                             */
@@ -222,12 +220,18 @@ UFRAG_DB *ufragdb_init(void);
 void ufragdb_del(UFRAG_DB *udb);
 
 void ufragdb_create(UFRAG_DB *udb, const char *db_name, 
-		    ULINT frag_len, const char *abet, int skip);
+		    ULINT frag_len, int skip);
 
 void ufragdb_load(UFRAG_DB *udb, const char *udb_name,
 		  int options);
 
 void ufragdb_save(UFRAG_DB *udb, const char *udb_name);
+
+void ufragdb_read(UFRAG_DB *udb, FILE *fp, char *db_dir);
+
+void ufragdb_write(UFRAG_DB *udb, FILE *fp);
+
+
 
 ULINT ufragdb_get_nopts(UFRAG_DB *udb);
 
@@ -239,6 +243,9 @@ int ufragdb_get_next_ufrag(UFRAG_DB *udb);
 
 int ufragdb_get_dfrags(UFRAG_DB *udb, ULINT frag_offset, 
 		       ULINT **dfrags, ULINT *dsize);
+
+int ufragdb_get_dfrags2(UFRAG_DB *udb, ULINT i, 
+			ULINT **dfrags, ULINT *dsize);
 
 void ufragdb_print(UFRAG_DB *udb, FILE *stream);
 

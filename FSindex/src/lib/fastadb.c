@@ -931,7 +931,6 @@ void ufragdb_del(UFRAG_DB *udb)
   free(udb->db_name);
   if (udb->sdb != NULL)
     fastadb_close(udb->sdb);
-  free(udb->abet);
   if (udb->fptr != NULL)
     fclose(udb->fptr);
   free(udb->pts);
@@ -974,28 +973,27 @@ int cmp_dupfrag(const void *pa, const void *pb)
 #define DFRG_INCR 65536
 
 void ufragdb_create(UFRAG_DB *udb, const char *db_name, 
-		    ULINT frag_len, const char *abet, int skip)
+		    ULINT frag_len, int skip)
 {
   EXCEPTION *except;
-  FS_PARTITION_t *ptable = NULL;
   fastadb_arg fastadb_argt[3];
   fastadb_argv_t fastadb_argv[3];
 
   BIOSEQ frag;
-  FS_SEQ_t FS_seq;
   char *seqstr;
   char **tree_item;
   struct avl_table *AVLtree = NULL;
 
-  ULINT i, j, k;
+  ULINT i, j, k, l;
   ULINT no_frags;
   ULINT one_percent_fragments;
+  int valid = 1;
 
   DUP_FRAG *dfrg = NULL;
   ULINT max_dfrg = DFRG_INCR;
 
-
-
+  char *db_dir = NULL;
+  char *db_base = NULL;
 
 
   /* We want to start in clean state in case something fails */
@@ -1003,22 +1001,19 @@ void ufragdb_create(UFRAG_DB *udb, const char *db_name,
     return;
   
   Try {
-    udb->db_name_len = strlen(db_name);
-    if (abet == NULL)
-      abet = "STAN#ILVM#KRDEQ#WFYH#GPC";
-    udb->abet_len = strlen(abet);
-    udb->db_name = strdup(db_name);
-    udb->abet = strdup(abet);
+    split_base_dir(db_name, &db_base, &db_dir);
+
+    udb->db_name_len = strlen(db_base);
+    udb->db_name = strdup(db_base);
     udb->frag_len = frag_len;
     udb->skip = skip;
-    ptable = FS_PARTITION_create(abet, '#');
  
     fastadb_argt[0] = ACCESS_TYPE;
     fastadb_argt[1] = RETREIVE_DEFLINES;
     fastadb_argt[2] = NONE;
     fastadb_argv[0].access_type = MEMORY;
     fastadb_argv[1].retrieve_deflines = YES;
-    udb->sdb = fastadb_open(udb->db_name, fastadb_argt, fastadb_argv); 
+    udb->sdb = fastadb_open(db_name, fastadb_argt, fastadb_argv); 
 
     no_frags = fastadb_count_Ffrags(udb->sdb, frag_len);
     one_percent_fragments = (ULINT) (((double) no_frags/skip) / 100);
@@ -1037,8 +1032,18 @@ void ufragdb_create(UFRAG_DB *udb, const char *db_name,
     fprintf(stdout, "Sorting fragments.\n");
     while (fastadb_get_next_Ffrag(udb->sdb, frag_len, &frag, &i, skip)) {
       j++;
-      if (BIOSEQ_2_FS_SEQ(&frag, ptable, &FS_seq)) {
-	seqstr = frag.start;
+
+      /* Check if the fragment is valid */
+      seqstr = frag.start;
+      valid = 1;
+      for (l=0; l < frag.len; l++, seqstr++) {
+	if (*seqstr == '\0' || *seqstr == 'B' || 
+	    *seqstr == 'Z' || *seqstr == 'X' )
+	  valid = 0;
+	  break;
+      } 
+
+      if (valid) {
 	tree_item = (char **)avl_probe(AVLtree, seqstr);	  
 
 	if ((*tree_item) == seqstr) {
@@ -1098,16 +1103,17 @@ void ufragdb_create(UFRAG_DB *udb, const char *db_name,
       }
 
     free(dfrg);
-    FS_PARTITION_destroy(ptable);
+    free(db_dir);
+    free(db_base);
   }
   Catch(except) {
     free(dfrg);
-    FS_PARTITION_destroy(ptable);
+    free(db_dir);
+    free(db_base);
     
     free(udb->db_name);
     if (udb->sdb != NULL)
       fastadb_close(udb->sdb);
-    free(udb->abet);
     if (udb->fptr != NULL)
       fclose(udb->fptr);
     free(udb->pts);
@@ -1121,23 +1127,18 @@ void ufragdb_create(UFRAG_DB *udb, const char *db_name,
   return;
 }
 
-void ufragdb_load(UFRAG_DB *udb, const char *udb_name,
-		  int options)
+void ufragdb_read(UFRAG_DB *udb, FILE *fp, char *db_dir)
 {
   fastadb_arg fastadb_argt[3];
   fastadb_argv_t fastadb_argv[3];
+  char *db_full;
 
   fprintf(stdout, "Loading fragments.\n");
   if (udb->fptr != NULL)
     fclose(udb->fptr);
-  udb->fptr = fopen(udb_name, "rb");
-  if(udb->fptr == NULL)
-    Throw FSexcept(FOPEN_ERR, 
-		   "ufragdb_load(): Could not open the file %s.",
-		   udb_name);
+  udb->fptr = fp;
 
   fread(&udb->db_name_len, sizeof(int), 1, udb->fptr);
-  fread(&udb->abet_len, sizeof(int), 1, udb->fptr);
   fread(&udb->frag_len, sizeof(ULINT), 1, udb->fptr);
   fread(&udb->skip, sizeof(ULINT), 1, udb->fptr);
   fread(&udb->pts_size, sizeof(ULINT), 1, udb->fptr);
@@ -1147,11 +1148,8 @@ void ufragdb_load(UFRAG_DB *udb, const char *udb_name,
   
   udb->db_name = mallocec(udb->db_name_len+1);
   udb->db_name[udb->db_name_len] = '\0';
-  udb->abet = mallocec(udb->abet_len+1);
-  udb->abet[udb->abet_len] = '\0';
 
   fread(udb->db_name, 1, udb->db_name_len, udb->fptr);
-  fread(udb->abet, 1, udb->abet_len, udb->fptr);
 
   fastadb_argt[0] = ACCESS_TYPE;
   fastadb_argt[1] = RETREIVE_DEFLINES;
@@ -1159,7 +1157,16 @@ void ufragdb_load(UFRAG_DB *udb, const char *udb_name,
   fastadb_argv[0].access_type = MEMORY;
   fastadb_argv[1].retrieve_deflines = YES;
     
-  udb->sdb = fastadb_open(udb->db_name, fastadb_argt, fastadb_argv); 
+  if (db_dir != NULL) {
+    db_full = mallocec(strlen(db_dir)+strlen(udb->db_name)+2);
+    strcpy(db_full, db_dir);
+    strcat(db_full, "/");
+    strcat(db_full, udb->db_name);
+  } 
+  else
+    db_full = udb->db_name; 
+
+  udb->sdb = fastadb_open(db_full, fastadb_argt, fastadb_argv); 
 
   udb->pts = mallocec(udb->pts_size * sizeof(ULINT));
   udb->dup_offset = mallocec(udb->dpts_size * sizeof(ULINT));
@@ -1169,22 +1176,20 @@ void ufragdb_load(UFRAG_DB *udb, const char *udb_name,
   fread(udb->dup_offset, sizeof(ULINT), udb->dpts_size, udb->fptr);
   fread(udb->dup_heap, sizeof(ULINT), udb->dup_heap_size, udb->fptr);
 
-  fclose(udb->fptr);
   udb->fptr = NULL;
+  
+  if (db_dir != NULL)
+    free(db_full);
 }
 
-void ufragdb_save(UFRAG_DB *udb, const char *udb_name)
+
+void ufragdb_write(UFRAG_DB *udb, FILE *fp)
 {
   if (udb->fptr != NULL)
     fclose(udb->fptr);
-  udb->fptr = fopen(udb_name, "wb");
-  if(udb->fptr == NULL)
-    Throw FSexcept(FOPEN_ERR, 
-		   "ufragdb_save(): Could not open the file %s.",
-		   udb_name);
+  udb->fptr = fp;
 
   fwrite(&udb->db_name_len, sizeof(int), 1, udb->fptr);
-  fwrite(&udb->abet_len, sizeof(int), 1, udb->fptr);
   fwrite(&udb->frag_len, sizeof(ULINT), 1, udb->fptr);
   fwrite(&udb->skip, sizeof(ULINT), 1, udb->fptr);
   fwrite(&udb->pts_size, sizeof(ULINT), 1, udb->fptr);
@@ -1193,14 +1198,49 @@ void ufragdb_save(UFRAG_DB *udb, const char *udb_name)
   fwrite(&udb->dup_heap_size, sizeof(ULINT), 1, udb->fptr);
   
   fwrite(udb->db_name, 1, udb->db_name_len, udb->fptr);
-  fwrite(udb->abet, 1, udb->abet_len, udb->fptr);
 
   fwrite(udb->pts, sizeof(ULINT), udb->pts_size, udb->fptr);
   fwrite(udb->dup_offset, sizeof(ULINT), udb->dpts_size, udb->fptr);
   fwrite(udb->dup_heap, sizeof(ULINT), udb->dup_heap_size, udb->fptr);
 
-  fclose(udb->fptr);
   udb->fptr = NULL;
+}
+
+
+
+void ufragdb_load(UFRAG_DB *udb, const char *udb_name,
+		  int options)
+{
+  FILE *fp;
+  char *db_dir = NULL;
+  char *db_base = NULL;
+
+  fp = fopen(udb_name, "rb");
+  if(fp == NULL)
+    Throw FSexcept(FOPEN_ERR, 
+		   "ufragdb_load(): Could not open the file %s.",
+		   udb_name);
+
+  split_base_dir(udb_name, &db_base, &db_dir);
+
+  ufragdb_read(udb, fp, db_dir);
+
+  fclose(fp);
+  free(db_dir);
+  free(db_base);
+}
+
+void ufragdb_save(UFRAG_DB *udb, const char *udb_name)
+{
+  FILE *fp;
+
+  fp = fopen(udb_name, "wb");
+  if(fp == NULL)
+    Throw FSexcept(FOPEN_ERR, 
+		   "ufragdb_save(): Could not open the file %s.",
+		   udb_name);
+  ufragdb_write(udb, fp);
+  fclose(fp);
 }
 
 ULINT ufragdb_get_nopts(UFRAG_DB *udb)
@@ -1247,6 +1287,23 @@ int ufragdb_get_dfrags(UFRAG_DB *udb, ULINT frag_offset,
   }
   i = item - udb->pts;  
   *dsize = i==0 ? 0 : udb->dup_offset[i] - udb->dup_offset[i-1];
+  *dfrags = udb->dup_heap + udb->dup_offset[i];
+  return 1;
+}
+
+int ufragdb_get_dfrags2(UFRAG_DB *udb, ULINT i, 
+			ULINT **dfrags, ULINT *dsize)
+{
+  if (i >= udb->dpts_size) {
+    *dsize = 0;
+    *dfrags = NULL;
+    return 0;
+  }
+  else if (i == udb->dpts_size-1) 
+    *dsize = udb->dpts_size - udb->dup_offset[i];
+  else 
+    *dsize = udb->dup_offset[i+1] - udb->dup_offset[i];
+
   *dfrags = udb->dup_heap + udb->dup_offset[i];
   return 1;
 }
