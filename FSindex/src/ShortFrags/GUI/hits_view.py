@@ -126,9 +126,9 @@ class HitsView(Tkinter.Frame, View):
         # Sort list
         self.sorts[self.vSortVar.get()](HL, self.vSortIncr.get())
 
-        if len(HL.hits) > self.size:
+        if len(HL) > self.size:
             old_size = size
-            self.size = len(HL.hits)
+            self.size = len(HL)
             for j in range(old_size, self.size):
                 self.wSummaryButtons.append(Tkinter.Button(self.wFrame,
                                                            font=self.ffont,
@@ -145,13 +145,13 @@ class HitsView(Tkinter.Frame, View):
         self.wHeader.configure(text=HL.header_str())
         self.glist = [self.wMenu, self.wHeader, self.wSummaryTitle]
 
-        for j, ht in enumerate(HL.hits):
+        for j, ht in enumerate(HL):
             self.wSummaryButtons[j].configure(text=summary([ht], 1,
                                                            rank_offset=j)) 
             self.glist.append(self.wSummaryButtons[j])
 
         self.glist.append(self.wFullTitle)
-        for j, ht in enumerate(HL.hits):
+        for j, ht in enumerate(HL):
             self.wFullLines[j].configure(text=description([ht], HL.query_seq)) 
             self.glist.append(self.wFullLines[j])
 
