@@ -6,18 +6,10 @@
 #include "hit_list.h"
 #include "partition.h"
 #include "smatrix.h"
+#include "FSindex.h"
 
 #ifdef TRY_CLUSTERS
 #include "clusters.h"
-#endif
-
-
-/* If the extern inline functions are not to be inlined, they must be
-   here */ 
-#ifndef MY_INLINE
-#define MY_INLINE
-#include "FSindex.h"
-#undef MY_INLINE
 #endif
 
 
@@ -80,6 +72,39 @@ void FS_HASH_TABLE_destroy(FS_HASH_TABLE_t *FS_HT)
   if (FS_HT->max_bin_size != NULL)
     free(FS_HT->max_bin_size);
   free(FS_HT);
+}
+
+/* Insertion */
+void FS_HASH_TABLE_insert_seq(FS_HASH_TABLE_t *FS_HT, ULINT i,
+			      SEQ_index_t seq_i)
+{
+  ULINT old_seqs_per_bin;
+  FS_HT->freq_seqs_per_bin[FS_HT->bin_size[seq_i]]--;
+
+  FS_HT->bin[seq_i][FS_HT->bin_size[seq_i]] = i;
+  FS_HT->bin_size[seq_i]++;  
+  if (FS_HT->bin_size[seq_i] >=  FS_HT->max_bin_size[seq_i])
+    {
+      FS_HT->max_bin_size[seq_i] *= 2;
+      FS_HT->bin[seq_i] = reallocec(FS_HT->bin[seq_i], 
+			FS_HT->max_bin_size[seq_i] *
+				    sizeof(SEQ_index_t));   
+    }
+  FS_HT->no_seqs++;
+
+  if (FS_HT->bin_size[seq_i] >= FS_HT->max_seqs_per_bin)
+    {
+      old_seqs_per_bin = FS_HT->max_seqs_per_bin;
+      FS_HT->max_seqs_per_bin = FS_HT->bin_size[seq_i] + 1;       
+      FS_HT->freq_seqs_per_bin = reallocec(FS_HT->freq_seqs_per_bin,
+				   FS_HT->max_seqs_per_bin *
+					   sizeof(ULINT)); 
+      memset(FS_HT->freq_seqs_per_bin + old_seqs_per_bin, 0, 
+	     (FS_HT->max_seqs_per_bin - old_seqs_per_bin) 
+	     * sizeof(ULINT));
+      FS_HT->largest_bin = seq_i;
+    }
+  FS_HT->freq_seqs_per_bin[FS_HT->bin_size[seq_i]]++;
 }
 
 /* Trimming */
