@@ -799,8 +799,8 @@ static
 void profile_process_bin(PFUNC_ARGS *args, FS_SEQ_t bin0)
 {
   FSINDX *FSI = args->FSI;  
-  ULINT n = FSI->no_useqs;
-  ULINT N = FSI->no_seqs;
+  ULINT n = FSI->u_size[bin0];
+  ULINT N = FSI->bin_size[bin0];
   
   int i;
   int j;
@@ -814,7 +814,7 @@ void profile_process_bin(PFUNC_ARGS *args, FS_SEQ_t bin0)
       frag_offset = FSI->bin[bin0][j];
       fastadb_get_Ffrag(FSI->s_db, FSI->m, &subject, frag_offset);
 
-      if (POS_MATRIX_evaluate_max(args->M, &subject, 0, FSI->m+1,
+      if (POS_MATRIX_evaluate_max(args->M, &subject, 0, FSI->m-1,
 				  *(args->eps), &D_value)) 
 	{
 	  HIT_LIST_count_useq_hit(args->HL, 1);
@@ -846,8 +846,8 @@ static
 void profile_kNN_process_bin(PFUNC_ARGS *args, FS_SEQ_t bin0)
 {
   FSINDX *FSI = args->FSI;  
-  ULINT n = FSI->no_useqs;
-  ULINT N = FSI->no_seqs;
+  ULINT n = FSI->u_size[bin0];
+  ULINT N = FSI->bin_size[bin0];
   
   int i;
   int j;
@@ -861,7 +861,7 @@ void profile_kNN_process_bin(PFUNC_ARGS *args, FS_SEQ_t bin0)
       frag_offset = FSI->bin[bin0][j];
       fastadb_get_Ffrag(FSI->s_db, FSI->m, &subject, frag_offset);
 
-      if (POS_MATRIX_evaluate_max(args->M, &subject, 0, FSI->m+1,
+      if (POS_MATRIX_evaluate_max(args->M, &subject, 0, FSI->m-1,
 				  *(args->eps), &D_value) ||
 	  HIT_LIST_get_seqs_hits(args->HL) < *(args->kNN))
 	{
