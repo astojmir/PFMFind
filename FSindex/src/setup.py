@@ -26,7 +26,6 @@ EXTENSIONS = [
                #'ShortFrags/FS.i',
                'lib/bioseq.c',
                'lib/FSindex.c',
-               'lib/avl.c',
                'lib/fastadb.c',
                'lib/hit_list.c',
                'lib/misclib.c',
