@@ -22,6 +22,16 @@
 #endif
 
 
+
+  
+
+
+
+
+
+
+
+
 POS_MATRIX *SCORE_2_POS_MATRIX(SCORE_MATRIX_t *S, BIOSEQ *query)
 {
   /* As all this routine does is copying, it can be used for both

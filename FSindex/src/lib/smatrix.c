@@ -21,6 +21,60 @@
 #endif
 
 
+/* Routines for computing distances to pattern letters (i.e. subsets
+   of alphabet partitions. */
+
+static int SM_psize;          /* Current partition size */
+static int SM_poffset;        /* Current partition offset */
+static SCORE_MATRIX_t *SM_S;  /* Score matrix    */
+static int SM_i;              /* Current Alphabet letter */
+static int SM_j;              /* Current Partition */
+
+static
+void pattern_similarity(int Score, int P, int pos)
+{
+  int letter;
+  if (pos == SM_psize)
+    {
+      P += SM_poffset;
+      SM_S->pM[SM_i][P] = Score;
+      return;
+    }
+  pos++;
+  pattern_similarity(Score, P, pos);
+
+  P = P | (1 << (pos-1));
+  letter = FS_PARTITION_get_letter(SM_S->ptable, SM_j, pos-1); 
+  letter = letter & A_SIZE_MASK;
+  if (Score < SM_S->M[SM_i][letter])
+    Score = SM_S->M[SM_i][letter];
+  pattern_similarity(Score, P, pos);
+  return;
+}
+
+static
+void pattern_distance(int Score, int P, int pos)
+{
+  int letter;
+  if (pos == SM_psize)
+    {
+      P += SM_poffset;
+      SM_S->pM[SM_i][P] = Score;
+      return;
+    }
+  pos++;
+  pattern_distance(Score, P, pos);
+
+  P = P | (1 << (pos-1));
+  letter = FS_PARTITION_get_letter(SM_S->ptable, SM_j, pos-1); 
+  letter = letter & A_SIZE_MASK;
+  if (Score > SM_S->M[SM_i][letter])
+    Score = SM_S->M[SM_i][letter];
+  pattern_distance(Score, P, pos);
+  return;
+}
+
+
 /* Main constructor */
 SCORE_MATRIX_t *SCORE_MATRIX_create(const char *filename,
 				    FS_PARTITION_t *ptable)
@@ -34,10 +88,11 @@ SCORE_MATRIX_t *SCORE_MATRIX_create(const char *filename,
   FILE *stream = fopen(filename, "r");
   int A[A_SIZE]; /* Alphabet table */
   int header_read = 0;
-  UINT_t i, j, k;
+  UINT_t i, j;
   UINT_t row, col;
   int value;
   int field_width = 0;
+  int j_offset;
 
   SCORE_MATRIX_t *S;
 
@@ -80,19 +135,23 @@ SCORE_MATRIX_t *SCORE_MATRIX_create(const char *filename,
     }
   fclose(stream);
 
-  /* Compute maximum similarities to clusters */
-  for (i=0; i < A_SIZE; i++)
-    {
-      if (ptable->partition_table[i] == -1)
+  /* Compute maximum similarities to pattern letters (subsets of
+     alphabet partitions) */
+  for (SM_i=0; SM_i < A_SIZE; SM_i++)
+    {      
+      if (ptable->partition_table[SM_i] == -1)
 	continue;
-      for (j=0; j < ptable->no_partitions; j++)
+      for (SM_j=0; SM_j < ptable->no_partitions; SM_j++)
 	{
-	  S->pM[i][j] = SHRT_MIN;
-	  for (k=0; k < A_SIZE; k++)
-	    if (ptable->partition_table[k] == j)
-	      {
-		S->pM[i][j] = max(S->pM[i][j], S->M[i][k]);
-	      }
+	  SM_S = S;
+	  SM_psize = FS_PARTITION_get_size(S->ptable, SM_j);
+	  SM_poffset =  FS_PARTITION_get_poffset(S->ptable, SM_j);
+
+	  /* Now traverse the binary tree representing the subsets and
+	     compute maximum similarities */
+	  pattern_similarity(SHRT_MIN, 0, 0);
+	  SM_S->pM[SM_i][SM_poffset] =
+	    SM_S->pM[SM_i][SM_poffset + (1 << SM_psize) - 1];
 	}
     }
 
@@ -105,7 +164,11 @@ SCORE_MATRIX_t *SCORE_MATRIX_create(const char *filename,
       for (j=0; j < ptable->no_partitions; j++)
 	{
 	  if (ptable->partition_table[i] != j)
-	    S->pMclosest[i] = max(S->pMclosest[i], S->pM[i][j]);
+	    {
+	      j_offset = FS_PARTITION_get_poffset(ptable, j); 
+	      S->pMclosest[i] = max(S->pMclosest[i], 
+				    S->pM[i][j_offset]); 
+	    }
 	}
     }
 
@@ -242,8 +305,9 @@ int SCORE_MATRIX_min_entry_row(SCORE_MATRIX_t *S, int row)
 /* Similarities to Distances, Quasi-metrics ... */
 SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dquasi(SCORE_MATRIX_t *S)
 {
-  UINT_t i, j, k;
+  UINT_t i, j;
   SCORE_MATRIX_t *D = callocec(1, sizeof(SCORE_MATRIX_t));
+  int j_offset;
 
   D->similarity_flag = 0;
   D->ptable = S->ptable;
@@ -263,17 +327,23 @@ SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dquasi(SCORE_MATRIX_t *S)
   /* TO DO: */
   /* Here use some of the graph shortest path algorithms */
 
-  /* Compute minimum distances to clusters */
-  for (i=0; i < A_SIZE; i++)
-    {
-      if (D->ptable->partition_table[i] == -1)
+  /* Compute maximum distances to pattern letters (subsets of
+     alphabet partitions) */
+  for (SM_i=0; SM_i < A_SIZE; SM_i++)
+    {      
+      if (D->ptable->partition_table[SM_i] == -1)
 	continue;
-      for (j=0; j < D->ptable->no_partitions; j++)
+      for (SM_j=0; SM_j < D->ptable->no_partitions; SM_j++)
 	{
-	  D->pM[i][j] = SHRT_MAX;
-	  for (k=0; k < A_SIZE; k++)
-	    if (D->ptable->partition_table[k] == j)
-	      D->pM[i][j] = min(D->pM[i][j], D->M[i][k]);
+	  SM_S = D;
+	  SM_psize = FS_PARTITION_get_size(D->ptable, SM_j);
+	  SM_poffset =  FS_PARTITION_get_poffset(D->ptable, SM_j);
+
+	  /* Now traverse the binary tree representing the subsets and
+	     compute maximum similarities */
+	  pattern_distance(SHRT_MAX, 0, 0);
+	  SM_S->pM[SM_i][SM_poffset] =
+	    SM_S->pM[SM_i][SM_poffset + (1 << SM_psize) - 1];
 	}
     }
 
@@ -286,7 +356,12 @@ SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dquasi(SCORE_MATRIX_t *S)
       for (j=0; j < D->ptable->no_partitions; j++)
 	{
 	  if (D->ptable->partition_table[i] != j)
-	    D->pMclosest[i] = min(D->pMclosest[i], D->pM[i][j]);
+	    {
+	      j_offset = 
+		FS_PARTITION_get_poffset(D->ptable, j);
+	      D->pMclosest[i] = min(D->pMclosest[i], 
+				    D->pM[i][j_offset]);
+	    }
 	}
     }
 
@@ -298,7 +373,8 @@ SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dquasi(SCORE_MATRIX_t *S)
 SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dmax(SCORE_MATRIX_t *S)
 {
   SCORE_MATRIX_t *D = SCORE_MATRIX_S_2_Dquasi(S);
-  UINT_t i, j, k;
+  UINT_t i, j;
+  int j_offset;
 
   /* Symmetrise */
   for (i=0; i < A_SIZE-1; i++)
@@ -314,17 +390,24 @@ SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dmax(SCORE_MATRIX_t *S)
 	}
     }
 
-  /* Compute minimum distances to clusters */
-  for (i=0; i < A_SIZE; i++)
-    {
-      if (D->ptable->partition_table[i] == -1)
+
+  /* Compute maximum distances to pattern letters (subsets of
+     alphabet partitions) */
+  for (SM_i=0; SM_i < A_SIZE; SM_i++)
+    {      
+      if (D->ptable->partition_table[SM_i] == -1)
 	continue;
-      for (j=0; j < D->ptable->no_partitions; j++)
+      for (SM_j=0; SM_j < D->ptable->no_partitions; SM_j++)
 	{
-	  D->pM[i][j] = SHRT_MAX;
-	  for (k=0; k < A_SIZE; k++)
-	    if (D->ptable->partition_table[k] == j)
-	      D->pM[i][j] = min(D->pM[i][j], D->M[i][k]);
+	  SM_S = D;
+	  SM_psize = FS_PARTITION_get_size(D->ptable, SM_j);
+	  SM_poffset =  FS_PARTITION_get_poffset(D->ptable, SM_j);
+
+	  /* Now traverse the binary tree representing the subsets and
+	     compute maximum similarities */
+	  pattern_distance(SHRT_MAX, 0, 0);
+	  SM_S->pM[SM_i][SM_poffset] =
+	    SM_S->pM[SM_i][SM_poffset + (1 << SM_psize) - 1];
 	}
     }
 
@@ -337,7 +420,12 @@ SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dmax(SCORE_MATRIX_t *S)
       for (j=0; j < D->ptable->no_partitions; j++)
 	{
 	  if (D->ptable->partition_table[i] != j)
-	    D->pMclosest[i] = min(D->pMclosest[i], D->pM[i][j]);
+	    {
+	      j_offset = 
+		FS_PARTITION_get_poffset(D->ptable, j);
+	      D->pMclosest[i] = min(D->pMclosest[i], 
+				    D->pM[i][j_offset]);
+	    }
 	}
     }
 
@@ -349,7 +437,8 @@ SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dmax(SCORE_MATRIX_t *S)
 SCORE_MATRIX_t *SCORE_MATRIX_S_2_Davg(SCORE_MATRIX_t *S)
 {
   SCORE_MATRIX_t *D = SCORE_MATRIX_S_2_Dquasi(S);
-  UINT_t i, j, k;
+  UINT_t i, j;
+  int j_offset;
 
   /* Symmetrise */
   for (i=0; i < A_SIZE-1; i++)
@@ -365,17 +454,23 @@ SCORE_MATRIX_t *SCORE_MATRIX_S_2_Davg(SCORE_MATRIX_t *S)
 	}
     }
 
-  /* Compute minimum distances to clusters */
-  for (i=0; i < A_SIZE; i++)
-    {
-      if (D->ptable->partition_table[i] == -1)
+  /* Compute maximum distances to pattern letters (subsets of
+     alphabet partitions) */
+  for (SM_i=0; SM_i < A_SIZE; SM_i++)
+    {      
+      if (D->ptable->partition_table[SM_i] == -1)
 	continue;
-      for (j=0; j < D->ptable->no_partitions; j++)
+      for (SM_j=0; SM_j < D->ptable->no_partitions; SM_j++)
 	{
-	  D->pM[i][j] = SHRT_MAX;
-	  for (k=i; k < A_SIZE; k++)
-	    if (D->ptable->partition_table[k] == j)
-	      D->pM[i][j] = min(D->pM[i][j], D->M[i][k]);
+	  SM_S = D;
+	  SM_psize = FS_PARTITION_get_size(D->ptable, SM_j);
+	  SM_poffset =  FS_PARTITION_get_poffset(D->ptable, SM_j);
+
+	  /* Now traverse the binary tree representing the subsets and
+	     compute maximum similarities */
+	  pattern_distance(SHRT_MAX, 0, 0);
+	  SM_S->pM[SM_i][SM_poffset] =
+	    SM_S->pM[SM_i][SM_poffset + (1 << SM_psize) - 1];
 	}
     }
 
@@ -388,7 +483,12 @@ SCORE_MATRIX_t *SCORE_MATRIX_S_2_Davg(SCORE_MATRIX_t *S)
       for (j=0; j < D->ptable->no_partitions; j++)
 	{
 	  if (D->ptable->partition_table[i] != j)
-	    D->pMclosest[i] = min(D->pMclosest[i], D->pM[i][j]);
+	    {
+	      j_offset = 
+		FS_PARTITION_get_poffset(D->ptable, j);
+	      D->pMclosest[i] = min(D->pMclosest[i], 
+				    D->pM[i][j_offset]);
+	    }
 	}
     }
 
@@ -402,7 +502,11 @@ void SCORE_MATRIX_print(SCORE_MATRIX_t *S, FILE *stream,
 			const char *title)
 {
   UINT_t i, j;
-  
+  int p=0;
+  int lptl;
+  int lp;
+  char s[C_SIZE+1];
+
   fprintf(stream, "%s\n\n", title);
 
   /* Print M */
@@ -434,24 +538,43 @@ void SCORE_MATRIX_print(SCORE_MATRIX_t *S, FILE *stream,
 
   fprintf(stream, "\n\n");
   fprintf(stream, "%s\n", "Scores w.r.t. partitions");
-  fprintf(stream, "   ");
 
-  for (i=0; i < A_SIZE; i++)
+  lp = FS_PARTITION_get_no_partitions(S->ptable) -1;
+  lptl =  FS_PARTITION_get_poffset(S->ptable, lp)
+    + (1 << FS_PARTITION_get_size(S->ptable, lp)); 
+  for (j=0; j < lptl; j++)
     {
-      if (S->ptable->partition_table[i] == -1)
-	continue;
-      fprintf(stream, " %2c ", i+64);
-    }
-  fprintf(stream, "\n");
-
-
-  for (j=0; j < S->ptable->no_partitions; j++)
-    {
-      fprintf(stream, "%2d ", j);
+      if (j == FS_PARTITION_get_poffset(S->ptable, p))
+	{
+	  p++;
+	  fprintf(stream, "\n");
+	  fprintf(stream, "%*s  ", C_SIZE, "");
+	  for (i=0; i < A_SIZE; i++)
+	    {
+	      if (S->ptable->partition_table[i] == -1)
+		continue;
+	      fprintf(stream, " %c  ", i+64);
+	    }
+	  fprintf(stream, "\n");
+	  fprintf(stream, "\n");
+#ifdef DEBUG
+	  fprintf(stream, "CLSTR #%1d ", p);
+	  for (i=0; i < A_SIZE; i++)
+	    {
+	      if (S->ptable->partition_table[i] == -1)
+		continue;
+	      fprintf(stream, "%3d ", S->pM[i][j]);
+	    }
+	  fprintf(stream, "\n");
+#endif /* #ifdef DEBUG */
+	  continue;
+	}
+      FS_PARTITION_pletter_2_string(S->ptable, j, &s[0]);
+      fprintf(stream, "%-*s ", C_SIZE, s);
       for (i=0; i < A_SIZE; i++)
 	{
 	  if (S->ptable->partition_table[i] == -1)
-	continue;
+	    continue;
 	  fprintf(stream, "%3d ", S->pM[i][j]);
 	}
       fprintf(stream, "\n");

@@ -28,13 +28,40 @@
 void SEQ_HIT_print(SEQ_HIT_t *hit, FILE *stream, 
 		   SEQ_HIT_PRINT_OPT_t options)
 {
-  fprintf(stream, "%10ld %6ld %6ld %.*s %6.2f \n",
-	  hit->sequence_id, 
-	  hit->sequence_from, 
-	  hit->sequence_from + hit->subject->len,
-	  (int) hit->subject->len,
-	  hit->subject->start,
-	  hit->value);
+  char dots[] = "...";
+  
+  if (strlen(hit->subject->id.defline) > 57)
+    fprintf(stream, "%-57.57s%3.3s %6.0f %5s\n",
+	    hit->subject->id.defline,
+	    dots, hit->value, "");
+  else
+    fprintf(stream, "%-57.57s%3.3s %6.0f %5s\n",
+	    hit->subject->id.defline,
+	    "", hit->value, "");
+}
+
+static
+void SEQ_HIT_print_alignment(SEQ_HIT_t *hit, FILE *stream,
+			     BIOSEQ *query,
+			     SEQ_HIT_PRINT_OPT_t options)
+{
+  fprintf(stream, "%s\n", hit->subject->id.defline);
+  fprintf(stream, "        (Length = %ld, ID = %ld)\n\n", 
+	  hit->subject->len, hit->sequence_id); 
+  fprintf(stream, " Score = %5.0f, Expect =\n",  hit->value);
+#if 0
+  fprintf(stream, "\n");
+#endif
+  fprintf(stream, "Query: %5ld %*.*s %5ld\n", 
+	  1l, (int) hit->subject->len, (int) hit->subject->len,
+	  query->start, query->len);
+#if 0
+  fprintf(stream, "\n");
+#endif
+  fprintf(stream, "Sbjct: %5ld %*.*s %5ld\n\n", 
+	  hit->sequence_from+1, (int) hit->subject->len, 
+	  (int) hit->subject->len, hit->subject->start,
+	  (int) hit->sequence_from + hit->subject->len);
 }
 
 static
@@ -143,6 +170,9 @@ void HIT_LIST_insert_seq_hit(HIT_LIST_t *HIT_list, BIOSEQ *subject,
      &(HIT_list->hits[HIT_list->actual_seqs_hits].sequence_id),  
      &(HIT_list->hits[HIT_list->actual_seqs_hits].sequence_from)); 
 
+  HIT_list->hits[HIT_list->actual_seqs_hits].subject->id.defline
+    = HIT_list->s_db->seq[HIT_list->hits[HIT_list->actual_seqs_hits]
+			 .sequence_id].id.defline;
   HIT_list->actual_seqs_hits++;
 }
 
@@ -177,50 +207,97 @@ void HIT_LIST_stop_timer(HIT_LIST_t *HIT_list)
 void HIT_LIST_print(HIT_LIST_t *HIT_list, FILE *stream, 
 		    HIT_LIST_PRINT_OPT_t *options)
 {
-  ULINT i;
+  int i;
   ULINT no_frags;
 
   fastadb_init_Ffrags(HIT_list->s_db, HIT_list->query->len);
   no_frags = fastadb_count_Ffrags(HIT_list->s_db,
 				  HIT_list->query->len); 
 
-  fprintf(stream, "**** List of hits ***\n\n");
-  fprintf(stream, "Database: %s\n", HIT_list->s_db->db_name);
-  fprintf(stream, "Matrix: %s\n", HIT_list->matrix);
-  fprintf(stream, "Fragment Length: %ld\n", HIT_list->query->len);
-  fprintf(stream, "Total Fragments: %ld\n", no_frags);
-  fprintf(stream, "Query: %*s\n", (int) HIT_list->query->len,
+  fprintf(stream, "**** List of hits ****\n\n");
+  fprintf(stream, "Query = %s\n", ""); 
+#if 0
+  (HIT_list->query->id.defline); 
+#endif
+  fprintf(stream, "        %*s\n", (int) HIT_list->query->len,
 	  HIT_list->query->start);
-  fprintf(stream, "Cutoff Range: %d\n", HIT_list->range);
-  fprintf(stream, "Cutoff Distance Range: %d\n", 
-	  HIT_list->converted_range);
-  fprintf(stream, "\n");
-
-  fprintf(stream, "Number of bins checked: %ld\n", 
-	  HIT_list->FS_seqs_visited);
-  fprintf(stream, "Number of bins accepted: %ld\n", 
-	  HIT_list->FS_seqs_hits);
-  fprintf(stream, "Number of fragments checked: %ld (%.2f %%)\n", 
-	  HIT_list->seqs_visited, 
-	  (double) HIT_list->seqs_visited / no_frags);
-  fprintf(stream, "Number of fragments accepted: %ld (%.2f %%)\n", 
-	  HIT_list->seqs_hits,
-	  (double) HIT_list->actual_seqs_hits / no_frags);
-  fprintf(stream, "Number of hits displayed: %ld\n", 
-	  HIT_list->actual_seqs_hits);
-  fprintf(stream, "Search time: %.2f sec. \n", HIT_list->search_time);
-  fprintf(stream, "\n");
-  fprintf(stream, "* Hits *\n\n");
-  fprintf(stream, "%6.6s. %10.10s %6.6s %6.6s %.*s %6.6s \n",
-	  "Hit #", "Sequence #", "From", "To", 
-	  (int) HIT_list->query->len, "Fragment", "Score");
+  fprintf(stream, "        (%ld letters)\n\n", HIT_list->query->len); 
+  
+  fprintf(stream, "Database: %s\n\n", HIT_list->s_db->db_name);
+  
+  fprintf(stream, "%25s **** Significant hits ****\n\n", "");
+  fprintf(stream, "%76s E\n","");
+  fprintf(stream, "%67s  Score Value\n", "");
 
   for (i=0; i <  HIT_list->actual_seqs_hits; i++)
     {
-      fprintf(stream, "%6ld. ", i+1);
+      fprintf(stream, "%5d. ", i+1);
       SEQ_HIT_print(HIT_list->hits +i, stream, 0); 
     }
+  fprintf(stream, "\n");
+  fprintf(stream, "%25s **** Alignments ****\n\n", "");
+  for (i=0; i <  HIT_list->actual_seqs_hits; i++)
+    {
+      fprintf(stream, "%d. ", i+1);
+      SEQ_HIT_print_alignment(HIT_list->hits +i, stream, 
+			      HIT_list->query, 0);  
+    }
+  fprintf(stream, "\n\n");
+  fprintf(stream, "**** Statistics ****\n\n");
+  fprintf(stream, "Database: %s\n", HIT_list->s_db->db_name);
+  fprintf(stream, "Number of letters in database: %ld\n", 
+	  HIT_list->s_db->length);
+  fprintf(stream, "Number of sequences in database: %ld\n", 
+	  HIT_list->s_db->no_seq);
+  fprintf(stream, "\n");
+  
+  if (HIT_list->index_name != NULL)
+    {
+      fprintf(stream, "Index: %s\n", HIT_list->index_name);
+      fprintf(stream, "Alphabet Partitions: %s\n",
+	      HIT_list->alphabet); 
+    }
+  fprintf(stream, "Fragment Length: %ld\n", HIT_list->query->len);
+  fprintf(stream, "Number of fragments in database: %ld\n", no_frags); 
+  if (HIT_list->index_name != NULL)
+    {
+      fprintf(stream, "Number of fragments in index: %ld\n", 
+	      HIT_list->index_seqs_total); 
+      fprintf(stream, "Number of bins in index: %ld\n", 
+	      HIT_list->FS_seqs_total);
+    } 
+  fprintf(stream, "\n");
+
+  fprintf(stream, "Matrix: %s\n", HIT_list->matrix);
+  fprintf(stream, "Score cutoff value: %d\n", HIT_list->range);
+  fprintf(stream, "Distance cutoff value: %d\n", 
+	  HIT_list->converted_range);
+  if (HIT_list->index_name != NULL)
+    {
+      fprintf(stream, "Number of generated neighbour bins: %ld"
+	      " (%.2f %%)\n", HIT_list->FS_seqs_visited,
+	      (double) HIT_list->FS_seqs_visited * 100 /
+	      HIT_list->FS_seqs_total);
+      fprintf(stream, "Number of accepted neighbour bins: %ld "
+	      "(%.2f %%)\n", HIT_list->FS_seqs_hits,
+	      (double) HIT_list->FS_seqs_hits * 100 /
+	      HIT_list->FS_seqs_total);
+      fprintf(stream, "Accepted out of generated neighbour bins:"
+	      " %.2f %%\n", (double) HIT_list->FS_seqs_hits * 100 /
+	      HIT_list->FS_seqs_visited);
+    }
+  fprintf(stream, "Number of checked fragments: %ld (%.2f %%)\n", 
+	  HIT_list->seqs_visited, 
+	  (double) HIT_list->seqs_visited * 100/ no_frags);
+  fprintf(stream, "Number of accepted fragments: %ld (%.2f %%)\n",  
+	  HIT_list->seqs_hits,
+	  (double) HIT_list->actual_seqs_hits * 100 / no_frags);
+  fprintf(stream, "Number of displayed hits: %ld\n", 
+	  HIT_list->actual_seqs_hits);
+  fprintf(stream, "Search time: %.2f sec. \n", HIT_list->search_time);
+  fprintf(stream, "\n");
 }
+
 
 /* Element Access */
 ULINT HIT_LIST_get_seqs_hits(HIT_LIST_t *HIT_list)
@@ -240,6 +317,19 @@ void HIT_LIST_set_converted_range(HIT_LIST_t *HIT_list, int crange)
 {
   HIT_list->converted_range = crange;  
 }
+
+void HIT_LIST_set_index_data(HIT_LIST_t *HIT_list, 
+			     const char *index_name,
+			     const char *alphabet,
+			     ULINT FS_seqs_total,
+			     ULINT index_seqs_total)
+{
+  HIT_list->index_name = index_name;
+  HIT_list->alphabet = alphabet;
+  HIT_list->FS_seqs_total = FS_seqs_total;
+  HIT_list->index_seqs_total = index_seqs_total; 
+}
+
 
 /* Sorting */
 

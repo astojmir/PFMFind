@@ -1,6 +1,7 @@
 SHELL=/bin/sh
 OBJECTS= misclib.o fastadb.o partition.o FSindex.o hit_list.o blastlib.o \
-         randseq.o smatrix.o quadtree.o pmatrix.o\
+         randseq.o smatrix.o quadtree.o pmatrix.o clusters.o \
+	 sequential.o\
 
 all: lib
 

@@ -498,10 +498,14 @@ SEQUENCE_DB *fastadb_open(const char *db_name, fastadb_arg *argt,
   FILE *stream =  fopen(db_name, "r");
   SEQUENCE_DB *s_db;  
 
-  /* Try to open db_name - if failed return NULL */
-  if (stream == NULL) 
-    return NULL;
-   
+  /* Try to open db_name - if failed exit */
+  if (stream == NULL)
+    {
+      fprintf(stderr, 
+	      "fastadb_open(): Could not open fasta database %s!\n", 
+	      db_name);
+      exit(EXIT_FAILURE);
+    }
   /* Allocate and set defaults */
   s_db = mallocec(sizeof(SEQUENCE_DB));
   s_db->db_name = db_name;

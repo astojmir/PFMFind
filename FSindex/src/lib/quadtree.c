@@ -1,6 +1,6 @@
-/********************************************************************/    
+/********************************************************************/
 /*                                                                  */
-/*                     QUAD_TREE module                             */ 
+/*                     QUAD_TREE module                             */
 /*                                                                  */
 /*                                                                  */
 /*  Based on the Quad Tree algorithm of David Eppstein              */
@@ -14,7 +14,8 @@
 /*  No distances are re-evaluated. When the clusters i,j are merged */
 /*  we have for each other active k, d(i,k) = max{d(i,k), d(j,k)}.  */
 /*                                                                  */
-/********************************************************************/    
+/********************************************************************/
+ 
 
 #include "misclib.h"
 #include <stdlib.h>
@@ -32,7 +33,7 @@
 #undef QUAD_TREE_INLINE
 #endif
 
-/* Static functions */
+/* Static functions */ 
 static inline
 unsigned char min_dist_cell_update(QUAD_TREE *qtree, 
 				   unsigned char *mcell, ULINT i,
@@ -86,8 +87,9 @@ void QUAD_TREE_update_col(QUAD_TREE *qtree, ULINT col, ULINT lvl)
   ULINT k;
   ULINT k0;
   unsigned char mcell;
+  int no_rows = (1 << lvl);
 
-  for(k=col+1; k < qtree->max_used_clusters; k++)
+  for(k=col+1; k <= no_rows; k++)
     {
       k0 = half_array(k, col);
       qtree->level[lvl].min_dist[k0] = 
@@ -110,31 +112,37 @@ QUAD_TREE *QUAD_TREE_create(ULINT no_pts, unsigned char *dist)
 void QUAD_TREE_reset(QUAD_TREE *qtree, ULINT no_pts, 
 		     unsigned char *dist)
 {
-  ULINT i = 0; 
-  ULINT j = no_pts - 1;
+  int i = 0; 
+  int j = no_pts - 1;          /* Level counter */
   ULINT no_levels1;
   ULINT max_clusters1;
-  ULINT top_level_size;
+  ULINT dist_size = j*(j+1)/2; /* Size of distance half matrix */  
+  ULINT w;                     /* Width of half matrices */
 
   qtree->no_clusters = no_pts;
   qtree->max_used_clusters = no_pts;
 
-  /* Enlarge quadtree if necessary */
-  while ((j = j >> 1))
+  /* Find smallest i such that 2^i >= no_pts - 1;
+     Then no_levels (as usual including the 0th level) = i+1. */
+  while (j > (1 << i))
     i++;
   no_levels1 = i+1;
-  max_clusters1 = 1 << i;
 
+  /* max_clusters is the maximum number of points that can be loaded
+     into quad tree. It is equal to  2^no_levels1 + 1 because each
+     level is a half-matrix without the main diagonal */
+  max_clusters1 = (1 << no_levels1) + 1;
+
+  /* Enlarge quadtree if necessary */
   if (qtree->max_levels < no_levels1)
     {
       qtree->level = reallocec(qtree->level, 
 		       no_levels1 * sizeof(QUAD_TREE_LEVEL)); 
       for (j = qtree->max_levels; j < no_levels1; j++)
 	{
-	  qtree->level[j].min_dist 
-	    = mallocec((1 << j)*((1 << j)+1)/2);
-	  qtree->level[j].cell 
-	    = mallocec((1 << j)*((1 << j)+1)/2);
+	  w = 1 << j;
+	  qtree->level[j].min_dist = mallocec(w*(w+1)/2);
+	  qtree->level[j].cell = mallocec(w*(w+1)/2);
 	}
       qtree->active = reallocec(qtree->active, max_clusters1);
       qtree->max_levels = no_levels1;
@@ -146,21 +154,21 @@ void QUAD_TREE_reset(QUAD_TREE *qtree, ULINT no_pts,
   memset(qtree->active, 1, no_pts);
   memset(qtree->active+no_pts, 0, qtree->max_clusters - no_pts);
   
-  /* Set top level (distance half-matrix) */
-  top_level_size = no_pts*(no_pts-1)/2;
+  /* Set top level (copy distance half-matrix passed as argument) */
   j = no_levels1 - 1;
-  memcpy(qtree->level[j].min_dist, dist, top_level_size);
-  memset(qtree->level[j].min_dist+top_level_size, -1, 
-	 (1 << j)*((1 << j)+1)/2 - top_level_size);
+  w = 1 << j;
+  memcpy(qtree->level[j].min_dist, dist, dist_size);
+  /* Note that since min_dist is unsigned, -1 == UCHAR_MAX */
+  memset(qtree->level[j].min_dist+dist_size, -1, 
+	 w*(w+1)/2 - dist_size); 
 
-  /* Update all levels */
-  i = no_levels1 - 2;
-  do
+  /* Update all other levels */
+  for (j = no_levels1 - 2; j >= 0; j--)
     {
-      for (j=1; j <= (1 << i); j++)
-	QUAD_TREE_update_row(qtree, j, i);
-      i--;
-    } while(i);
+      w = 1 << j;
+      for (i=1; i <= w; i++)
+	QUAD_TREE_update_row(qtree, i, j);
+    }
 }
 
 /* Destructor */
@@ -221,7 +229,7 @@ void QUAD_TREE_merge_pts(QUAD_TREE *qtree, ULINT pt1, ULINT pt2)
   ULINT k;
   ULINT k0;
   ULINT k1;
-  ULINT l = qtree->no_levels - 1;
+  int l = qtree->no_levels - 1;
   ULINT pt1_i = pt1;
   ULINT pt1_j = pt1;
   ULINT pt2_i = pt2;
@@ -259,7 +267,7 @@ void QUAD_TREE_merge_pts(QUAD_TREE *qtree, ULINT pt1, ULINT pt2)
 
   /* Update merged col - traverse by row */
 
-  for(k=i+1; i < qtree->max_used_clusters; i++)
+  for(k=i+1; k < qtree->max_used_clusters; k++)
     {
       k0 = half_array(k,i);
       if (j < k)
@@ -280,28 +288,26 @@ void QUAD_TREE_merge_pts(QUAD_TREE *qtree, ULINT pt1, ULINT pt2)
   memset(qtree->level[l].min_dist + j*(j-1)/2, -1, j);
 
   /* Set the pt col to the maximum distance */
-  for(k=j+1; i < qtree->max_used_clusters; k++)
+  for(k=j+1; k < qtree->max_used_clusters; k++)
     qtree->level[l].min_dist[half_array(k,j)] = -1;
   
   qtree->no_clusters--;
 
   /* Update all other levels */
-  l--;
-  do
+  for (l = qtree->no_levels - 2; l >= 0; l--)
     {
       pt1_i = (pt1_i+1)/2;
       pt1_j = pt1_j/2;
-      pt2_i = (pt1_i+1)/2;
-      pt2_j = pt1_j/2;
+      pt2_i = (pt2_i+1)/2;
+      pt2_j = pt2_j/2;
 
       QUAD_TREE_update_row(qtree, pt1_i, l);
       if (pt2_i != pt1_i)
 	QUAD_TREE_update_row(qtree, pt2_i, l);
       QUAD_TREE_update_col(qtree, pt1_j, l);
-       if (pt2_j != pt1_j)
-	 QUAD_TREE_update_col(qtree, pt2_j, l);
-      l--;
-    } while(i);
+      if (pt2_j != pt1_j)
+	QUAD_TREE_update_col(qtree, pt2_j, l);
+   }
 }
 
 /* Find pair with minimal distance */
@@ -309,17 +315,60 @@ int QUAD_TREE_find_minimal_pair(QUAD_TREE *qtree, ULINT *i,
 				ULINT *j)
 {
   ULINT k=0;
-  ULINT a;
-  ULINT b;
+  int cell;  
   *i = 1;
   *j = 0;
 
   for (;k < qtree->no_levels - 1; k++)
     {      
-      *i = ((int) qtree->level[k].cell & 1) + 2*(*i) - 1;
-      *j = ((int) qtree->level[k].cell & 2) + 2*(*j);
+      cell = qtree->level[k].cell[half_array(*i, *j)];
+      *i = (cell & 1) + 2*(*i) - 1;
+      *j = (cell >> 1) + 2*(*j);
+#if DEBUG > 10
+      printf("level = %d, cell = %d, (%d,%d)\n", k,
+	     cell, *i, *j);      
+#endif      
     }
   
   return (int) qtree->level[0].min_dist[0];
 } 
 
+
+void print_levels(QUAD_TREE *qtree, FILE *stream)
+{
+  int i;
+  int j;
+  int l;
+
+  for(l = 0; l < qtree->no_levels; l++)
+    {
+      fprintf(stream, "LEVEL %d\n", l);  
+      fprintf(stream, "Minimum distance matrix\n"); 
+      for (i=1; i <= (1 << l); i++)
+	{
+	  fprintf(stream, "%2d ", i);
+	  for (j=0; j < i; j++)
+	    fprintf(stream, "%3d ", qtree->level[l].min_dist[half_array(i, j)]);
+	  fprintf(stream, "\n"); 
+	}  
+      fprintf(stream, "\n   "); 
+      for (j=0; j < (1 << l); j++)
+	fprintf(stream, "%3d ", j);
+      fprintf(stream, "\n"); 
+      
+#if 0      
+      fprintf(stream, "Minimum distance cells\n"); 
+      for (i=1; i <= (1 << l); i++)
+	{
+	  fprintf(stream, "%2d ", i);
+	  for (j=0; j < i; j++)
+	    fprintf(stream, "%3d ", qtree->level[l].cell[half_array(i, j)]);
+	  fprintf(stream, "\n"); 
+	}  
+      fprintf(stream, "\n   "); 
+      for (j=0; j < (1 << l); j++)
+	fprintf(stream, "%3d ", j);
+      fprintf(stream, "\n");
+#endif
+    }   
+}
