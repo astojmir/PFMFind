@@ -109,7 +109,7 @@ typedef int FS_INDEX_range_convert_func(SCORE_MATRIX_t *S0,
 /* Main constructor */
 void FS_INDEX_create(const char *database, ULINT flen,
 		     const char *abet, 
-		     const char sepchar);
+		     const char sepchar, int skip);
 
 /* Destructor */
 void FS_INDEX_destroy(void);
