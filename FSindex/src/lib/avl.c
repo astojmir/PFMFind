@@ -1,7 +1,7 @@
-/* Produced by texiweb from libavl.w on 2002/02/11 at 13:49. */
+/* Produced by texiweb from libavl.w. */
 
 /* libavl - library for manipulation of binary trees.
-   Copyright (C) 1998-2002 Free Software Foundation, Inc.
+   Copyright (C) 1998-2002, 2004 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -19,8 +19,8 @@
    02111-1307, USA.
 
    The author may be contacted at <blp@gnu.org> on the Internet, or
-   as Ben Pfaff, 12167 Airport Rd, DeWitt MI 48820, USA through more
-   mundane means.
+   write to Ben Pfaff, Stanford University, Computer Science Dept., 353
+   Serra Mall, Stanford CA 94305, USA.
 */
 
 #include <assert.h>
@@ -695,7 +695,7 @@ avl_t_cur (struct avl_traverser *trav)
 void *
 avl_t_replace (struct avl_traverser *trav, void *new)
 {
-  struct avl_node *old;
+  void *old;
 
   assert (trav != NULL && trav->avl_node != NULL && new != NULL);
   old = trav->avl_node->avl_data;
@@ -703,6 +703,9 @@ avl_t_replace (struct avl_traverser *trav, void *new)
   return old;
 }
 
+/* Destroys |new| with |avl_destroy (new, destroy)|,
+   first setting right links of nodes in |stack| within |new|
+   to null pointers to avoid touching uninitialized data. */
 static void
 copy_error_recovery (struct avl_node **stack, int height,
                      struct avl_table *new, avl_item_func *destroy)

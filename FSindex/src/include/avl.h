@@ -1,7 +1,7 @@
-/* Produced by texiweb from libavl.w on 2002/02/11 at 13:49. */
+/* Produced by texiweb from libavl.w. */
 
 /* libavl - library for manipulation of binary trees.
-   Copyright (C) 1998-2002 Free Software Foundation, Inc.
+   Copyright (C) 1998-2002, 2004 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -19,8 +19,8 @@
    02111-1307, USA.
 
    The author may be contacted at <blp@gnu.org> on the Internet, or
-   as Ben Pfaff, 12167 Airport Rd, DeWitt MI 48820, USA through more
-   mundane means.
+   write to Ben Pfaff, Stanford University, Computer Science Dept., 353
+   Serra Mall, Stanford CA 94305, USA.
 */
 
 #ifndef AVL_H
