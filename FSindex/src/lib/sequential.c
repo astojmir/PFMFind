@@ -48,7 +48,7 @@ HIT_LIST_t *SSCAN_QD_search(SEQUENCE_DB *s_db, const char *matrix,
   S = SCORE_MATRIX_create(matrix, ptable); 
   D = SCORE_MATRIX_S_2_Dquasi(S); 
 
-  hit_list = HIT_LIST_create(query, s_db, strdup(matrix), D_cutoff);
+  hit_list = HIT_LIST_create(query, s_db, strdup(matrix), D_cutoff, NULL);
   frag_len = query->len;
 
 

@@ -3,17 +3,24 @@ SHELL=/bin/sh
 INCLUDES= ../include/misclib.h ../include/fastadb.h ../include/partition.h \
 	  ../include/FSindex.h ../include/hit_list.h ../include/blastlib.h \
           ../include/randseq.h ../include/smatrix.h ../include/quadtree.h \
-          ../include/pmatrix.h ../include/clusters.h ../include/avl.h
+          ../include/pmatrix.h ../include/clusters.h ../include/avl.h \
+          ../include/keyword.h
 
 OBJECTS= misclib.o fastadb.o partition.o FSindex.o hit_list.o blastlib.o \
          randseq.o smatrix.o quadtree.o pmatrix.o clusters.o \
-	 sequential.o avl.o
+	 sequential.o avl.o keyword.o
 
-all: lib
+all: libFSindex.a libmd.a
 
-lib: $(OBJECTS) $(INCLUDES)
+libFSindex.a: $(OBJECTS) $(INCLUDES)
 	ar crv libFSindex.a $(OBJECTS); \
 	ranlib libFSindex.a; 
+
+libmd.a:
+	cd cephes-double; \
+	make -f makefile; \
+	cp libmd.a ..;\
+	cd ..; \
 
 clean:
 	rm -f *.o; \

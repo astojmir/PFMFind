@@ -7,6 +7,7 @@
 #include <limits.h>
 #include <assert.h>
 #include "hit_list.h"
+#include "keyword.h"
 #include "partition.h"
 #include "smatrix.h"
 #include "FSindex.h"
@@ -625,6 +626,7 @@ typedef struct
   FSTRANSF *T;             /* Transformations ordered by priority   */
   long long *UT;           /* Allowed transformations by position   */
   int p;                   /* Number of permutations for Z-score    */
+  FPARAMS *fp;             /* Filtering parameters                  */
 } FSSRCH; 
 
 
@@ -901,7 +903,8 @@ void profile_kNN_process_bin(PFUNC_ARGS *args, FS_SEQ_t bin0)
 
 static
 FSSRCH *FSSRCH_init(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
-		    int d0, int kNN, HIT_LIST_t *HL)
+		    int d0, int kNN, HIT_LIST_t *HL, KW_INDEX *KWI,
+		    FPARAMS *fp)
 {
   FSSRCH *FSS = mallocec(sizeof(FSSRCH));
   char *q = query->start;
@@ -920,10 +923,10 @@ FSSRCH *FSSRCH_init(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
   FSS->args->query = query;
 
   if (HL == NULL)  FSS->args->HL = 
-    HIT_LIST_create(query, FSI->s_db, SCORE_MATRIX_filename(D), d0);
+    HIT_LIST_create(query, FSI->s_db, SCORE_MATRIX_filename(D), d0, KWI);
   else
     HIT_LIST_reset(HL, query, FSI->s_db, SCORE_MATRIX_filename(D),
-		  d0);
+		  d0, KWI);
 		  
   FSS->args->FSI = FSI;
   FSS->args->eps = &FSS->eps;
@@ -948,7 +951,8 @@ FSSRCH *FSSRCH_init(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
     }
   FSS->eps = d0;
   FSS->kNN = kNN;
-
+  
+  FSS->fp = fp;
 
   /* All transformations */
   FSS->Tn = (FSI->K - 1) * FSI->m;
@@ -1040,7 +1044,8 @@ FSSRCH *FSSRCH_init(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
 
 static
 FSSRCH *FSSRCH_profile_init(FSINDX *FSI, POS_MATRIX *PD,
-		    int d0, int kNN, HIT_LIST_t *HL)
+		    int d0, int kNN, HIT_LIST_t *HL, KW_INDEX *KWI,
+			    FPARAMS *fp)
 {
   FSSRCH *FSS = mallocec(sizeof(FSSRCH));
   char *q = PD->query->start;
@@ -1058,9 +1063,9 @@ FSSRCH *FSSRCH_profile_init(FSINDX *FSI, POS_MATRIX *PD,
   FSS->args->M = PD;
   FSS->args->query = PD->query;
   if (HL == NULL)  FSS->args->HL = 
-    HIT_LIST_create(PD->query, FSI->s_db, POS_MATRIX_filename(PD), d0);
+    HIT_LIST_create(PD->query, FSI->s_db, POS_MATRIX_filename(PD), d0, KWI);
   else
-    HIT_LIST_reset(HL, PD->query, FSI->s_db, POS_MATRIX_filename(PD), d0);
+    HIT_LIST_reset(HL, PD->query, FSI->s_db, POS_MATRIX_filename(PD), d0, KWI);
 
   FSS->args->FSI = FSI;
   FSS->args->eps = &FSS->eps;
@@ -1086,6 +1091,7 @@ FSSRCH *FSSRCH_profile_init(FSINDX *FSI, POS_MATRIX *PD,
   FSS->eps = d0;
   FSS->kNN = kNN;
 
+  FSS->fp =fp;
 
   /* All transformations */
   FSS->Tn = (FSI->K - 1) * FSI->m;
@@ -1197,69 +1203,132 @@ int profile_eval(void *M, BIOSEQ *query, BIOSEQ *subject)
 /********************************************************************/ 
 /*         Z-score functions                                        */
 /********************************************************************/ 
-static
-void Zscore(FSSRCH *FSS)
+static inline
+double Zscore(BIOSEQ *query, BIOSEQ *subject, double value, 
+	      void *M, eval_func *efunc)
 {
-  int i;
   int j;
   int k;
   int r;
   int val;
-  int hits;
-  SEQ_HIT_t *hit;
   char tmp;
   double x;
   double xx;
   double mean;
   double sd;
-  HIT_LIST_t *HL = FSS->args->HL;
-
-  /* int p = FSS->p; */
-  int p = 100;
-  BIOSEQ *query = FSS->args->query;
-  BIOSEQ subject;
-  eval_func *efunc;
+  const int p = 100;
   
-  subject.start = callocec(query->len+1,1);
-  hits = HIT_LIST_get_seqs_hits(HL);
-  srand48(time(NULL)); 
-
-  if (FSS->pfunc == profile_process_bin ||
-      FSS->pfunc == profile_kNN_process_bin)
-    efunc = profile_eval;
-  else
-    efunc = smatrix_eval;
-  
-  for (i=0; i < hits; i++)
+  x=0.0;
+  xx=0.0;     
+  for (j=0; j < p; j++)
     {
-      hit = HIT_LIST_get_hit(HL, i);
-      subject.len = hit->subject->len;
-      memcpy(subject.start, hit->subject->start, subject.len);
-      x=0.0;
-      xx=0.0;     
-      for (j=0; j < p; j++)
+      for (k=subject->len-1; k > 0; k--)
 	{
-	  for (k=subject.len-1; k > 0; k--)
-	    {
-	      r = lrand48() % subject.len;
-	      tmp = subject.start[r];
-	      subject.start[r] = subject.start[k];
-	      subject.start[k] = tmp;
-	    }
-	  val = efunc(FSS->args->M, query, &subject);
-	  x += val;
-	  xx += val*val;
+	  r = lrand48() % subject->len;
+	  tmp = subject->start[r];
+	  subject->start[r] = subject->start[k];
+	  subject->start[k] = tmp;
 	}
-      mean = x/p;
-      sd = sqrt(xx/p - mean*mean);
-      hit->zvalue = (hit->value - mean)/sd;
-      hit->pvalue = hit->zvalue;
+      val = (double) efunc(M, query, subject);
+      x += val;
+      xx += val*val;
     }
+  mean = x/p;
+  sd = sqrt(xx/p - mean*mean);
+  if (sd == 0.0)
+    return 0.0;
+  else
+    return (value - mean)/sd;
+}
+
+static
+void Z_gamma_params(double *shape, double *rate, double *Zmin,
+		    SEQUENCE_DB *s_db,
+		    FS_PARTITION_t *ptable, void *M, eval_func *efunc, 
+		    BIOSEQ *query, int no_samples)
+{
+  ULINT no_frags;
+  BIOSEQ subject;
+  ULINT frag_len = query->len;
+  int j;
+  double value;
+  double *Z = mallocec(no_samples * sizeof(double));
+  ULINT rand_frag;
+  FS_SEQ_t FS_seq;
+  
+  double arith_mean = 0.0;
+  double geom_mean = 0.0;
+  double MM;
+  double num;
+  double den;
+ 
+
+  *Zmin = 1000000;
+  fastadb_init_frags(s_db, frag_len, frag_len);
+  fastadb_get_nofrags(s_db, &no_frags, frag_len, frag_len);
+  for (j=0; j < no_samples; j++)
+    {
+      /* Get a random database fragment */
+      do 
+	{
+	  rand_frag = lrand48()%no_frags;
+	  fastadb_get_frag(s_db, &subject, rand_frag,
+			   frag_len, frag_len);
+	}
+      while (!BIOSEQ_2_FS_SEQ(&subject, ptable, &FS_seq));
+      
+      /* Calculate distances and add to histograms*/
+      value = (double) efunc(M, query, &subject);
+      
+      /* Get Z-Score */
+      Z[j] = -Zscore(query, &subject, value, M, efunc);
+      if (Z[j] < *Zmin)
+	*Zmin = Z[j];
+    }
+
+  /* We need to shift Z-scores by their min. value so that they all are
+     gt. 0 */
+     
+  for (j=0; j < no_samples; j++)
+    {
+      arith_mean += (Z[j]-*Zmin+0.001);
+      geom_mean += log(Z[j]-*Zmin+0.001);
+    }
+
+
+  /* gam.apprxFIT
+     fitting parameters shape(k) and rate (1/theta) in gamma distribution
+     method is taken from the encyclopedia of biostatistics: 
+     gamma distibution, page 292
+
+     Adapted from S code found at
+     http://www.biostat.wustl.edu/mailinglists/s-news/200106/msg00152.html
+  */
+
+  arith_mean /= no_samples;
+  geom_mean = exp(geom_mean/no_samples);
+  MM = log(arith_mean/geom_mean);
+
+  if(MM >= 0 && MM <= 0.5772) 
+    *shape = (0.5000876 + 0.1648852 * MM - 0.0544276 * MM * MM)/MM;
+  else if(MM >= 0.5772 && MM <= 17) 
+    {
+      num = 8.898919 + 9.05995 * MM + 0.9775373 * MM * MM;
+      den = MM * (17.79728 + 11.968477 * MM + MM * MM);
+      *shape = num/den;
+    }
+  else if(MM > 17)
+    *shape = 1/MM;
+
+  *rate = *shape/arith_mean;
+  free(Z);
 }
 
 #if 0
-function(x )
-{
+/* Original S code */
+
+function(x ) 
+{ 
 #gam.apprxFIT
 #fitting parameters shape(k) and rate (1/theta) in gamma distribution
 #method is taken from the encyclopedia of biostatistics: gamma distibution, page 292
@@ -1267,6 +1336,8 @@ http://www.biostat.wustl.edu/mailinglists/s-news/200106/msg00152.html
 n <- length(x)
 arith.mean <- mean(x)
 geom.mean <- exp(sum(log(x))/n)
+
+
 M <- log(arith.mean/geom.mean)
 if(M >= 0 & M <= 0.5772) {
 est.shape <- (0.5000876 + 0.1648852 * M - 0.0544276 * M^2)/M
@@ -1281,8 +1352,125 @@ est.shape <- 1/M
 est.rate <- est.shape/arith.mean
 list(est.shape = est.shape, est.rate = est.rate)
 } 
-#endif
 
+#endif 
+
+
+extern double igamc( double, double );
+
+static
+void hit_Zscores(FSSRCH *FSS)
+{
+  int i;
+  int hits;
+  SEQ_HIT_t *hit;
+  HIT_LIST_t *HL = FSS->args->HL;
+  double shape;
+  double rate;
+  double Zmin;
+
+
+  BIOSEQ *query = FSS->args->query;
+  BIOSEQ subject;
+  eval_func *efunc;
+  
+  hits = HIT_LIST_get_seqs_hits(HL);
+
+  if (FSS->pfunc == profile_process_bin ||
+      FSS->pfunc == profile_kNN_process_bin)
+    efunc = profile_eval;
+  else
+    efunc = smatrix_eval;
+  
+  subject.start = mallocec(query->len+1);
+  subject.start[query->len] = '\0';
+  subject.len = query->len;
+
+  /* Get the parameters of the Gamma distribution */
+
+  Z_gamma_params(&shape, &rate, &Zmin, FSS->args->FSI->s_db,
+		 FSS->args->FSI->ptable, FSS->args->M, efunc, 
+		 query, 5000);
+
+  HL->shape = shape;
+  HL->rate = rate;
+  HL->Zmin = Zmin;
+  
+  /* Evaluate Z-scores and p-values for hits */
+  for (i=0; i < hits; i++)
+    {
+      hit = HIT_LIST_get_hit(HL, i);
+      memcpy(subject.start, hit->subject->start, hit->subject->len);
+      hit->zvalue = -Zscore(query, &subject, hit->value, 
+			    FSS->args->M, efunc);
+      hit->pvalue = igamc(shape, (hit->zvalue-Zmin+0.001)*rate);
+      hit->evalue = FSS->args->FSI->no_seqs * hit->pvalue;
+    }
+  free(subject.start);
+}
+
+/********************************************************************/ 
+/*      Filtering                                                   */
+/********************************************************************/ 
+
+static
+void FSSRCH_filter(FSSRCH *FSS)
+{
+  int offset1;
+  int offset2;
+  int no_hits =  FSS->args->HL->actual_seqs_hits;
+  FPARAMS *fp = FSS->fp;
+  int i;
+
+  if (fp == NULL) return;
+  
+
+  /* Z-scores */
+  srand48(time(NULL)); 
+  hit_Zscores(FSS);
+
+  HIT_LIST_sort_evalue(FSS->args->HL, 0);
+
+  i=0;
+  while (FSS->args->HL->hits[i].evalue < fp->ZE0 && i < no_hits)
+    i++;
+  offset1 = i;
+  while (FSS->args->HL->hits[i].evalue <= fp->ZE1 && i < no_hits)
+    i++;
+  FSS->args->HL->actual_seqs_hits = i;
+  no_hits =  FSS->args->HL->actual_seqs_hits;
+  
+
+  /* TO DO:
+     Deallocate hits so deleted - this is a memory leak */
+
+  /* Conservation ratios */
+  HIT_LIST_process_cl(FSS->args->HL, offset1);
+  /* Must re-sort hit list */
+  HIT_LIST_sort_evalue(FSS->args->HL, 0);
+  HIT_LIST_sort_cratio(FSS->args->HL, offset1);
+  i=offset1;
+  while (FSS->args->HL->hits[i].cratio > fp->CR0 && i < no_hits)
+    i++;
+  offset2 = i;
+  while (FSS->args->HL->hits[i].cratio >= fp->CR1 && i < no_hits)
+    i++;
+  FSS->args->HL->actual_seqs_hits = i;
+  no_hits =  FSS->args->HL->actual_seqs_hits;
+
+
+  /* Keywords */
+  HIT_LIST_process_kw(FSS->args->HL, offset2);
+  /* Must re-sort hit list */
+  HIT_LIST_sort_evalue(FSS->args->HL, 0);
+  HIT_LIST_sort_cratio(FSS->args->HL, offset1);
+  HIT_LIST_sort_kwscore(FSS->args->HL, offset2);
+  i=offset2;
+
+  while (FSS->args->HL->hits[i].kw_score >= fp->KW0 && i < no_hits)
+    i++;
+  FSS->args->HL->actual_seqs_hits = i;
+}
 
 /********************************************************************/ 
 /*      Search functions                                            */
@@ -1317,13 +1505,8 @@ HIT_LIST_t *FSSRCH_search(FSSRCH *FSS)
 
   /* Convert scores */
 
-  /* Z-scores */
-  Zscore(FSS);
-  /* Orthologous clusters */
-
-  /* Keywords */
-
-  
+  /* Filter hits */
+  FSSRCH_filter(FSS);
 
   /* Cleanup */
   FSSRCH_clean(FSS);
@@ -1332,15 +1515,15 @@ HIT_LIST_t *FSSRCH_search(FSSRCH *FSS)
 
 
 HIT_LIST_t *FSINDX_rng_srch(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
-		     int d0, HIT_LIST_t *HL)  
+		     int d0, HIT_LIST_t *HL, KW_INDEX *KWI, FPARAMS *fp)  
 {
-  return FSSRCH_search(FSSRCH_init(FSI, query, D, d0, -1, HL));
+  return FSSRCH_search(FSSRCH_init(FSI, query, D, d0, -1, HL, KWI, fp));
 }
 
 HIT_LIST_t *FSINDX_kNN_srch(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
-		     int kNN, HIT_LIST_t *HL)
+		     int kNN, HIT_LIST_t *HL, KW_INDEX *KWI, FPARAMS *fp)
 {
-  return FSSRCH_search(FSSRCH_init(FSI, query, D, INT_MAX, kNN, HL));
+  return FSSRCH_search(FSSRCH_init(FSI, query, D, INT_MAX, kNN, HL, KWI, fp));
 }
 
 HIT_LIST_t *FSINDX_prof_rng_srch(FSINDX *FSI, BIOSEQ *query, 
@@ -1348,7 +1531,9 @@ HIT_LIST_t *FSINDX_prof_rng_srch(FSINDX *FSI, BIOSEQ *query,
 				 double lambda, double A,
 				 const char *freq_filename,
 				 int iters, int s1,
-				 HIT_LIST_t *HL)  
+				 HIT_LIST_t *HL,
+				 KW_INDEX *KWI,
+				 FPARAMS *fp)  
 {
   int i;
   int d0;
@@ -1359,7 +1544,7 @@ HIT_LIST_t *FSINDX_prof_rng_srch(FSINDX *FSI, BIOSEQ *query,
   POS_MATRIX_simple_pseudo_counts_init(PS, A);
 	  
    d0 = PS->qS - s0;
-   HL = FSSRCH_search(FSSRCH_profile_init(FSI, PS, d0, -1, HL));
+   HL = FSSRCH_search(FSSRCH_profile_init(FSI, PS, d0, -1, HL, KWI, fp));
    POS_MATRIX_convert(PS, HL);
    HIT_LIST_sort_decr(HL);
    HIT_LIST_print(HL, stdout, 0); 
@@ -1367,6 +1552,7 @@ HIT_LIST_t *FSINDX_prof_rng_srch(FSINDX *FSI, BIOSEQ *query,
   i = iters;
   while (i--)
     {
+     
       /* Filter here */
 
       HIT_LIST_get_hit_seqs(HL, &PS->seq, s0, 
@@ -1377,7 +1563,7 @@ HIT_LIST_t *FSINDX_prof_rng_srch(FSINDX *FSI, BIOSEQ *query,
       POS_MATRIX_update(PS);
       
       d0 = PS->qS - s1;
-      HL = FSSRCH_search(FSSRCH_profile_init(FSI, PS, d0, -1, HL));
+      HL = FSSRCH_search(FSSRCH_profile_init(FSI, PS, d0, -1, HL, KWI, fp));
       POS_MATRIX_convert(PS, HL);
       HIT_LIST_sort_decr(HL);
       HIT_LIST_print(HL, stdout, 0); 
@@ -1389,7 +1575,10 @@ HIT_LIST_t *FSINDX_prof_kNN_srch(FSINDX *FSI, BIOSEQ *query,
 				 SCORE_MATRIX_t *D, int kNN, 
 				 double A,
 				 const char *freq_filename,
-				 int iters, HIT_LIST_t *HL)  
+				 int iters, 
+				 HIT_LIST_t *HL,  
+				 KW_INDEX *KWI,
+				 FPARAMS *fp)
 {
   int i;
 
@@ -1399,7 +1588,7 @@ HIT_LIST_t *FSINDX_prof_kNN_srch(FSINDX *FSI, BIOSEQ *query,
 		  freq_filename);
   POS_MATRIX_simple_pseudo_counts_init(PS, A);
 	  
-  HL = FSSRCH_search(FSSRCH_profile_init(FSI, PS, INT_MAX, kNN, HL));
+  HL = FSSRCH_search(FSSRCH_profile_init(FSI, PS, INT_MAX, kNN, HL, KWI, fp));
 
   POS_MATRIX_convert(PS, HL);
   HIT_LIST_print(HL, stdout, 0); 
@@ -1416,7 +1605,8 @@ HIT_LIST_t *FSINDX_prof_kNN_srch(FSINDX *FSI, BIOSEQ *query,
       POS_MATRIX_Henikoff_weights(PS);
       POS_MATRIX_update(PS);
 
-      HL = FSSRCH_search(FSSRCH_profile_init(FSI, PS, INT_MAX, kNN, HL));
+      HL = FSSRCH_search(FSSRCH_profile_init(FSI, PS, INT_MAX, kNN, HL, KWI, fp));
+
       POS_MATRIX_convert(PS, HL);
       HIT_LIST_print(HL, stdout, 0); 
     }
