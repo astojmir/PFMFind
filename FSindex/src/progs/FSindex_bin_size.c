@@ -40,7 +40,7 @@ static double *logfact;
 static int max_hist;
 static ULINT bins = 0;
 static ULINT one_percent_bins;
-static FILE *outstream = stdout;
+static FILE *outstream;
 static int nobar_flag = 0;
 static double LOG_DBL_MIN;
 
@@ -220,7 +220,7 @@ int main(int argc, char **argv)
      - max_hist (maximum k)
      - output file
   */
-
+  outstream = stdout;
   while ((c = getopt(argc, argv, "p:f:n:m:o:M:b")) != EOF)
     switch (c) 
       {
