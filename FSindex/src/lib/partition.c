@@ -7,12 +7,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
-#ifndef MY_INLINE
-#define MY_INLINE
 #include "partition.h"
-#undef MY_INLINE
-#endif
+
 
 /* Main constructor */
 FS_PARTITION_t *FS_PARTITION_create(const char *alphabet, 

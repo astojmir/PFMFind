@@ -4,12 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include <assert.h>
-
-#ifndef MY_INLINE
-#define MY_INLINE
 #include "fastadb.h"
-#undef MY_INLINE
-#endif
 
 
 int cmp_bioseq(const void *S1, const void *S2)
@@ -620,7 +615,7 @@ SEQUENCE_DB *fastadb_open(const char *db_name, fastadb_arg *argt,
 	  break;
 	default:
 	  fprintf(stderr, 
-		  "fastadb_open(): Unreckognised option!\n");
+		  "fastadb_open(): Unreckognised option! %d\n", *argt);
 	  exit(EXIT_FAILURE);
 	}
       argt++;

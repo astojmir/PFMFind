@@ -1,3 +1,4 @@
+#include "misclib.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,15 +8,6 @@
 #ifdef TOTAL_MEM
 static unsigned long int total_mem = 0; 
 #endif
-
-/* If the extern inline functions are not to be inlined, they must be
-   here */ 
-#ifndef MY_INLINE
-#define MY_INLINE
-#include "misclib.h"
-#undef MY_INLINE
-#endif
-
 
 
 void *callocec(long int number, long int size)

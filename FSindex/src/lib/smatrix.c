@@ -9,16 +9,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include "partition.h"
-
-#ifdef DEBUG
-#define SMATRIX_INLINE
-#endif
-
 #include "smatrix.h"
-
-#ifdef DEBUG
-#undef SMATRIX_INLINE
-#endif
 
 
 /* Routines for computing distances to pattern letters (i.e. subsets

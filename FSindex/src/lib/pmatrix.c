@@ -13,12 +13,7 @@
 #include "partition.h"
 #include "smatrix.h"
 #include "fastadb.h"
-
-#ifndef MY_INLINE
-#define MY_INLINE
 #include "pmatrix.h"
-#undef MY_INLINE
-#endif
 
 
 static inline

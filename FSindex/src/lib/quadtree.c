@@ -22,17 +22,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
-
-
-#ifdef DEBUG
-#define QUAD_TREE_INLINE
-#endif
-
 #include "quadtree.h"
-
-#ifdef DEBUG
-#undef QUAD_TREE_INLINE
-#endif
 
 /* Static functions */ 
 static inline
