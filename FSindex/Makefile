@@ -51,7 +51,7 @@ clean:
 	cd ../..; \
 	cd $(BINDIR); \
 	rm -f core; \
-	for x in *; do if [ -x $$x -a -f ../$(SRCDIR)$$x.c ]; \
+	for x in *; do if [ -x $$x -a -f ../$(PROGSDIR)$$x.c ]; \
 	then rm -f $$x; fi done; \
 	cd ..; \
 
