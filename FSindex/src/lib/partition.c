@@ -48,19 +48,23 @@ FS_PARTITION_t *FS_PARTITION_create(const char *alphabet,
 	  partition++;
 	  if (partition >= C_SIZE)
 	    {
-	      fprintf(stderr, "Too many partitions: maximum %d!\n",
-		      C_SIZE);
 	      FS_PARTITION_destroy(ptable);      
-	      return NULL;
+	      Throw FSexcept(INDEX_OUT_OF_RANGE,
+			     "FS_PARTITION_create(): "
+			     "Too many partitions- maximum %d!\n",
+			     C_SIZE);
 	    }
+
 	  poffset += (1 << pos); 
 	  if (poffset > P_SIZE)
 	    {
-	      fprintf(stderr, "Too many pattern letters: maximum %d!\n",
-		      P_SIZE);
 	      FS_PARTITION_destroy(ptable);      
-	      return NULL;
+	      Throw FSexcept(INDEX_OUT_OF_RANGE,
+			     "FS_PARTITION_create(): "
+			     "Too many pattern letters- maximum %d!\n",
+			     P_SIZE);
 	    }
+
 	  ptable->partition_poffset[partition] = poffset;
 	  ptable->partition_loffset[partition] = i+1;
 	  pos = 0;
@@ -77,8 +81,6 @@ FS_PARTITION_t *FS_PARTITION_create(const char *alphabet,
 
   ptable->partition_size[partition] = pos;
   ptable->no_partitions = partition+1;
-  if (FS_PARTITION_VERBOSE > 0)
-    FS_PARTITION_print(ptable, stdout);
   return ptable;
 }
 
@@ -127,10 +129,11 @@ FS_PARTITION_t *FS_PARTITION_read(FILE *stream)
 
   if (a_size != A_SIZE || c_size != C_SIZE || p_size != P_SIZE)
     {
-      fprintf(stderr, "Cannot load partition - different A_SIZE,"
-	      " C_SIZE or P_SIZE!\n");
-      free(ptable);      
-      return NULL;
+      free(ptable);
+      Throw FSexcept(INCONSITENT_DATA,
+		     "FS_PARTITION_read(): "
+		     "Cannot load partition - different A_SIZE,"
+		     " C_SIZE or P_SIZE!\n");
     }
 
   fread(&ptable->no_partitions, sizeof(int), 1, stream);

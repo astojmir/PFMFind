@@ -25,9 +25,10 @@
 /***                                                              ***/
 /********************************************************************/    
 /********************************************************************/    
+#if 0
 extern int POS_MATRIX_VERBOSE;
 extern FILE *POS_MATRIX_STREAM;
-
+#endif
 
 struct POS_MATRIX_s 
 {
@@ -154,6 +155,8 @@ int POS_MATRIX_evaluate_max(POS_MATRIX *PS, BIOSEQ *subject,
 MY_INLINE
 int POS_MATRIX_verify_pos(POS_MATRIX *PD, ULINT Pfrom, ULINT Pto,
 			  USINT *TT, int k, int cutoff);
+
+int profile_eval(void *M, BIOSEQ *query, BIOSEQ *subject);
 
 
 

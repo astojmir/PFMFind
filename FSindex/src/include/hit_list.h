@@ -83,6 +83,8 @@ typedef struct
   SEQUENCE_DB *s_db;
   KW_INDEX *KWI;
   const char *matrix;
+  void *M;
+  eval_func *efunc;
   int range;
   int converted_range;
   ULINT kNN;
@@ -117,6 +119,7 @@ typedef struct
   int kw_max;
   int kw_size;
 
+  /* Z-score parameters */
   double shape;
   double rate;
   double Zmin; 
@@ -127,11 +130,12 @@ typedef int HIT_LIST_PRINT_OPT_t;
 
 /* Main constructor */
 HIT_LIST_t *HIT_LIST_create(BIOSEQ *query, SEQUENCE_DB *s_db, 
-			    const char *matrix, int range, KW_INDEX *KWI);
+			    const char *matrix, void *M,
+			    eval_func *efunc, int range);
 /* Reset list */
-void HIT_LIST_reset(HIT_LIST_t *HIT_list, BIOSEQ *query, 
-		    SEQUENCE_DB *s_db, const char *matrix, int range,
-		    KW_INDEX *KWI); 
+void HIT_LIST_reset(HIT_LIST_t *HL, BIOSEQ *query, 
+		    SEQUENCE_DB *s_db, const char *matrix, 
+		    void *M, eval_func *efunc, int range);
 
 /* Destructor */
 void HIT_LIST_destroy(HIT_LIST_t *HIT_list);
@@ -186,6 +190,9 @@ void HIT_LIST_Gaussian_pvalues(HIT_LIST_t *HT, double mean,
 void HIT_LIST_process_cl(HIT_LIST_t *HL, int offset);
 void HIT_LIST_process_kw(HIT_LIST_t *HL, int offset);
 
+/* Z-scores */
+
+void HIT_LIST_Zscores(HIT_LIST_t *HL);
 
 
 #endif

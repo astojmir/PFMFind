@@ -24,8 +24,9 @@ typedef struct
     char *start;
   } BIOSEQ; 
 
-/* ************* bioseq functions ********************* */
+typedef int eval_func(void *M, BIOSEQ *query, BIOSEQ *subject);
 
+/* ************* bioseq functions ********************* */
 int cmp_bioseq(const void *S1, const void *S2);
 int bioseq_parse(BIOSEQ *seq, char *filename, yn_bool_t defline);
 int bioseq_get_frag(BIOSEQ *seq, BIOSEQ *frag, ULINT start, ULINT
@@ -35,5 +36,6 @@ void bioseq_random(BIOSEQ *seq, ULINT seq_len, char *alphabet,
 		   ULINT a_len);
 void bioseq_seq2string(BIOSEQ *seq, char *string, ULINT from, 
 		       ULINT to);
+BIOSEQ *bioseq_copy(BIOSEQ *seq);
 
 #endif /* #ifndef _BIOSEQ_H */ 

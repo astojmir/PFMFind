@@ -74,12 +74,12 @@ int bioseq_get_frag(BIOSEQ *seq, BIOSEQ *frag, ULINT start, ULINT
 		    length, ULINT id_no)
 {
   if (start + length > seq->len)
-    return 0;
+    return BAD_ARGS;
 
   frag->id.id_num = id_no;
   frag->len = length;
   frag->start = seq->start+start;
-  return 1;
+  return NO_ERR;
 }
 
 void string2seq(BIOSEQ *seq, char *string)
@@ -112,4 +112,16 @@ void bioseq_seq2string(BIOSEQ *seq, char *string, ULINT from,
   if (from > to || from >= seq->len) return;
   memcpy(string, seq->start+from, to-from+1);
   string[to-from+1] = '\0';
+}
+
+BIOSEQ *bioseq_copy(BIOSEQ *seq)
+{
+  BIOSEQ *newseq = mallocec(sizeof(BIOSEQ));
+  
+  newseq->id = seq->id;
+  newseq->len = seq->len;
+  newseq->start = mallocec(newseq->len+1);
+  memcpy(newseq->start, seq->start, newseq->len);
+  newseq->start[newseq->len]='\0';
+  return newseq;
 }

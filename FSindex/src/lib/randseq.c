@@ -25,10 +25,9 @@ SEQ_GENERATOR_t *SEQ_GENERATOR_create(const char *filename,
 
   memset(freq, 0, A_SIZE * sizeof(ULINT));
   if ((stream = fopen(filename, "r")) == NULL)
-    {
-      fprintf(stderr, "Unable to open %s\n ", filename);
-      return NULL;
-    }  
+    Throw FSexcept(FOPEN_ERR, "SEQ_GENERATOR_create():"
+		   " Could not open the file %s.",
+		   filename);
 
   seq_generator = mallocec(sizeof(SEQ_GENERATOR_t));
   srand48(time(NULL)); 

@@ -3,6 +3,8 @@
 #define _MISCLIB_H
 
 #include <stdio.h>
+#include <stdarg.h>
+#include "cexcept.h"
 
 #ifdef USE_MPATROL
 #include <mpatrol.h>
@@ -23,6 +25,41 @@ typedef signed short int SSINT;
 
 typedef unsigned int UINT_t;
 typedef signed int SINT_t;
+
+/* Exception handling */
+
+#define MSG_SIZE 512
+typedef struct 
+{
+  int code;
+  char msg[MSG_SIZE+1];
+} EXCEPTION;
+
+extern EXCEPTION FSexcept_array[1];
+#define FS_EXCEPTION (FSexcept_array)
+EXCEPTION *FSexcept(int code, const char *fmt, ...); 
+
+define_exception_type(EXCEPTION *);
+extern struct exception_context the_exception_context[1];
+
+#define NO_ERR 0
+#define NO_MEM 1
+#define NEG_MEM_REQ 2
+#define FOPEN_ERR 3
+#define FCLOSE_ERR 4
+#define BAD_ARGS 5
+#define EOF_REACHED 6
+#define GETLINE_ERR 7
+#define INDEX_OUT_OF_RANGE 8
+#define INCONSITENT_DATA 9
+
+
+
+
+
+
+
+
 
 /* Some numerical typedefs and functions from gamerf package and
    otherwise */
@@ -52,12 +89,16 @@ double dibeta(double p, double a, double b);
 void discrete_meanvar(int n, SSINT *values, double *probs, 
 		      double *mean, double *var); 
 
-/* Memory managment functions */
+/* Memory managment functions - error checking */
 
 char *newmem(long int number, long int size);
 void *callocec(long int number, long int size);
 void *mallocec(long int size);
 void *reallocec(void *pt, long int size);
+
+/* File functions - error checking */
+
+
 
 
 /* Auxillaries */
@@ -139,6 +180,51 @@ extern int getdelim(char **_lineptr, size_t *_n, int _delimiter, FILE *_stream);
       fflush((outstream));                         \
     }                                              \
   } while(0)        
+
+
+#if 0
+#define e_malloc(ptr, size) do {                  \
+  if ((size) < 0)                                 \
+    return NEG_MEM_REQ;                           \
+  if (((ptr) = malloc(size)) == NULL)             \
+    return NO_MEM;                                \
+  } while(0)
+
+#define e_calloc(ptr, num, size) do {             \
+  if ((size)*(num) < 0)                           \
+    return NEG_MEM_REQ;                           \
+  if ((ptr = calloc((num), (size))) == NULL)      \
+    return NO_MEM;                                \
+  } while(0)
+
+#define e_realloc(ptr, size) do {                 \
+  if ((size) < 0)                                 \
+    return NEG_MEM_REQ;                           \
+  if (((ptr) = realloc((ptr), (size))) == NULL)   \
+    return NO_MEM;                                \
+  } while(0)
+
+#define e_free(ptr) do {                          \
+  free((ptr));                                    \
+  ptr = NULL;                                     \
+  } while(0)
+
+#define e_fopen(stream, path, mode) do {          \
+  if (((stream) = fopen((path), (mode))) == NULL) \
+    return FOPEN_ERR;                             \
+  } while(0)
+
+#define e_fclose(stream) do {                     \
+  if (fclose((stream)) == EOF)                    \
+    return FCLOSE_ERR;                            \
+  } while(0)
+
+#define check_err(status) do {                    \
+  if (status)                                     \
+    return status;                                \
+  } while(0)
+#endif
+
 
 #ifdef  MY_INLINE
 

@@ -37,6 +37,8 @@ typedef struct
   FILE *dbfile;         /* Stream to read seqs from */
   int real_file;        /* Non zero if dbfile is not stdin */
   ULINT length;         /* Total Length of Database in residues*/
+  char *linebuf;        /* Getline reading buffer */
+  int bufsize;          /* Size of the buffer     */
 
   /* Sequences */
   ULINT no_seq;         /* Number of sequences in the database */
@@ -187,7 +189,16 @@ int fastadb_get_next_Ffrag(SEQUENCE_DB *s_db, ULINT len,
 	{
 	  s_db->Ff_q++;
 	  if (s_db->Ff_q == s_db->no_seq)
-	    return 0;
+	    {
+#if 0
+	      Throw FSexcept(INDEX_OUT_OF_RANGE, 
+			     "fastadb_get_next_Ffrag():"
+			     " No more fragments. "
+			     "Ff_q=%ld, no_seq=%ld",
+			     s_db->Ff_q, s_db->no_seq);
+#endif
+	      return 0;
+	    }
 	}  
       while (s_db->seq[s_db->Ff_q].len < len);
       s_db->Ff_c = s_db->seq[s_db->Ff_q].start - s_db->seq_data;

@@ -2,10 +2,23 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <math.h>
 
 
+
+EXCEPTION *FSexcept(int code, const char *fmt, ...)
+{
+  va_list ap;
+  va_start(ap, fmt);
+
+  FS_EXCEPTION->code = code;
+  vsnprintf(FS_EXCEPTION->msg, MSG_SIZE, fmt, ap);
+  va_end(ap);
+  return FS_EXCEPTION;
+}
+  
 void discrete_meanvar(int n, SSINT *values, double *probs, 
 		      double *mean, double *var)
 {
@@ -24,33 +37,15 @@ void discrete_meanvar(int n, SSINT *values, double *probs,
   *var = *var - (*mean * *mean); 
 }
 
-
-#define TOTAL_MEM
-#ifdef TOTAL_MEM
-static unsigned long int total_mem = 0; 
-#endif
-
 void *callocec(long int number, long int size)
 {
   void *memp;
 
   if (number < 0)
-    { 
-      fprintf(stderr, "Negative memory request \n");
-      exit(-1);
-    }
+    Throw FSexcept(NEG_MEM_REQ, "Negative memory request.");
   memp=calloc(number, size);
   if (memp==NULL)
-    { 
-      fprintf(stderr,"Memory Full! %ld requested.\n", number*size);
-#ifdef TOTAL_MEM
-      fprintf(stderr,"%ld bytes allocated.\n", total_mem);
-#endif
-      exit(-1);
-    }
-#ifdef TOTAL_MEM
-  total_mem += (number * size);
-#endif
+    Throw FSexcept(NO_MEM, "No Memory!");
   return(memp);
 }
 
@@ -59,39 +54,22 @@ void *mallocec(long int size)
   void *memp;
 
   if (size < 0)
-    { 
-      fprintf(stderr, "Negative memory request \n");
-      exit(-1);
-    }  
+    Throw FSexcept(NEG_MEM_REQ, "Negative memory request.");
   memp=malloc(size);
   if (memp==NULL)
-    { 
-      fprintf(stderr,"Memory Full! %ld requested.\n", size);
-#ifdef TOTAL_MEM
-      fprintf(stderr,"%ld bytes allocated.\n", total_mem);
-#endif
-      exit(-1);
-    }
-#ifdef TOTAL_MEM
-  total_mem += size;
-#endif
+    Throw FSexcept(NO_MEM, "No Memory!");
   return(memp);
 }
 
 void *reallocec(void *pt, long int size)
 {
   void *memp;
+
   if (size < 0)
-    { 
-      fprintf(stderr, "Negative memory request \n");
-      exit(-1);
-    }  
+    Throw FSexcept(NEG_MEM_REQ, "Negative memory request.");
   memp=realloc(pt, size);
   if (memp==NULL)
-    { 
-      fprintf(stderr,"realloc error! %ld requested.\n", size);
-      exit(-1);
-    }
+    Throw FSexcept(NO_MEM, "No Memory!");
   return(memp);
 }
 

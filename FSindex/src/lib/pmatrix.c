@@ -151,10 +151,17 @@ void POS_MATRIX_init(POS_MATRIX *PS, double lambda,
     stream = stdin;
   else if ((stream = fopen(freq_filename, "r")) == NULL)
     {
-      fprintf(stderr, 
-	      "POS_MATRIX_init(): Could not open frequency file %s!\n", 
-	      freq_filename);
-      exit(EXIT_FAILURE);
+      free(PS->count);
+      PS->count = NULL;
+      free(PS->bkgrnd);
+      PS->bkgrnd = NULL;
+      free(PS->query->start);
+      free(PS->query);
+      PS->query = NULL;
+
+      Throw FSexcept(FOPEN_ERR, "POS_MATRIX_init():"
+		     " Could not open frequency file %s!\n", 
+		     freq_filename);
     }
 
   /* Skip first lines */
@@ -232,19 +239,7 @@ void POS_MATRIX_update(POS_MATRIX *PS)
 
   PS->pcnf(PS);
 
-  if (POS_MATRIX_VERBOSE)
-    {
-      fprintf(POS_MATRIX_STREAM, "\n*** COUNTS AND PSEUDOCOUNTS ***\n");
-      print_counts(PS, POS_MATRIX_STREAM);
-    }
-
   compute_log_odds(PS);
-
-  if (POS_MATRIX_VERBOSE)
-    {
-      fprintf(POS_MATRIX_STREAM, "\n*** PROFILE SCORE MATRIX ***\n");
-      print_M(PS, POS_MATRIX_STREAM);
-    }
 
   /* Compute maximum similarities to pattern letters (subsets of
      alphabet partitions) */
@@ -414,12 +409,6 @@ void POS_MATRIX_equal_weights(POS_MATRIX *PS)
   for (i=0; i < PS->no_seqs; i++)
     PS->weight[i] = 1.0;
   create_counts(PS);
-
-  if (POS_MATRIX_VERBOSE)
-    {
-      fprintf(POS_MATRIX_STREAM, "\n*** RAW COUNTS ***\n");
-      print_counts(PS, POS_MATRIX_STREAM);
-    }
 }
 
 void POS_MATRIX_Henikoff_weights(POS_MATRIX *PS)
@@ -454,19 +443,6 @@ void POS_MATRIX_Henikoff_weights(POS_MATRIX *PS)
     PS->weight[k] *= w_sum;
 
   create_counts(PS);
-  if (POS_MATRIX_VERBOSE)
-    {
-      /* Print Weights */
-      fprintf(POS_MATRIX_STREAM, "\nSEQUENCE WEIGHTS\n");
-      for (k=0; k < PS->no_seqs; k++)
-	{
-	  fprintf(POS_MATRIX_STREAM, "%.*s %6.2f\n", (int) PS->len,
-		  PS->seq[k].start, PS->weight[k]);
-	}  
-      fprintf(POS_MATRIX_STREAM, "\n\n");
-      fprintf(POS_MATRIX_STREAM, "\n*** WEIGHTED COUNTS ***\n");
-      print_counts(PS, POS_MATRIX_STREAM);
-    }
 }
 
 /* Read, Write */
@@ -589,4 +565,13 @@ void POS_MATRIX_convert(POS_MATRIX *PS, HIT_LIST_t *HL)
       hit = HIT_LIST_get_hit(HL, i);
       hit->value = PS->qS - hit->value;
     }
+}
+
+/********************************************************************/ 
+/*                 Evaluation function                              */
+/********************************************************************/ 
+
+int profile_eval(void *M, BIOSEQ *query, BIOSEQ *subject)
+{
+  return POS_MATRIX_evaluate(M, subject, 0, subject->len-1);
 }

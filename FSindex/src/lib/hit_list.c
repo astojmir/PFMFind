@@ -6,6 +6,7 @@
 #include <math.h>
 #include <limits.h>
 #include "avl.h"
+#include "partition.h"
 #include "hit_list.h"
 
 
@@ -39,48 +40,6 @@ int split_line(char *line,       /* line string */
   else return l;
 }
 
-
-/********************************************************************/    
-/*                                                                  */
-/*                   WRD_CNTR module                                */ 
-/*                                                                  */
-/********************************************************************/    
-
-#define WC_STEP 500
-
-void WRD_CNTR_add(WRD_CNTR **wc, int wc_size, int *wc_max)
-{
-  while (wc_size >= *wc_max)
-    {
-      *wc_max += WC_STEP;
-      *wc = reallocec(*wc, *wc_max * sizeof(WRD_CNTR));
-    } 
-}
-
-void WRD_CNTR_clear(WRD_CNTR *wc)
-{
-  free(wc);
-}
-
-static
-int WRD_CNTR_cmp_score(const void *S1, const void *S2)
-{
-  const WRD_CNTR *T1 = S1;
-  const WRD_CNTR *T2 = S2;
-
-  /* Sorting in decreasing order */
-  if (T2->score > T1->score)
-    return 1;
-  else if (T1->score > T2->score)
-    return -1;
-  else
-    return 0;
-}
-
-void WRD_CNTR_sort_score(WRD_CNTR *wc, int wc_size)
-{
-  qsort(wc, wc_size, sizeof(WRD_CNTR), WRD_CNTR_cmp_score);
-}
 
 /********************************************************************/    
 /*                                                                  */
@@ -303,14 +262,15 @@ int SEQ_HIT_cmp_by_kwscore(const void *S1, const void *S2)
 
 /* Main constructor */
 HIT_LIST_t *HIT_LIST_create(BIOSEQ *query, SEQUENCE_DB *s_db, 
-			    const char *matrix, int range,
-			    KW_INDEX *KWI)
+			    const char *matrix, void *M,
+			    eval_func *efunc, int range)
 {
   HIT_LIST_t *HL = callocec(1, sizeof(HIT_LIST_t));
   HL->query = query;
   HL->s_db = s_db;
-  HL->KWI = KWI;
   HL->matrix = matrix;
+  HL->M = M;
+  HL->efunc = efunc;
   HL->range = range;
   HL->start_time = time(NULL);
   HL->max_hits = MAX_HITS;
@@ -321,8 +281,8 @@ HIT_LIST_t *HIT_LIST_create(BIOSEQ *query, SEQUENCE_DB *s_db,
 
 /* Reset list */
 void HIT_LIST_reset(HIT_LIST_t *HL, BIOSEQ *query, 
-		    SEQUENCE_DB *s_db, const char *matrix, int range,
-		    KW_INDEX *KWI)
+		    SEQUENCE_DB *s_db, const char *matrix, 
+		    void *M, eval_func *efunc, int range)
 {
   ULINT i;
   /* hits and tmp_hits are not reallocated */
@@ -334,8 +294,9 @@ void HIT_LIST_reset(HIT_LIST_t *HL, BIOSEQ *query,
   HL->query = query;
   HL->frag_len = 0;
   HL->s_db = s_db;
-  HL->KWI = KWI;
   HL->matrix = matrix;
+  HL->M = M;
+  HL->efunc = efunc;
   HL->range = range;
   HL->converted_range = 0;
   HL->kNN = -1;
@@ -382,10 +343,10 @@ void HIT_LIST_destroy(HIT_LIST_t *HL)
     }
   free(HL->hits);
   free(HL->tmp_hits);
-
+#if 0
   WRD_CNTR_clear(HL->oc);
   WRD_CNTR_clear(HL->kw);
-
+#endif
   free(HL);
 }
 
@@ -402,6 +363,7 @@ void HIT_LIST_insert_seq_hit(HIT_LIST_t *HL, BIOSEQ *subject,
       HL->hits = reallocec(HL->hits, HL->max_hits *
 				 sizeof(SEQ_HIT_t));
     }
+  memset(HL->hits +HL->actual_seqs_hits,0, sizeof(SEQ_HIT_t));
   HL->hits[HL->actual_seqs_hits].subject = new_subject;
   HL->hits[HL->actual_seqs_hits].value = value;
   HL->hits[HL->actual_seqs_hits].rejected = 0;
@@ -692,10 +654,10 @@ ULINT HIT_LIST_get_seqs_hits(HIT_LIST_t *HL)
 
 SEQ_HIT_t *HIT_LIST_get_hit(HIT_LIST_t *HL, ULINT i)
 {
-  if (i < HL->actual_seqs_hits)
-    return HL->hits+i;
-  else
-    return NULL;
+  if (i >= HL->actual_seqs_hits)
+    Throw FSexcept(INDEX_OUT_OF_RANGE, 
+		   "HIT_LIST_get_hit(): Index out of range.");
+  return HL->hits+i;
 }
 
 void HIT_LIST_set_kNN(HIT_LIST_t *HL, ULINT kNN)
@@ -726,6 +688,16 @@ void HIT_LIST_set_index_data(HIT_LIST_t *HL,
   HL->index_seqs_total = index_seqs_total; 
 }
 
+#if 0
+  if (FSS->pfunc == profile_process_bin ||
+      FSS->pfunc == profile_kNN_process_bin)
+    efunc = profile_eval;
+  else
+    efunc = smatrix_eval;
+#endif
+
+
+
 void HIT_LIST_get_hit_seqs(HIT_LIST_t *HL, BIOSEQ **seqs,
 			   int cutoff, int *n, int *max_n)
 {
@@ -746,9 +718,11 @@ void HIT_LIST_get_hit_seqs(HIT_LIST_t *HL, BIOSEQ **seqs,
 	  (*seqs)[*n] = *(hit->subject);
 	  (*n)++;
 	}
+#if 0
       /* Some garbage collection */
       free(hit->subject);
       hit->subject = NULL;
+#endif
     }
 }
 
@@ -837,186 +811,216 @@ void HIT_LIST_Gaussian_pvalues(HIT_LIST_t *HT, double mean,
 }
 
 
-
-/* Keywords */
-
-/* Use AVL tree to store clusters / keywords */
-
-static 
-int compare_items(const void *pa, const void *pb, void *param)
+/********************************************************************/ 
+/*         Z-score functions                                        */
+/********************************************************************/ 
+static inline
+double Zscore(BIOSEQ *query, BIOSEQ *subject, double value, 
+	      void *M, eval_func *efunc)
 {
-  const WRD_CNTR *a = pa;
-  const WRD_CNTR *b = pb;
-  
-  return a->item - b->item;
-}
-
-void HIT_LIST_process_cl(HIT_LIST_t *HL, int offset)
-{
-  int i;
-  KW_INDEX *KWI = HL->KWI;
-  ULINT seqid;
-  ULINT seqid0;
-  struct avl_table *tree;
-  WRD_CNTR **tree_item;
-  WRD_CNTR *wc_tmp;
-  WRD_CNTR wc_tmp1;
-
-  
-  if (KWI == NULL)
-    return;
-  HIT_LIST_sort_by_sequence(HL);
-  seqid0 = KWI->ns;
-  /*******************************************/
-  /*          ORTHOLOGOUS CLUSTERS           */
-  /*******************************************/
-
-  tree = avl_create(compare_items, NULL, NULL);
-  WRD_CNTR_add(&HL->oc, HL->oc_size, &HL->oc_max);
-
-  /* Load tree */
-  for (i=0; i < HL->actual_seqs_hits; i++)
-    {
-      seqid = HL->hits[i].sequence_id;
-      if (seqid != seqid0)
-	{
-	  seqid0 = seqid;
-	  if (KWI->seq2cl[seqid] != 0)
-	    {
-	      wc_tmp = HL->oc + HL->oc_size;
-	      wc_tmp->item = KWI->seq2cl[seqid];
-	      wc_tmp->count = 0;
-	      wc_tmp->score = 0.0;
-	      tree_item = (WRD_CNTR **) avl_probe (tree, wc_tmp);	  
-	      (*tree_item)->count++;
-	      if ((*tree_item) == wc_tmp)
-		{
-		  HL->oc_size++;
-		  WRD_CNTR_add(&HL->oc, HL->oc_size, &HL->oc_max);
-		}
-	
-	    }
-	}
-    }
-
-  /* Calculate conservation ratio */
-  for (i=0; i < HL->oc_size; i++)
-    HL->oc[i].score = 
-      (double) HL->oc[i].count / KWI->clf[HL->oc[i].item];
-
-  /* Assign ratios to hits */
-  for (i=0; i < HL->actual_seqs_hits; i++)
-    {
-      seqid = HL->hits[i].sequence_id;
-      if (KWI->seq2cl[seqid] != 0)
-	{
-	  HL->hits[i].oc_cluster = KWI->seq2cl[seqid];
-	  wc_tmp1.item = KWI->seq2cl[seqid];
-	  tree_item = (WRD_CNTR **) avl_probe (tree, &wc_tmp1);	  
-	  HL->hits[i].cratio = (*tree_item)->score;
-	}
-      else
-	{
-	  HL->hits[i].oc_cluster = 0;
-	  HL->hits[i].cratio = 0.0;
-	}
-    }
-
-  /* Clean up tree */
-  avl_destroy (tree, NULL);
-  WRD_CNTR_sort_score(HL->oc, HL->oc_size);
-}
-
-void HIT_LIST_process_kw(HIT_LIST_t *HL, int offset)
-{
-  int i;
   int j;
-  KW_INDEX *KWI = HL->KWI;
-  ULINT seqid;
-  ULINT seqid0;
-  struct avl_table *tree;
-  WRD_CNTR **tree_item;
-  WRD_CNTR *wc_tmp;
-  WRD_CNTR wc_tmp1;
-  int kw_hits = 0;
-  double s;
-
-  if (KWI == NULL)
-    return;
-  HIT_LIST_sort_by_sequence(HL);
-  seqid0 = KWI->ns;
-
-  /*******************************************/
-  /*               KEYWORDS                  */
-  /*******************************************/
-
-  tree = avl_create(compare_items, NULL, NULL);
-  WRD_CNTR_add(&HL->kw, HL->kw_size, &HL->kw_max);
-
-  /* Load tree */
-  for (i=0; i < HL->actual_seqs_hits; i++)
+  int k;
+  int r;
+  int val;
+  char tmp;
+  double x;
+  double xx;
+  double mean;
+  double sd;
+  const int p = 100;
+  
+  x=0.0;
+  xx=0.0;     
+  for (j=0; j < p; j++)
     {
-      seqid = HL->hits[i].sequence_id;
-      if (seqid != seqid0)
+      for (k=subject->len-1; k > 0; k--)
 	{
-	  seqid0 = seqid;
-	  if (KWI->seq2kw1[seqid] != 0)
-	    {
-	      kw_hits++;
-	      for (j=0; j < KWI->seq2kw1[seqid]; j++)
-		{
-		  wc_tmp = HL->kw + HL->kw_size;
-		  wc_tmp->item = KWI->skw_h[KWI->seq2kw0[seqid]+j];
-		  wc_tmp->count = 0;
-		  wc_tmp->score = 0.0;
-		  tree_item = (WRD_CNTR **) avl_probe (tree, wc_tmp);	  
-		  (*tree_item)->count++;
-		  if ((*tree_item) == wc_tmp)
-		    {
-		      HL->kw_size++;	
-		      WRD_CNTR_add(&HL->kw, HL->kw_size, &HL->kw_max);
-		    }
-		}
-	    }
+	  r = lrand48() % subject->len;
+	  tmp = subject->start[r];
+	  subject->start[r] = subject->start[k];
+	  subject->start[k] = tmp;
 	}
+      val = (double) efunc(M, query, subject);
+      x += val;
+      xx += val*val;
     }
-
-  /* Calculate keyword scores */
-  s = log((double) KWI->nsk) - log((double) kw_hits);
-
-  for (i=0; i < HL->kw_size; i++)
-    {
-      HL->kw[i].score = s + log((double) HL->kw[i].count)
-	- log((double) KWI->kwf[HL->kw[i].item]);
-      HL->kw[i].score /= log(2.0);
-    }
-
-  /* Assign scores to hits */
-  for (i=0; i < HL->actual_seqs_hits; i++)
-    {
-      seqid = HL->hits[i].sequence_id;
-      if (KWI->seq2kw1[seqid] != 0)
-	{
-	  HL->hits[i].kw_score = 0.0;
-	  for (j=0; j < KWI->seq2kw1[seqid]; j++)
-	    {
-	      wc_tmp1.item = KWI->skw_h[KWI->seq2kw0[seqid]+j];
-	      tree_item = (WRD_CNTR **) avl_probe (tree, &wc_tmp1);	  
-	      HL->hits[i].kw_score += (*tree_item)->score;
-	    }
-	}
-      else
-	{
-	  HL->hits[i].kw_score = 0.0;
-	}
-    }
-
-  /* Clean up tree */
-  avl_destroy (tree, NULL);
-
-  /* Sort HL->kw and HL->oc */
-  /* Perhaps this can be done directly using avl-tree but this seems
-     easier right now. */
-
-  WRD_CNTR_sort_score(HL->kw, HL->kw_size);
+  mean = x/p;
+  sd = sqrt(xx/p - mean*mean);
+  if (sd == 0.0)
+    return 0.0;
+  else
+    return (value - mean)/sd;
 }
+
+static
+void Z_gamma_params(double *shape, double *rate, double *Zmin,
+		    SEQUENCE_DB *s_db, void *M, eval_func *efunc, 
+		    BIOSEQ *query, int no_samples)
+{
+  ULINT no_frags;
+  BIOSEQ subject;
+  ULINT frag_len = query->len;
+  int j;
+  double value;
+  double *Z = mallocec(no_samples * sizeof(double));
+  ULINT rand_frag;
+  FS_SEQ_t FS_seq;
+  
+  double arith_mean = 0.0;
+  double geom_mean = 0.0;
+  double MM;
+  double num;
+  double den;
+  FS_PARTITION_t *ptable; 
+
+  /* Any ptable corresponding to the whole protein alphabet is OK */
+  ptable = FS_PARTITION_create("STAN#ILVM#KR#EDQ#WFYH#GPC", '#'); 
+
+  *Zmin = 1000000;
+  fastadb_get_nofrags(s_db, &no_frags, frag_len, frag_len);
+  for (j=0; j < no_samples; j++)
+    {
+      /* Get a random database fragment */
+      do 
+	{
+	  rand_frag = lrand48()%no_frags;
+	  fastadb_get_frag(s_db, &subject, rand_frag,
+			   frag_len, frag_len);
+	}
+      while (!BIOSEQ_2_FS_SEQ(&subject, ptable, &FS_seq));
+      
+      /* Calculate distances and add to histograms*/
+      value = (double) efunc(M, query, &subject);
+      
+      /* Get Z-Score */
+      Z[j] = -Zscore(query, &subject, value, M, efunc);
+      if (Z[j] < *Zmin)
+	*Zmin = Z[j];
+    }
+
+  /* We need to shift Z-scores by their min. value so that they all are
+     gt. 0 */
+     
+  for (j=0; j < no_samples; j++)
+    {
+      arith_mean += (Z[j]-*Zmin+0.001);
+      geom_mean += log(Z[j]-*Zmin+0.001);
+    }
+
+
+  /* gam.apprxFIT
+     fitting parameters shape(k) and rate (1/theta) in gamma distribution
+     method is taken from the encyclopedia of biostatistics: 
+     gamma distibution, page 292
+
+     Adapted from S code found at
+     http://www.biostat.wustl.edu/mailinglists/s-news/200106/msg00152.html
+  */
+
+  arith_mean /= no_samples;
+  geom_mean = exp(geom_mean/no_samples);
+  MM = log(arith_mean/geom_mean);
+
+  if(MM >= 0 && MM <= 0.5772) 
+    *shape = (0.5000876 + 0.1648852 * MM - 0.0544276 * MM * MM)/MM;
+  else if(MM >= 0.5772 && MM <= 17) 
+    {
+      num = 8.898919 + 9.05995 * MM + 0.9775373 * MM * MM;
+      den = MM * (17.79728 + 11.968477 * MM + MM * MM);
+      *shape = num/den;
+    }
+  else if(MM > 17)
+    *shape = 1/MM;
+
+  *rate = *shape/arith_mean;
+  free(Z);
+  FS_PARTITION_destroy(ptable);  
+}
+
+#if 0
+/* Original S code */
+
+function(x ) 
+{ 
+#gam.apprxFIT
+#fitting parameters shape(k) and rate (1/theta) in gamma distribution
+#method is taken from the encyclopedia of biostatistics: gamma distibution, page 292
+http://www.biostat.wustl.edu/mailinglists/s-news/200106/msg00152.html
+n <- length(x)
+arith.mean <- mean(x)
+geom.mean <- exp(sum(log(x))/n)
+
+
+M <- log(arith.mean/geom.mean)
+if(M >= 0 & M <= 0.5772) {
+est.shape <- (0.5000876 + 0.1648852 * M - 0.0544276 * M^2)/M
+}
+if(M >= 0.5772 & M <= 17) {
+num <- 8.898919 + 9.05995 * M + 0.9775373 * M^2
+den <- M * (17.79728 + 11.968477 * M + M^2)
+est.shape <- num/den
+}
+if(M > 17)
+est.shape <- 1/M
+est.rate <- est.shape/arith.mean
+list(est.shape = est.shape, est.rate = est.rate)
+} 
+
+#endif 
+
+
+extern double igamc( double, double );
+
+void HIT_LIST_Zscores(HIT_LIST_t *HL)
+{
+  int i;
+  int hits;
+  SEQ_HIT_t *hit;
+  double shape;
+  double rate;
+  double Zmin;
+  ULINT no_frags;
+
+  BIOSEQ *query = HL->query;
+  BIOSEQ subject;
+  eval_func *efunc = HL->efunc;
+  
+  hits = HIT_LIST_get_seqs_hits(HL);
+
+
+
+  if (HL->index_name != NULL)
+    no_frags = HL->index_seqs_total; 
+  else
+    no_frags = fastadb_count_Ffrags(HL->s_db, HL->query->len); 
+
+  srand48(time(NULL)); 
+
+  subject.start = mallocec(query->len+1);
+  subject.start[query->len] = '\0';
+  subject.len = query->len;
+
+  /* Get the parameters of the Gamma distribution */
+
+  Z_gamma_params(&shape, &rate, &Zmin, HL->s_db, HL->M, efunc, 
+		 query, 5000);
+
+  HL->shape = shape;
+  HL->rate = rate;
+  HL->Zmin = Zmin;
+  
+  /* Evaluate Z-scores and p-values for hits */
+  for (i=0; i < hits; i++)
+    {
+      hit = HIT_LIST_get_hit(HL, i);
+      memcpy(subject.start, hit->subject->start, hit->subject->len);
+      hit->zvalue = -Zscore(query, &subject, hit->value, 
+			    HL->M, efunc);
+      hit->pvalue = igamc(shape, (hit->zvalue-Zmin+0.001)*rate);
+      hit->evalue = no_frags * hit->pvalue;
+    }
+  free(subject.start);
+}
+
+
+

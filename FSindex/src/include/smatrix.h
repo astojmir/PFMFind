@@ -32,13 +32,11 @@ typedef struct
   SSINT pMclosest[A_SIZE];
   SSINT SS[A_SIZE];
   const char *filename;
-  char similarity_flag;
+  int similarity_flag;
   FS_PARTITION_t *ptable;
   double mean;
   double var;
 } SCORE_MATRIX_t;
-
-extern int SCORE_MATRIX_VERBOSE;
 
 /* Main constructor */
 SCORE_MATRIX_t *SCORE_MATRIX_create(const char *filename,
@@ -56,6 +54,10 @@ void SCORE_MATRIX_set_sim_flag(SCORE_MATRIX_t *Score_matrix,
 
 void SCORE_MATRIX_set_ptable(SCORE_MATRIX_t *Score_matrix, 
 			     FS_PARTITION_t *ptable);
+
+void SCORE_MATRIX_set_M(SCORE_MATRIX_t *S, char row, char col, 
+			SSINT val);
+void SCORE_MATRIX_set_SS(SCORE_MATRIX_t *S, char row, int val);
 
 /* Element Access + Properties */
 MY_INLINE
@@ -78,6 +80,13 @@ int SCORE_MATRIX_entry(SCORE_MATRIX_t *Score_matrix,
 
 int SCORE_MATRIX_p_entry(SCORE_MATRIX_t *Score_matrix,
 			 int row, int col);
+
+
+SSINT SCORE_MATRIX_get_M(SCORE_MATRIX_t *S, char row, char col);
+SSINT SCORE_MATRIX_get_pM(SCORE_MATRIX_t *S, char row, int group);
+SSINT SCORE_MATRIX_get_pMc(SCORE_MATRIX_t *S, char row);
+SSINT SCORE_MATRIX_get_SS(SCORE_MATRIX_t *S, char row);
+
  
 /* Similarities to Distances, Quasi-metrics ... */
 SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dmax(SCORE_MATRIX_t *S);
@@ -107,6 +116,8 @@ int SCORE_MATRIX_evaluate_max(SCORE_MATRIX_t *S,
 MY_INLINE
 int SCORE_MATRIX_verify_pos(SCORE_MATRIX_t *D, BIOSEQ *query,
 			    USINT *TT, int k, int cutoff);
+
+int smatrix_eval(void *M, BIOSEQ *query, BIOSEQ *subject);
 
 /* Printing */
 void SCORE_MATRIX_print(SCORE_MATRIX_t *S, FILE *stream, 

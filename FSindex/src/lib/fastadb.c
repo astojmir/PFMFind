@@ -340,13 +340,6 @@ int fastadb_count_next_seq(SEQUENCE_DB *s_db)
   return 1;
 }
 
-
-
-
-
-
-
-
 /* SEQUENCE_DB *fastadb_open(const char *db_name, 
                              fastadb_arg *argt, 
 			     fastadb_argv_t *argv)
@@ -435,6 +428,7 @@ int fastadb_count_next_seq(SEQUENCE_DB *s_db)
 SEQUENCE_DB *fastadb_open(const char *db_name, fastadb_arg *argt, 
 			  fastadb_argv_t *argv)
 {
+  EXCEPTION *except;
   FILE *stream;
   SEQUENCE_DB *s_db;  
   int real_file = 1;
@@ -446,128 +440,131 @@ SEQUENCE_DB *fastadb_open(const char *db_name, fastadb_arg *argt,
       real_file = 0;
     }
   else if ((stream = fopen(db_name, "r")) == NULL)
-      {
-	fprintf(stderr, 
-		"fastadb_open(): Could not open fasta database %s!\n", 
-		db_name);
-	exit(EXIT_FAILURE);
-      }
+    Throw FSexcept(FOPEN_ERR, 
+		   "fastadb_open(): Could not open fasta database %s",
+		   db_name);
 
   /* Allocate and set defaults */
-  s_db = mallocec(sizeof(SEQUENCE_DB));
-  s_db->db_name = db_name;
-  s_db->length = 0;
-  s_db->no_seq = 0;
+  s_db = callocec(1, sizeof(SEQUENCE_DB));
 
-  s_db->max_seqs = MAX_SEQUENCES;
-  s_db->start_pts = mallocec((s_db->max_seqs+1) * sizeof(ULINT));
-  s_db->seq = mallocec(s_db->max_seqs * sizeof(BIOSEQ));
-  s_db->offset = mallocec(s_db->max_seqs * sizeof(long));
+  Try {
 
-  s_db->seq_data = NULL;
-  s_db->seq_data_len = 0;
-  s_db->seq_data_max_len = 1 << 26;
+    s_db->db_name = db_name;
+    s_db->length = 0;
+    s_db->no_seq = 0;
 
-  s_db->deflines = NULL;
-  s_db->deflines_len = 0;
-  s_db->deflines_max_len = s_db->seq_data_max_len / 4;
+    s_db->max_seqs = MAX_SEQUENCES;
+    s_db->start_pts = mallocec((s_db->max_seqs+1) * sizeof(ULINT));
+    s_db->seq = mallocec(s_db->max_seqs * sizeof(BIOSEQ));
+    s_db->offset = mallocec(s_db->max_seqs * sizeof(long));
 
-  s_db->dbfile = stream;
-  s_db->real_file = real_file;
-  s_db->current_seq=0;
-  s_db->access_type = MEMORY;
-  s_db->keep_oldseqs = YES;
-  s_db->retrieve_deflines = NO;
+    s_db->seq_data = NULL;
+    s_db->seq_data_len = 0;
+    s_db->seq_data_max_len = 1 << 26;
 
-  s_db->no_frags = 0;
-  s_db->min_len = 0;
-  s_db->max_len = 0;
-  s_db->L_start_pts = NULL;
-  s_db->f_start_pts = NULL;
-  s_db->NL = 0;
-  s_db->current_frag = 0;
+    s_db->deflines = NULL;
+    s_db->deflines_len = 0;
+    s_db->deflines_max_len = s_db->seq_data_max_len / 4;
 
-
-  /* Check parameter list and change params */
-  while (*argt != NONE)
-    {
-      switch (*argt)
-	{
-	case (ACCESS_TYPE):
-	  s_db->access_type = argv->access_type;
-	  break;
-	case (KEEP_OLDSEQS):
-	  s_db->keep_oldseqs = argv->keep_oldseqs;
-	  break;
-	case (RETREIVE_DEFLINES):
-	  s_db->retrieve_deflines = argv->retrieve_deflines;
-	  break;
-	case (MAX_ROW_LENGTH):
-	  s_db->seq_data_max_len = argv->max_row_length;
-	  break;
-	default:
-	  fprintf(stderr, 
-		  "fastadb_open(): Unreckognised option! %d\n", *argt);
-	  exit(EXIT_FAILURE);
-	}
-      argt++;
-      argv++;
-    }
-  if (s_db->access_type == MEMORY)
+    s_db->dbfile = stream;
+    s_db->real_file = real_file;
+    s_db->current_seq=0;
+    s_db->access_type = MEMORY;
     s_db->keep_oldseqs = YES;
-  else if (s_db->access_type == RANDOM)
-    s_db->keep_oldseqs = NO;
+    s_db->retrieve_deflines = NO;
 
-  /* Allocate the storage heap */
+    s_db->no_frags = 0;
+    s_db->min_len = 0;
+    s_db->max_len = 0;
+    s_db->L_start_pts = NULL;
+    s_db->f_start_pts = NULL;
+    s_db->NL = 0;
+    s_db->current_frag = 0;
 
-  s_db->seq_data = mallocec(s_db->seq_data_max_len);
-
-  if (s_db->retrieve_deflines)
-    {
-      s_db->deflines = mallocec(s_db->deflines_max_len);
-    }
-
-  /* Either load or just pass sequences in the database */
-  if (s_db->access_type == MEMORY)
-    {
-      while(1)
-	{
-	  if(!fastadb_load_next_seq(s_db))
+    /* Check parameter list and change params */
+    while (*argt != NONE)
+      {
+	switch (*argt)
+	  {
+	  case (ACCESS_TYPE):
+	    s_db->access_type = argv->access_type;
 	    break;
-	  s_db->start_pts[s_db->no_seq] = s_db->length;
-	  s_db->length += s_db->seq[s_db->current_seq-1].len;
-	  s_db->no_seq++;
-	}
-      if (s_db->real_file)
-	fclose(s_db->dbfile);
-      s_db->dbfile = NULL;
-      s_db->start_pts[s_db->no_seq] = s_db->length;
-    }
-  else if (s_db->access_type == RANDOM)
-    {
-      while(1)
-	{
-	  s_db->offset[s_db->current_seq]=ftell(s_db->dbfile);
-	  if(!fastadb_count_next_seq(s_db))
+	  case (KEEP_OLDSEQS):
+	    s_db->keep_oldseqs = argv->keep_oldseqs;
 	    break;
-	  s_db->start_pts[s_db->no_seq] = s_db->length;
-	  s_db->length += s_db->seq[s_db->current_seq-1].len;
-	  s_db->no_seq++;
-	}
-      rewind(s_db->dbfile);
-      s_db->start_pts[s_db->no_seq] = s_db->length;
-      s_db->current_seq = 0;
-    }
+	  case (RETREIVE_DEFLINES):
+	    s_db->retrieve_deflines = argv->retrieve_deflines;
+	    break;
+	  case (MAX_ROW_LENGTH):
+	    s_db->seq_data_max_len = argv->max_row_length;
+	    break;
+	  default:
+	    Throw FSexcept(BAD_ARGS, 
+			   "fastadb_open(): Unreckognised option!");
+	  }
+	argt++;
+	argv++;
+      }
+    if (s_db->access_type == MEMORY)
+      s_db->keep_oldseqs = YES;
+    else if (s_db->access_type == RANDOM)
+      s_db->keep_oldseqs = NO;
+    
+    /* Allocate the storage heap */
+    
+    s_db->seq_data = mallocec(s_db->seq_data_max_len);
 
-  if (s_db->access_type != SEQUENTIAL)
-    {
-      /* Trim memory segments */
-      fastadb_reduce_array_size(s_db);
-      s_db->seq_data = reallocec(s_db->seq_data, s_db->seq_data_len);
-      s_db->seq_data_max_len = s_db->seq_data_len;
-      s_db->deflines = reallocec(s_db->deflines, s_db->deflines_len);
-      s_db->deflines_max_len = s_db->deflines_len;
-    }
+    if (s_db->retrieve_deflines)
+      {
+	s_db->deflines = mallocec(s_db->deflines_max_len);
+      }
+
+    /* Either load or just pass sequences in the database */
+    if (s_db->access_type == MEMORY)
+      {
+	while(1)
+	  {
+	    if(!fastadb_load_next_seq(s_db))
+	      break;
+	    s_db->start_pts[s_db->no_seq] = s_db->length;
+	    s_db->length += s_db->seq[s_db->current_seq-1].len;
+	    s_db->no_seq++;
+	  }
+	if (s_db->real_file)
+	  fclose(s_db->dbfile);
+	s_db->dbfile = NULL;
+	s_db->start_pts[s_db->no_seq] = s_db->length;
+      }
+    else if (s_db->access_type == RANDOM)
+      {
+	while(1)
+	  {
+	    s_db->offset[s_db->current_seq]=ftell(s_db->dbfile);
+	    if(!fastadb_count_next_seq(s_db))
+	      break;
+	    s_db->start_pts[s_db->no_seq] = s_db->length;
+	    s_db->length += s_db->seq[s_db->current_seq-1].len;
+	    s_db->no_seq++;
+	  }
+	rewind(s_db->dbfile);
+	s_db->start_pts[s_db->no_seq] = s_db->length;
+	s_db->current_seq = 0;
+      }
+    
+    if (s_db->access_type != SEQUENTIAL)
+      {
+	/* Trim memory segments */
+	fastadb_reduce_array_size(s_db);
+	s_db->seq_data = reallocec(s_db->seq_data, s_db->seq_data_len);
+	s_db->seq_data_max_len = s_db->seq_data_len;
+	s_db->deflines = reallocec(s_db->deflines, s_db->deflines_len);
+	s_db->deflines_max_len = s_db->deflines_len;
+      }
+  }
+  Catch (except) {
+    fastadb_close(s_db);
+    Throw except;
+  }
   return s_db;
 }
 
@@ -681,12 +678,13 @@ int fastadb_get_noseqs(SEQUENCE_DB *s_db, ULINT *no_seqs)
 int fastadb_get_seq(SEQUENCE_DB *s_db, ULINT seq_no, BIOSEQ **seq)
 {
   if (!(seq_no < s_db->no_seq))
-    return 0;
+    Throw FSexcept(INDEX_OUT_OF_RANGE, "Index out of range.");
 
   if (s_db->access_type == SEQUENTIAL)
     {
       if (s_db->current_seq != seq_no)
-	return 0;
+	Throw FSexcept(INCONSITENT_DATA, 
+		       "Requested fragment is not current.");
       else return fastadb_get_next_seq(s_db, seq);
     }
 
@@ -731,7 +729,8 @@ int fastadb_get_next_seq(SEQUENCE_DB *s_db, BIOSEQ **seq)
   if (s_db->access_type == SEQUENTIAL)
     {
       if(!fastadb_load_next_seq(s_db))
-	return 0;
+	Throw FSexcept(EOF_REACHED, "EOF reached.");
+
       s_db->start_pts[s_db->no_seq] = s_db->length;
       s_db->length += s_db->seq[s_db->current_seq-1].len;
       s_db->no_seq++;
@@ -739,7 +738,7 @@ int fastadb_get_next_seq(SEQUENCE_DB *s_db, BIOSEQ **seq)
   else
     {
       if (!(s_db->current_seq < s_db->no_seq))
-	return 0;
+	Throw FSexcept(INDEX_OUT_OF_RANGE, "Index out of range.");
 
       if (s_db->access_type == MEMORY)
 	s_db->current_seq++;
@@ -781,8 +780,7 @@ int fastadb_init_frags(SEQUENCE_DB *s_db, ULINT min_len,
   if((s_db->min_len != 0 && s_db->max_len != 0) 
      || s_db->access_type != MEMORY 
      || s_db->min_len > s_db->max_len)
-    return 0;
-
+    Throw FSexcept(BAD_ARGS, "Could not initialise fragments.");
 
   s_db->NL = max_len - min_len + 1;
   s_db->min_len = min_len;
@@ -845,7 +843,8 @@ int fastadb_get_nofrags(SEQUENCE_DB *s_db, ULINT *no_frags,
   if (min_len != s_db->min_len || max_len != s_db->max_len)
     {
       *no_frags = 0;
-      return 0;
+      Throw FSexcept(BAD_ARGS, 
+		     "The lenghts do not match initialised lengths.");
     }
   *no_frags = s_db->no_frags;
   return 1;
@@ -860,7 +859,8 @@ int fastadb_get_frag(SEQUENCE_DB *s_db, BIOSEQ *frag, ULINT frag_no,
   ULINT r; /* Offset of the fragment within sequence. */
 
   if (min_len != s_db->min_len || max_len != s_db->max_len)
-    return 0;
+    Throw FSexcept(BAD_ARGS, 
+		   "The lenghts do not match initialised lengths.");
 
   /*Find the location of the fragment in the database*/
 
@@ -885,13 +885,3 @@ int fastadb_get_frag(SEQUENCE_DB *s_db, BIOSEQ *frag, ULINT frag_no,
   bioseq_get_frag(s_db->seq+k, frag, r, l+s_db->min_len, frag_no);
   return 1;
 }
-
-
-
-
-
-
-
-
-
-

@@ -66,8 +66,6 @@ typedef struct
   
 } FS_PARTITION_t;
 
-extern int FS_PARTITION_VERBOSE;
-
 /* Main constructor */
 FS_PARTITION_t *FS_PARTITION_create(const char *alphabet, 
 				    char separator);
@@ -180,6 +178,9 @@ int BIOSEQ_2_FS_SEQ(BIOSEQ *seq, FS_PARTITION_t *FS_partition,
   *FS_seq = FS_seq0;
   return 1;
 }
+
+/* Converts 'pattern' 'letter' into a string of letters it 
+   represents */
 
 MY_INLINE
 void FS_PARTITION_pletter_2_string(FS_PARTITION_t *ptable, int p,

@@ -290,3 +290,311 @@ void KW_INDEX_clear(KW_INDEX *KWI)
 }
 
 
+#if 0
+/********************************************************************/ 
+/*      Filtering                                                   */
+/********************************************************************/ 
+
+static
+void FSSRCH_filter(FSSRCH *FSS)
+{
+  int offset1;
+  int offset2;
+  int no_hits =  FSS->args->HL->actual_seqs_hits;
+  FPARAMS *fp = FSS->fp;
+  int i;
+
+  if (fp == NULL) return;
+  
+
+  /* Z-scores */
+  srand48(time(NULL)); 
+  hit_Zscores(FSS);
+
+  HIT_LIST_sort_evalue(FSS->args->HL, 0);
+
+  i=0;
+  while (FSS->args->HL->hits[i].evalue < fp->ZE0 && i < no_hits)
+    i++;
+  offset1 = i;
+  while (FSS->args->HL->hits[i].evalue <= fp->ZE1 && i < no_hits)
+    i++;
+  FSS->args->HL->actual_seqs_hits = i;
+  no_hits =  FSS->args->HL->actual_seqs_hits;
+  
+
+  /* TO DO:
+     Deallocate hits so deleted - this is a memory leak */
+
+  /* Conservation ratios */
+  HIT_LIST_process_cl(FSS->args->HL, offset1);
+  /* Must re-sort hit list */
+  HIT_LIST_sort_evalue(FSS->args->HL, 0);
+  HIT_LIST_sort_cratio(FSS->args->HL, offset1);
+  i=offset1;
+  while (FSS->args->HL->hits[i].cratio > fp->CR0 && i < no_hits)
+    i++;
+  offset2 = i;
+  while (FSS->args->HL->hits[i].cratio >= fp->CR1 && i < no_hits)
+    i++;
+  FSS->args->HL->actual_seqs_hits = i;
+  no_hits =  FSS->args->HL->actual_seqs_hits;
+
+
+  /* Keywords */
+  HIT_LIST_process_kw(FSS->args->HL, offset2);
+  /* Must re-sort hit list */
+  HIT_LIST_sort_evalue(FSS->args->HL, 0);
+  HIT_LIST_sort_cratio(FSS->args->HL, offset1);
+  HIT_LIST_sort_kwscore(FSS->args->HL, offset2);
+  i=offset2;
+
+  while (FSS->args->HL->hits[i].kw_score >= fp->KW0 && i < no_hits)
+    i++;
+  FSS->args->HL->actual_seqs_hits = i;
+}
+
+
+/********************************************************************/    
+/*                                                                  */
+/*                   WRD_CNTR module                                */ 
+/*                                                                  */
+/********************************************************************/    
+
+#define WC_STEP 500
+
+void WRD_CNTR_add(WRD_CNTR **wc, int wc_size, int *wc_max)
+{
+  while (wc_size >= *wc_max)
+    {
+      *wc_max += WC_STEP;
+      *wc = reallocec(*wc, *wc_max * sizeof(WRD_CNTR));
+    } 
+}
+
+void WRD_CNTR_clear(WRD_CNTR *wc)
+{
+  free(wc);
+}
+
+static
+int WRD_CNTR_cmp_score(const void *S1, const void *S2)
+{
+  const WRD_CNTR *T1 = S1;
+  const WRD_CNTR *T2 = S2;
+
+  /* Sorting in decreasing order */
+  if (T2->score > T1->score)
+    return 1;
+  else if (T1->score > T2->score)
+    return -1;
+  else
+    return 0;
+}
+
+void WRD_CNTR_sort_score(WRD_CNTR *wc, int wc_size)
+{
+  qsort(wc, wc_size, sizeof(WRD_CNTR), WRD_CNTR_cmp_score);
+}
+
+
+
+/* Keywords */
+
+/* Use AVL tree to store clusters / keywords */
+
+static 
+int compare_items(const void *pa, const void *pb, void *param)
+{
+  const WRD_CNTR *a = pa;
+  const WRD_CNTR *b = pb;
+  
+  return a->item - b->item;
+}
+
+void HIT_LIST_process_cl(HIT_LIST_t *HL, int offset)
+{
+  int i;
+  KW_INDEX *KWI = HL->KWI;
+  ULINT seqid;
+  ULINT seqid0;
+  struct avl_table *tree;
+  WRD_CNTR **tree_item;
+  WRD_CNTR *wc_tmp;
+  WRD_CNTR wc_tmp1;
+
+  
+  if (KWI == NULL)
+    return;
+  HIT_LIST_sort_by_sequence(HL);
+  seqid0 = KWI->ns;
+  /*******************************************/
+  /*          ORTHOLOGOUS CLUSTERS           */
+  /*******************************************/
+
+  tree = avl_create(compare_items, NULL, NULL);
+  WRD_CNTR_add(&HL->oc, HL->oc_size, &HL->oc_max);
+
+  /* Load tree */
+  for (i=0; i < HL->actual_seqs_hits; i++)
+    {
+      seqid = HL->hits[i].sequence_id;
+      if (seqid != seqid0)
+	{
+	  seqid0 = seqid;
+	  if (KWI->seq2cl[seqid] != 0)
+	    {
+	      wc_tmp = HL->oc + HL->oc_size;
+	      wc_tmp->item = KWI->seq2cl[seqid];
+	      wc_tmp->count = 0;
+	      wc_tmp->score = 0.0;
+	      tree_item = (WRD_CNTR **) avl_probe (tree, wc_tmp);	  
+	      (*tree_item)->count++;
+	      if ((*tree_item) == wc_tmp)
+		{
+		  HL->oc_size++;
+		  WRD_CNTR_add(&HL->oc, HL->oc_size, &HL->oc_max);
+		}
+	
+	    }
+	}
+    }
+
+  /* Calculate conservation ratio */
+  for (i=0; i < HL->oc_size; i++)
+    HL->oc[i].score = 
+      (double) HL->oc[i].count / KWI->clf[HL->oc[i].item];
+
+  /* Assign ratios to hits */
+  for (i=0; i < HL->actual_seqs_hits; i++)
+    {
+      seqid = HL->hits[i].sequence_id;
+      if (KWI->seq2cl[seqid] != 0)
+	{
+	  HL->hits[i].oc_cluster = KWI->seq2cl[seqid];
+	  wc_tmp1.item = KWI->seq2cl[seqid];
+	  tree_item = (WRD_CNTR **) avl_probe (tree, &wc_tmp1);	  
+	  HL->hits[i].cratio = (*tree_item)->score;
+	}
+      else
+	{
+	  HL->hits[i].oc_cluster = 0;
+	  HL->hits[i].cratio = 0.0;
+	}
+    }
+
+  /* Clean up tree */
+  avl_destroy (tree, NULL);
+  WRD_CNTR_sort_score(HL->oc, HL->oc_size);
+}
+
+void HIT_LIST_process_kw(HIT_LIST_t *HL, int offset)
+{
+  int i;
+  int j;
+  KW_INDEX *KWI = HL->KWI;
+  ULINT seqid;
+  ULINT seqid0;
+  struct avl_table *tree;
+  WRD_CNTR **tree_item;
+  WRD_CNTR *wc_tmp;
+  WRD_CNTR wc_tmp1;
+  int kw_hits = 0;
+  double s;
+
+  if (KWI == NULL)
+    return;
+  HIT_LIST_sort_by_sequence(HL);
+  seqid0 = KWI->ns;
+
+  /*******************************************/
+  /*               KEYWORDS                  */
+  /*******************************************/
+
+  tree = avl_create(compare_items, NULL, NULL);
+  WRD_CNTR_add(&HL->kw, HL->kw_size, &HL->kw_max);
+
+  /* Load tree */
+  for (i=0; i < HL->actual_seqs_hits; i++)
+    {
+      seqid = HL->hits[i].sequence_id;
+      if (seqid != seqid0)
+	{
+	  seqid0 = seqid;
+	  if (KWI->seq2kw1[seqid] != 0)
+	    {
+	      kw_hits++;
+	      for (j=0; j < KWI->seq2kw1[seqid]; j++)
+		{
+		  wc_tmp = HL->kw + HL->kw_size;
+		  wc_tmp->item = KWI->skw_h[KWI->seq2kw0[seqid]+j];
+		  wc_tmp->count = 0;
+		  wc_tmp->score = 0.0;
+		  tree_item = (WRD_CNTR **) avl_probe (tree, wc_tmp);	  
+		  (*tree_item)->count++;
+		  if ((*tree_item) == wc_tmp)
+		    {
+		      HL->kw_size++;	
+		      WRD_CNTR_add(&HL->kw, HL->kw_size, &HL->kw_max);
+		    }
+		}
+	    }
+	}
+    }
+
+  /* Calculate keyword scores */
+  s = log((double) KWI->nsk) - log((double) kw_hits);
+
+  for (i=0; i < HL->kw_size; i++)
+    {
+      HL->kw[i].score = s + log((double) HL->kw[i].count)
+	- log((double) KWI->kwf[HL->kw[i].item]);
+      HL->kw[i].score /= log(2.0);
+    }
+
+  /* Assign scores to hits */
+  for (i=0; i < HL->actual_seqs_hits; i++)
+    {
+      seqid = HL->hits[i].sequence_id;
+      if (KWI->seq2kw1[seqid] != 0)
+	{
+	  HL->hits[i].kw_score = 0.0;
+	  for (j=0; j < KWI->seq2kw1[seqid]; j++)
+	    {
+	      wc_tmp1.item = KWI->skw_h[KWI->seq2kw0[seqid]+j];
+	      tree_item = (WRD_CNTR **) avl_probe (tree, &wc_tmp1);	  
+	      HL->hits[i].kw_score += (*tree_item)->score;
+	    }
+	}
+      else
+	{
+	  HL->hits[i].kw_score = 0.0;
+	}
+    }
+
+  /* Clean up tree */
+  avl_destroy (tree, NULL);
+
+  /* Sort HL->kw and HL->oc */
+  /* Perhaps this can be done directly using avl-tree but this seems
+     easier right now. */
+
+  WRD_CNTR_sort_score(HL->kw, HL->kw_size);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+#endif
+
+
+

@@ -67,6 +67,51 @@ void pattern_distance(int Score, int P, int pos)
   return;
 }
 
+static
+void update_pM(SCORE_MATRIX_t *S, int i)
+{
+  int j;
+  int j_offset;
+
+  SM_i = i;
+  for (SM_j=0; SM_j < S->ptable->no_partitions; SM_j++)
+    {
+      SM_S = S;
+      SM_psize = FS_PARTITION_get_size(S->ptable, SM_j);
+      SM_poffset =  FS_PARTITION_get_poffset(S->ptable, SM_j);
+      
+      /* Now traverse the binary tree representing the subsets and
+	 compute maximum similarities */
+      if (S->similarity_flag)
+	pattern_similarity(SHRT_MIN, 0, 0);
+      else
+	pattern_distance(SHRT_MAX, 0, 0);
+
+      SM_S->pM[SM_i][SM_poffset] =
+	SM_S->pM[SM_i][SM_poffset + (1 << SM_psize) - 1];
+    }
+
+  /* Compute maximum similarities to any other cluster */
+  if (S->similarity_flag)
+    S->pMclosest[i] = SHRT_MIN;
+  else
+    S->pMclosest[i] = SHRT_MAX;
+    
+  for (j=0; j < S->ptable->no_partitions; j++)
+    {
+      if (S->ptable->partition_table[i] != j)
+	{
+	  j_offset = FS_PARTITION_get_poffset(S->ptable, j); 
+	  if (S->similarity_flag)
+	    S->pMclosest[i] = max(S->pMclosest[i], 
+				  S->pM[i][j_offset]);
+	  else
+	    S->pMclosest[i] = min(S->pMclosest[i], 
+				  S->pM[i][j_offset]);
+	}
+    }
+}
+
 
 /* Main constructor */
 SCORE_MATRIX_t *SCORE_MATRIX_create(const char *filename,
@@ -85,12 +130,12 @@ SCORE_MATRIX_t *SCORE_MATRIX_create(const char *filename,
   UINT_t row, col;
   int value;
   int field_width = 0;
-  int j_offset;
-
   SCORE_MATRIX_t *S;
 
   if (stream == NULL)
-    return NULL;
+    Throw FSexcept(FOPEN_ERR,
+		   "SCORE_MATRIX_create():"
+		   "Could not open file %s", filename);
 
   S = callocec(1, sizeof(SCORE_MATRIX_t));
   S->similarity_flag = 1;
@@ -128,48 +173,14 @@ SCORE_MATRIX_t *SCORE_MATRIX_create(const char *filename,
     }
   fclose(stream);
 
-  /* Compute maximum similarities to pattern letters (subsets of
-     alphabet partitions) */
-  for (SM_i=0; SM_i < A_SIZE; SM_i++)
-    {      
-      if (ptable->partition_table[SM_i] == -1)
-	continue;
-      for (SM_j=0; SM_j < ptable->no_partitions; SM_j++)
-	{
-	  SM_S = S;
-	  SM_psize = FS_PARTITION_get_size(S->ptable, SM_j);
-	  SM_poffset =  FS_PARTITION_get_poffset(S->ptable, SM_j);
-
-	  /* Now traverse the binary tree representing the subsets and
-	     compute maximum similarities */
-	  pattern_similarity(SHRT_MIN, 0, 0);
-	  SM_S->pM[SM_i][SM_poffset] =
-	    SM_S->pM[SM_i][SM_poffset + (1 << SM_psize) - 1];
-	}
-    }
-
-  /* Compute maximum similarities to any other cluster */
   for (i=0; i < A_SIZE; i++)
-    {
+    {      
       if (ptable->partition_table[i] == -1)
-	continue;
-      S->pMclosest[i] = SHRT_MIN;
+	continue;     
       S->SS[i] = S->M[i][i];
-      for (j=0; j < ptable->no_partitions; j++)
-	{
-	  if (ptable->partition_table[i] != j)
-	    {
-	      j_offset = FS_PARTITION_get_poffset(ptable, j); 
-	      S->pMclosest[i] = max(S->pMclosest[i], 
-				    S->pM[i][j_offset]); 
-	    }
-	}
+      update_pM(S, i);
     }
 
-
-  if (SCORE_MATRIX_VERBOSE > 0)
-    SCORE_MATRIX_print(S, stdout, "*** SIMILARITY MATRIX ***");
-    
   return S;
 }
 /* Destructor */
@@ -202,8 +213,6 @@ SCORE_MATRIX_t *SCORE_MATRIX_read(FILE *stream)
 	 A_SIZE, stream);
   fread(&(S->similarity_flag), sizeof(char), 1, stream);   
 
-  if (SCORE_MATRIX_VERBOSE > 0)
-    SCORE_MATRIX_print(S, stdout, "*** LOADED MATRIX ***");
   return S;
 } 
 
@@ -296,12 +305,93 @@ int SCORE_MATRIX_min_entry_row(SCORE_MATRIX_t *S, int row)
   return m;
 }
 
+/* Element set/get functions */
+
+void SCORE_MATRIX_set_M(SCORE_MATRIX_t *S, char row, char col, 
+			SSINT val)
+{
+  int i = row & A_SIZE_MASK;
+  int j = col & A_SIZE_MASK;
+
+  if (i >= A_SIZE || j >= A_SIZE || 
+      S->ptable->partition_table[i] == -1 ||
+      S->ptable->partition_table[j] == -1)
+    Throw FSexcept(INDEX_OUT_OF_RANGE,
+		   "SCORE_MATRIX_set_M(): Index out of range.");
+
+  S->M[i][j] = val;
+  
+  update_pM(S, i);      
+} 
+
+void SCORE_MATRIX_set_SS(SCORE_MATRIX_t *S, char row, int val)
+{
+  int i = row & A_SIZE_MASK;
+  if (i >= A_SIZE ||
+      S->ptable->partition_table[i] == -1)
+    Throw FSexcept(INDEX_OUT_OF_RANGE,
+		   "SCORE_MATRIX_set_SS(): Index out of range.");
+
+  S->SS[i] = val;
+  if (S->similarity_flag)
+    {
+      S->M[i][i] = val;
+      update_pM(S, i);      
+    }
+}
+
+SSINT SCORE_MATRIX_get_M(SCORE_MATRIX_t *S, char row, char col)
+{
+  int i = row & A_SIZE_MASK;
+  int j = col & A_SIZE_MASK;
+  if (i >= A_SIZE || j >= A_SIZE ||
+      S->ptable->partition_table[i] == -1 ||
+      S->ptable->partition_table[j] == -1)
+    Throw FSexcept(INDEX_OUT_OF_RANGE,
+		   "SCORE_MATRIX_get_M(): Index out of range.");
+  return S->M[i][j];
+}
+
+SSINT SCORE_MATRIX_get_pM(SCORE_MATRIX_t *S, char row, int group)
+{
+  int i = row & A_SIZE_MASK;
+
+  if (i >= A_SIZE || group >= S->ptable->no_partitions ||
+      S->ptable->partition_table[i] == -1)
+    Throw FSexcept(INDEX_OUT_OF_RANGE,
+		   "SCORE_MATRIX_get_pM(): Index out of range.");
+  return S->pM[i][group];
+}
+
+SSINT SCORE_MATRIX_get_pMc(SCORE_MATRIX_t *S, char row)
+{
+  int i = row & A_SIZE_MASK;
+  if (i >= A_SIZE ||
+      S->ptable->partition_table[i] == -1)
+    Throw FSexcept(INDEX_OUT_OF_RANGE,
+		   "SCORE_MATRIX_get_pMc(): Index out of range.");
+  
+  return S->pMclosest[i];
+}
+
+
+SSINT SCORE_MATRIX_get_SS(SCORE_MATRIX_t *S, char row)
+{
+  int i = row & A_SIZE_MASK;
+  if (i >= A_SIZE ||
+      S->ptable->partition_table[i] == -1)
+    Throw FSexcept(INDEX_OUT_OF_RANGE,
+		   "SCORE_MATRIX_get_SS(): Index out of range.");
+  return S->SS[i];
+}
+
+
+
 /* Similarities to Distances, Quasi-metrics ... */
 SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dquasi(SCORE_MATRIX_t *S)
 {
   UINT_t i, j;
   SCORE_MATRIX_t *D = callocec(1, sizeof(SCORE_MATRIX_t));
-  int j_offset;
 
   D->similarity_flag = 0;
   D->ptable = S->ptable;
@@ -325,44 +415,13 @@ SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dquasi(SCORE_MATRIX_t *S)
 
   /* Compute maximum distances to pattern letters (subsets of
      alphabet partitions) */
-  for (SM_i=0; SM_i < A_SIZE; SM_i++)
-    {      
-      if (D->ptable->partition_table[SM_i] == -1)
-	continue;
-      for (SM_j=0; SM_j < D->ptable->no_partitions; SM_j++)
-	{
-	  SM_S = D;
-	  SM_psize = FS_PARTITION_get_size(D->ptable, SM_j);
-	  SM_poffset =  FS_PARTITION_get_poffset(D->ptable, SM_j);
-
-	  /* Now traverse the binary tree representing the subsets and
-	     compute maximum similarities */
-	  pattern_distance(SHRT_MAX, 0, 0);
-	  SM_S->pM[SM_i][SM_poffset] =
-	    SM_S->pM[SM_i][SM_poffset + (1 << SM_psize) - 1];
-	}
-    }
-
-  /* Compute minimum distances to any cluster */
   for (i=0; i < A_SIZE; i++)
-    {
+    {      
       if (D->ptable->partition_table[i] == -1)
 	continue;
-      D->pMclosest[i] = SHRT_MAX;
-      for (j=0; j < D->ptable->no_partitions; j++)
-	{
-	  if (D->ptable->partition_table[i] != j)
-	    {
-	      j_offset = 
-		FS_PARTITION_get_poffset(D->ptable, j);
-	      D->pMclosest[i] = min(D->pMclosest[i], 
-				    D->pM[i][j_offset]);
-	    }
-	}
+      update_pM(D, i);
     }
 
-  if (SCORE_MATRIX_VERBOSE > 0)
-    SCORE_MATRIX_print(D, stdout, "*** QUASI-METRIC MATRIX ***");
   return D;
 }
 
@@ -370,7 +429,6 @@ SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dmax(SCORE_MATRIX_t *S)
 {
   SCORE_MATRIX_t *D = SCORE_MATRIX_S_2_Dquasi(S);
   UINT_t i, j;
-  int j_offset;
 
   /* Symmetrise */
   for (i=0; i < A_SIZE-1; i++)
@@ -387,46 +445,13 @@ SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dmax(SCORE_MATRIX_t *S)
     }
 
 
-  /* Compute maximum distances to pattern letters (subsets of
-     alphabet partitions) */
-  for (SM_i=0; SM_i < A_SIZE; SM_i++)
-    {      
-      if (D->ptable->partition_table[SM_i] == -1)
-	continue;
-      for (SM_j=0; SM_j < D->ptable->no_partitions; SM_j++)
-	{
-	  SM_S = D;
-	  SM_psize = FS_PARTITION_get_size(D->ptable, SM_j);
-	  SM_poffset =  FS_PARTITION_get_poffset(D->ptable, SM_j);
-
-	  /* Now traverse the binary tree representing the subsets and
-	     compute maximum similarities */
-	  pattern_distance(SHRT_MAX, 0, 0);
-	  SM_S->pM[SM_i][SM_poffset] =
-	    SM_S->pM[SM_i][SM_poffset + (1 << SM_psize) - 1];
-	}
-    }
-
-  /* Compute minimum distances to any cluster */
   for (i=0; i < A_SIZE; i++)
-    {
+    {      
       if (D->ptable->partition_table[i] == -1)
 	continue;
-      D->pMclosest[i] = SHRT_MAX;
-      for (j=0; j < D->ptable->no_partitions; j++)
-	{
-	  if (D->ptable->partition_table[i] != j)
-	    {
-	      j_offset = 
-		FS_PARTITION_get_poffset(D->ptable, j);
-	      D->pMclosest[i] = min(D->pMclosest[i], 
-				    D->pM[i][j_offset]);
-	    }
-	}
+      update_pM(D, i);
     }
 
-  if (SCORE_MATRIX_VERBOSE > 0)
-    SCORE_MATRIX_print(D, stdout, "*** Dmax MATRIX ***");
   return D;
 }
 
@@ -434,7 +459,6 @@ SCORE_MATRIX_t *SCORE_MATRIX_S_2_Davg(SCORE_MATRIX_t *S)
 {
   SCORE_MATRIX_t *D = SCORE_MATRIX_S_2_Dquasi(S);
   UINT_t i, j;
-  int j_offset;
 
   /* Symmetrise */
   for (i=0; i < A_SIZE-1; i++)
@@ -450,46 +474,13 @@ SCORE_MATRIX_t *SCORE_MATRIX_S_2_Davg(SCORE_MATRIX_t *S)
 	}
     }
 
-  /* Compute maximum distances to pattern letters (subsets of
-     alphabet partitions) */
-  for (SM_i=0; SM_i < A_SIZE; SM_i++)
-    {      
-      if (D->ptable->partition_table[SM_i] == -1)
-	continue;
-      for (SM_j=0; SM_j < D->ptable->no_partitions; SM_j++)
-	{
-	  SM_S = D;
-	  SM_psize = FS_PARTITION_get_size(D->ptable, SM_j);
-	  SM_poffset =  FS_PARTITION_get_poffset(D->ptable, SM_j);
-
-	  /* Now traverse the binary tree representing the subsets and
-	     compute maximum similarities */
-	  pattern_distance(SHRT_MAX, 0, 0);
-	  SM_S->pM[SM_i][SM_poffset] =
-	    SM_S->pM[SM_i][SM_poffset + (1 << SM_psize) - 1];
-	}
-    }
-
-  /* Compute minimum distances to any cluster */
   for (i=0; i < A_SIZE; i++)
-    {
+    {      
       if (D->ptable->partition_table[i] == -1)
 	continue;
-      D->pMclosest[i] = SHRT_MAX;
-      for (j=0; j < D->ptable->no_partitions; j++)
-	{
-	  if (D->ptable->partition_table[i] != j)
-	    {
-	      j_offset = 
-		FS_PARTITION_get_poffset(D->ptable, j);
-	      D->pMclosest[i] = min(D->pMclosest[i], 
-				    D->pM[i][j_offset]);
-	    }
-	}
+      update_pM(D, i);
     }
 
-  if (SCORE_MATRIX_VERBOSE > 0)
-    SCORE_MATRIX_print(D, stdout, "*** Davg MATRIX ***");
   return D;
 }
 
@@ -645,4 +636,13 @@ void SCORE_MATRIX_convert(int s0, HIT_LIST_t *HL)
       hit = HIT_LIST_get_hit(HL, i);
       hit->value = s0 - hit->value;
     }
+}
+
+/********************************************************************/ 
+/*                 Evaluation function                              */
+/********************************************************************/ 
+
+int smatrix_eval(void *M, BIOSEQ *query, BIOSEQ *subject)
+{
+  return SCORE_MATRIX_evaluate(M, query, subject);
 }
