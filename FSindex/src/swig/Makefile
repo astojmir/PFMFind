@@ -10,7 +10,7 @@ FS_wrap.o: FS_wrap.c
 	$(CC) $(CFLAGS) -fPIC -c FS_wrap.c -I$(PYDIR)
 
 _FS.so: FS_wrap.o libFSindex.a libsarray.a
-	$(CC) -shared -g FS_wrap.o $(LDFLAGS) $(LDLIBS) -o _FS.so
+	$(CC) -shared -g FS_wrap.o $(LDFLAGS) $(LDLIBS) -o FS.so
 
 clean_wrap:
 	rm -f *.pyc;\
