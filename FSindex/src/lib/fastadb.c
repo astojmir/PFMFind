@@ -437,6 +437,8 @@ SEQUENCE_DB *fastadb_open(const char *db_name, fastadb_arg *argt,
   FILE *stream;
   SEQUENCE_DB *s_db;  
   int real_file = 1;
+  char *old_deflines;
+  char *old_seq_data;
 
   if (db_name == NULL)
     {
@@ -562,10 +564,14 @@ SEQUENCE_DB *fastadb_open(const char *db_name, fastadb_arg *argt,
 	   so that we can have fast fragment comparison near the end
 	*/
 	fastadb_reduce_array_size(s_db);
+	old_deflines = s_db->deflines;
+	old_seq_data = s_db->seq_data;
 	s_db->seq_data = reallocec(s_db->seq_data, s_db->seq_data_len+30);
 	s_db->seq_data_max_len = s_db->seq_data_len+30;
 	s_db->deflines = reallocec(s_db->deflines, s_db->deflines_len);
 	s_db->deflines_max_len = s_db->deflines_len;
+	fastadb_update_deflines(s_db, &old_deflines);
+	fastadb_update_seq_data(s_db, &old_seq_data);
       }
   }
   Catch (except) {
