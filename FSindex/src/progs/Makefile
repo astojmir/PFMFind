@@ -20,6 +20,7 @@ all: $(FSLIB) \
      FSindex_delta \
      FSindex_rand_perf \
      FSindex_rand_perf1 \
+     FSindex_rand_perf2 \
      FSindex_eps_net1 \
      FSindex_show_bin \
      fragdist
