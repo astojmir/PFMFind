@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include "fastadb.h"
 #include "partition.h"
+#include "hit_list.h"
 #ifdef USE_MPATROL
 #include <mpatrol.h>
 #endif
@@ -82,6 +83,7 @@ int SCORE_MATRIX_p_entry(SCORE_MATRIX_t *Score_matrix,
 SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dmax(SCORE_MATRIX_t *S);
 SCORE_MATRIX_t *SCORE_MATRIX_S_2_Davg(SCORE_MATRIX_t *S);
 SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dquasi(SCORE_MATRIX_t *S);
+void SCORE_MATRIX_convert(int s0, HIT_LIST_t *HL);
 
 int Davg_2_S(int Davg, int Sxx, int Syy);
 int Dquasi_2_S(int Dquasi, int Sxx);

@@ -12,6 +12,7 @@
 #include "fastadb.h"
 #include "partition.h"
 #include "smatrix.h"
+#include "hit_list.h"
 #ifdef USE_MPATROL
 #include <mpatrol.h>
 #endif
@@ -78,6 +79,7 @@ void POS_MATRIX_update(POS_MATRIX *PS);
 
 POS_MATRIX *SCORE_2_POS_MATRIX(SCORE_MATRIX_t *S, BIOSEQ *query);
 
+void POS_MATRIX_convert(POS_MATRIX *PS, HIT_LIST_t *HL);
 
 
 /* Destructor */
@@ -176,6 +178,11 @@ int POS_MATRIX_verify_pos(POS_MATRIX *PD, ULINT Pfrom, ULINT Pto,
 /* Remember P_SIZE = 256 (8 bits) */ 
 #define PM_pM(i, j) \
         (((i) << 8) + (j))
+
+#define POS_MATRIX_filename(PS) \
+        ((PS)->filename)
+
+
 
 MY_INLINE
 void POS_MATRIX_get_meanvar(POS_MATRIX *PS, double *mean, 
