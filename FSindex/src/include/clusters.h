@@ -37,7 +37,8 @@ struct seq_cluster
   ULINT cfirst;     /* Points to the first sequence in each cluster
 		      */ 
   ULINT clast;      /* Points to the last sequence in each cluster */
-  struct seq_cluster *next; 
+  struct seq_cluster *next;
+  struct seq_cluster *previous;
 };
 
 /* Note that we have a two-dimensional linked list. Then we copy into
@@ -52,6 +53,8 @@ typedef struct
   ULINT max_no_seqs; /* Number of allocated spaces for sequences */
   ULINT no_clusters; /* Current number of clusters */
   ULINT max_no_clusters; /* Allocated space for clusters */
+  ULINT no_clusters0;/* Number of clusters with identical sequences
+			collected */
   SEQ_index_t *seqs; /* Array of fragments */
   ULINT *next_seq;   /* Array of pointers to next fragment - for
 			linked list */
