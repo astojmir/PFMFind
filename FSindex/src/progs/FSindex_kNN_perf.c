@@ -176,7 +176,6 @@ int main(int argc, char **argv)
       time1 = time(NULL);
       dt = difftime(time1, time0);
 
-      /* TO DO: Open the stream */
       if (out_files[i] != NULL) { 
 	if((outstream = fopen(out_files[i], "w")) == NULL)
 	  Throw FSexcept(FOPEN_ERR, "Could not open the file %s.",
