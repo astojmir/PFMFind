@@ -9,7 +9,6 @@ import gzip
 from ShortFrags.Expt import fragexpt
 from ShortFrags.Expt import index
 from ShortFrags.Expt import DirichletInfo
-from ShortFrags import FS
 from matrix_opts import *
 from query_input import *
 from search_action import *
@@ -24,8 +23,6 @@ from Console import Console
 from progress_bar import ProgressBar
 import threading
 from Bio.SubsMat import MatrixInfo
-from ShortFrags import FS
-
 
 THREADS = 5
 
@@ -380,7 +377,7 @@ class MainGui(Tkinter.Frame):
                 self.messageBar.message('state', 'Creating Index...')
                 self.messageBar.update_idletasks()
                 self.update()
-                I = FS.index(res['fasta_name'], res['pttn'], res['use_sa'])
+                I = index.FSIndex(res['fasta_name'], res['pttn'], res['use_sa'])
                 self.messageBar.message('state', 'Saving Index...')
                 self.messageBar.update_idletasks()
                 I.save(res['index_name'])

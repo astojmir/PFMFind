@@ -20,7 +20,6 @@ class HitsView(Tkinter.Frame, View):
                       'Similarity': HitList.sort_by_similarity,
                       'Sequence': HitList.sort_by_seq,
                       'Seqid': HitList.sort_by_seqid,
-                      'Orthologs': HitList.sort_by_orthologs,
                       }
 
         self.vSortVar = Tkinter.StringVar()

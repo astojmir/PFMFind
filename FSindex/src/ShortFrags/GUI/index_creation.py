@@ -2,7 +2,6 @@ import Tkinter
 import Pmw
 from tkMessageBox import showerror, showinfo, Message
 from tkFileDialog import *
-from ShortFrags import FS
 from progress_dialog import ProgressDialog
 
 class CreateIndexDialog(Pmw.Dialog):
