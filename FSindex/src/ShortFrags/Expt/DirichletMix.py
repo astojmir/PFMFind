@@ -1,6 +1,6 @@
 from string import split, join, strip
 import sys, os, copy
-from transcendental import gamma, log, array, product, beta
+from transcendental import gamma, log, array, product, beta, lgamma, exp, zeros
 from Bio.Align.AlignInfo import PSSM
 from cStringIO import StringIO
 
@@ -42,6 +42,7 @@ def freq_counts(seqs, alphabet, weights=None):
     order = {}
     for i, a in enumerate(alphabet):
         order[a] = i
+
     for i in range(len(seqs[0])):
         for j in range(len(seqs)):
             a = order[seqs[j][i]]
@@ -65,6 +66,9 @@ def henikoff_weights(seqs, alphabet, counts):
     c = len(seqs) / w_sum
     return [w*c for w in weights]
 
+
+def log_beta(x):
+    return sum(lgamma(x)) - lgamma(sum(x))
 
 class DirichletMix:
     def __init__(self, dic=None):
@@ -118,28 +122,25 @@ class DirichletMix:
             fp.write(",\n")
         fp.write("%*s           ]}" % (indent, ""))
 
+    # TO DO: FIX THE NOTATION SO THAT IT CORRESPONDS TO THE PAPER
+
     def _coeffs(self, k, n, sum_n):
         alpha = array(self.alpha[k][1:])
         sum_alpha = self.alpha[k][0]
         q = self.mixture[k]
-        P = 1.0
-        for i in range(len(alpha)):
-            if n[i]: P *= n[i] * beta(n[i], alpha[i])
 
+        # Calculate the coefficient using logarithms
+        log_coeff = log_beta(n+alpha) - log_beta(alpha)
+        return q * exp(log_coeff)
         
-        ## P = product(gamma(n+alpha) / (gamma(alpha) * gamma(n+1)))
-        B = sum_n * beta(sum_n, sum_alpha)
-##         print "sum_n=%d" % int(sum_n)
-##         print "sum_alpha=%.4e" % sum_alpha
-##         print "beta(sum_n, sum_alpha)=%.4e" % beta(sum_n, sum_alpha)
-##         print "sum_n * beta(sum_n, sum_alpha)=%.4e" % (sum_n * beta(sum_n, sum_alpha))
-##         print "q=%.4e" % q
-##         print "P=%.4e" % P
-##         print "gamma(sum_n+1)=%.4e" % gamma(sum_n+1)
-##         print "gamma(sum_alpha)=%.4e" % gamma(sum_alpha)
-##         print "gamma(sum_n + sum_alpha)=%.4e" % gamma(sum_n + sum_alpha)
-##        return q * (gamma(sum_n+1) * gamma(sum_alpha) / gamma(sum_n + sum_alpha)) * P
-        return q * B / P
+##         P = 1.0
+##         for i in range(len(alpha)):
+##             if n[i]:
+##                 P *= n[i] * beta(n[i], alpha[i])
+##                 print n[i], alpha[i],  beta(n[i], alpha[i])
+##         print P
+##         B = sum_n * beta(sum_n, sum_alpha)
+##         return q * B / P
 
     def _probs(self, i, coeff, n):
         a = array([self.alpha[k][i+1] for k in xrange(self.num_distr)])
@@ -156,11 +157,32 @@ class DirichletMix:
     def _pos_probs(self, counts):
         n = array(counts)
 
-        # Calculate coefficients - reused for all amino acids,
-        # depend only on k
-        coeff = array([self._coeffs(k, n, sum(n)) for k in range(self.num_distr)])
-        coeff = coeff / sum(coeff)
-        return [self._probs(i, coeff, n) for i in xrange(len(counts))]
+        # *** NEW CODE FROM HERE ****
+        sum_n = sum(n)
+        p = array([0.0]*len(counts))
+        log_coeffs = array([0.0]*self.num_distr)
+        q = array(self.mixture)
+
+        for j in xrange(self.num_distr):
+            alpha_j = array(self.alpha[j][1:])
+            log_coeffs[j] = log_beta(n+alpha_j) - log_beta(alpha_j)
+            
+        log_coeffs = log_coeffs - max(log_coeffs)
+        coeffs = q * exp(log_coeffs)
+
+        for i in xrange(len(counts)):
+            a = array([self.alpha[j][i+1] for j in xrange(self.num_distr)])
+            sum_a_j = array([sum(self.alpha[j][1:]) for j in xrange(self.num_distr)])
+            N = (a+n[i])/(sum_a_j + sum(n))
+            p[i] = sum(coeffs*N)
+
+        return p / sum(p)    
+        # **** END OF NEW CODE  **** 
+
+##         coeff = array([self._coeffs(k, n, sum(n)) for k in range(self.num_distr)])
+##         # coeff = coeff / sum(coeff)
+##         X = array([self._probs(i, coeff, n) for i in xrange(len(counts))])
+##         return X / sum(X)
 
     def _pos_log_odds(self, _pos_probs, bkgrnd, scale=1.0):
         n = len(_pos_probs)
