@@ -1,3 +1,4 @@
+#include "misclib.h"
 #include <math.h>
 
 #define  A1  (-3.969683028665376e+01)
@@ -29,10 +30,14 @@
 /* P_high = 1 - p_low*/
 #define P_HIGH  0.97575
 
-long double normsinv(p)
-long double p;
+MY_INLINE
+long double normsinv(long double p);
+
+
+MY_INLINE
+long double normsinv(long double p)
 {
-long double x;
+long double x = 0.0;
 long double q, r, u, e;
 if ((0 < p )  && (p < P_LOW)){
    q = sqrt(-2*log(p));
@@ -52,13 +57,13 @@ else{
 	}
 }
 
-/* If you are compiling this under UNIX OR LINUX, you may uncomment this block for better accuracy.
-if(( 0 < p)&&(p < 1)){
+/* If you are compiling this under UNIX OR LINUX, you may uncomment this block for better accuracy. */
+if(( 0 < p)&&(p < 1)){ 
    e = 0.5 * erfc(-x/sqrt(2)) - p;
    u = e * sqrt(2*M_PI) * exp(x*x/2);
    x = x - u/(1 + x*u/2);
 }
-*/
+
 
 return x;
 }

@@ -30,7 +30,9 @@ typedef struct
   SSINT pM[A_SIZE][P_SIZE];
   SSINT pMclosest[A_SIZE];
   char similarity_flag;
-  FS_PARTITION_t *ptable;  
+  FS_PARTITION_t *ptable;
+  double mean;
+  double var;
 } SCORE_MATRIX_t;
 
 extern int SCORE_MATRIX_VERBOSE;
@@ -53,7 +55,9 @@ void SCORE_MATRIX_set_ptable(SCORE_MATRIX_t *Score_matrix,
 			     FS_PARTITION_t *ptable);
 
 /* Element Access + Properties */
-
+MY_INLINE
+void SCORE_MATRIX_get_meanvar(SCORE_MATRIX_t *S, double *mean, 
+			      double *var);
 
 int SCORE_MATRIX_max_entry(SCORE_MATRIX_t *Score_matrix);
 int SCORE_MATRIX_min_entry(SCORE_MATRIX_t *Score_matrix);
@@ -79,6 +83,10 @@ SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dquasi(SCORE_MATRIX_t *S);
 
 int Davg_2_S(int Davg, int Sxx, int Syy);
 int Dquasi_2_S(int Dquasi, int Sxx);
+
+/* Scores and p-values */
+int SCORE_MATRIX_Gaussian_cutoff(SCORE_MATRIX_t *S, BIOSEQ *query,
+				 double *bkgrnd, double pcutoff);
 
  /* Evaluation of similarities, distances */
 MY_INLINE
@@ -124,6 +132,14 @@ void SCORE_MATRIX_print(SCORE_MATRIX_t *S, FILE *stream,
 
 #define SCORE_MATRIX_p_entry(S, row, col) \
         ((S)->pM[(row)][(col)])
+
+MY_INLINE
+void SCORE_MATRIX_get_meanvar(SCORE_MATRIX_t *S, double *mean, 
+			      double *var)
+{
+  *mean = S->mean;
+  *var = S->var;
+}
 
 /* Similarities to Distances, Quasi-metrics ... */
 

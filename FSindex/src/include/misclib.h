@@ -48,6 +48,10 @@ double dlgamma(double x);
 
 double dibeta(double p, double a, double b);
 
+/* Statistical functions - my own */
+void discrete_meanvar(int n, SSINT *values, double *probs, 
+		      double *mean, double *var); 
+
 /* Memory managment functions */
 
 char *newmem(long int number, long int size);

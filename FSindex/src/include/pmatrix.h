@@ -47,6 +47,8 @@ struct POS_MATRIX_s
   BIOSEQ *seq;
   double *weight;
   int iteration;
+  double mean;
+  double var;
 };
 
 typedef struct POS_MATRIX_s POS_MATRIX;
@@ -95,6 +97,9 @@ double *load_bkgrnd_probs(const char *filename);
 int POS_MATRIX_write(POS_MATRIX *PS, FILE *stream); 
 POS_MATRIX *POS_MATRIX_read(FILE *stream);
 
+/* Scores and p-values */
+int POS_MATRIX_Gaussian_cutoff(POS_MATRIX *S, double pcutoff);
+
 /* Printing */
 void POS_MATRIX_print(POS_MATRIX *PS, FILE *stream, 
 			const char *title);
@@ -107,6 +112,9 @@ void POS_MATRIX_set_ptable(POS_MATRIX *PS,
 MY_INLINE
 int POS_MATRIX_max_entry_pos(POS_MATRIX *PS, int pos, int *col);
 
+MY_INLINE
+void POS_MATRIX_get_meanvar(POS_MATRIX *PS, double *mean, 
+			    double *var); 
 
 int PM_M(int i, int j);
 int PM_pM(int i, int j);
@@ -165,6 +173,14 @@ int POS_MATRIX_verify_pos(POS_MATRIX *PD, ULINT Pfrom, ULINT Pto,
 /* Remember P_SIZE = 256 (8 bits) */ 
 #define PM_pM(i, j) \
         (((i) << 8) + (j))
+
+MY_INLINE
+void POS_MATRIX_get_meanvar(POS_MATRIX *PS, double *mean, 
+			    double *var)
+{
+  *mean = PS->mean;
+  *var = PS->var;
+}
 
 MY_INLINE
 int POS_MATRIX_max_entry_pos(POS_MATRIX *PS, int pos, int *col)

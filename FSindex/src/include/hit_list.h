@@ -31,6 +31,7 @@ typedef struct
   ULINT sequence_id;
   ULINT sequence_from;
   float value;
+  double pvalue;
 } SEQ_HIT_t;
 
 /* This type is presently not used */
@@ -120,5 +121,10 @@ void HIT_LIST_get_hit_seqs(HIT_LIST_t *HIT_list, BIOSEQ **seqs,
 void HIT_LIST_sort_decr(HIT_LIST_t *HIT_list);
 void HIT_LIST_sort_incr(HIT_LIST_t *HIT_list);
 void HIT_LIST_sort_by_sequence(HIT_LIST_t *HIT_list);
+
+/* Add p-values */
+void HIT_LIST_Gaussian_pvalues(HIT_LIST_t *HT, double mean, 
+			       double var);
+
 
 #endif
