@@ -378,7 +378,7 @@ void FS_INDEX_create(const char *database, ULINT flen,
   free(db_base);
 
   /* We have an index ready for search */
-  index_name = "New Index";
+  index_name = strdup("New Index");
   return; 
 }
 
