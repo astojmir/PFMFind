@@ -1,70 +1,112 @@
 SHELL=/bin/sh
 
-
+# Uncomment if Sun C/C++ compiler is to be used.
+#COMPILER= sun
+#MACHINE = st-james
+#MACHINE = morava
 
 SRCDIR = src/
 BINDIR = bin/
 # All subdirs of $(SRCDIR) are relative to $(SRCDIR)
 PROGSDIR = src/progs/
 LIBSDIR = src/lib/
-SWIGDIR = src/swig/
+SARRAYDIR = src/sarray/
+SWIGDIR = src/swig
 SCRIPTDIR = src/scripts
 LIBDIR = ../lib
 INCLUDEDIR = src/include/
+INCS = -I../include
 
 GSLINCLUDE = -I /u/students/aleksand/exec/include/
 GSLLIB = -L /u/students/aleksand/exec/lib
-
-DEBUG=-g -D DEBUG=2
 MPATROL = -D USE_MPATROL
 MPATROLLIBS = -lmpatrol -lbfd -liberty
-MAXOPT=-O3 -fomit-frame-pointer -finline-functions -funroll-loops -D GCC_INLINE
-GPROF = -pg
-WARNINGS = -pipe -Wall -Wno-char-subscripts -Wshadow \
-          -Wwrite-strings -Wstrict-prototypes \
-          -Wformat -Wmissing-prototypes -funsigned-char -Werror
-CC = gcc
-# -Werror
-CFLAGS = "-I ../include -I $(LIBDIR)/expat-1.95.7/lib $(WARNINGS) $(DEBUG)"
-LDFLAGS = "-L $(LIBDIR) -L $(LIBDIR)/expat-1.95.7"
-LDLIBS = "-lFSindex -lmd -lm -lexpat"
+MAKE = gmake
 
+DEBUG=-g -D DEBUG=2
+
+ifeq ($(MACHINE), st-james)
+PYDIR = /usr/pkg/include/python2p3
+else
+  ifeq ($(MACHINE), morava)
+  PYDIR = /usr/include/python2.2
+  else
+  PYDIR = /usr/include/python2.3
+  endif
+endif
+
+LDFLAGS = "-L ../lib -L ../sarray"
+
+ifneq ($(COMPILER), sun)
+# gcc flags 
+GPROF = -pg
+CC = gcc
+CWARNINGS = -pipe -Wall -Wno-char-subscripts -Wshadow \
+          -Wwrite-strings -Wstrict-prototypes \
+          -Wformat -Wmissing-prototypes -funsigned-char #-Werror
+COPTIM=-O3 -fomit-frame-pointer -finline-functions -funroll-loops -D GCC_INLINE
+LDLIBS = "-lFSindex -lsarray -lgcc -lpthread"# -ldmalloc"
+else
+# Solaris cc flags 
+GPROF = -xpg
+
+CC = cc
+CWARNINGS =  -errwarn -v
+COPTIM = -xO5 -fast -xipo -s
+LDLIBS = "-lFSindex -lsarray"
+endif
+
+
+
+VPATH = src/lib:src/swig
+
+CFLAGS = $(DEBUG) $(INCS) -fPIC # -D USE_DMALLOC -D THREADS=4
 
 all: progs
 
-progs: libs
+progs: libFSindex libsarray
 	if [ ! -d  $(BINDIR) ]; then \
 	   mkdir $(BINDIR); \
 	fi 
 	cd $(PROGSDIR); \
-	make CC=$(CC) CFLAGS=$(CFLAGS) LDFLAGS=$(LDFLAGS) LDLIBS=$(LDLIBS); \
+	$(MAKE) CC=$(CC) CFLAGS="$(CFLAGS) $(CWARNINGS)" LDFLAGS=$(LDFLAGS) LDLIBS=$(LDLIBS); \
 	for x in *; do if [ -x $$x -a -f $$x.c ]; \
 	then mv $$x "../../$(BINDIR)"; fi done; \
 	cd ..; \
 
-swig:	libs   
+swig:	libFSindex libsarray
 	cd $(SWIGDIR); \
-	make; \
+	$(MAKE) CC=$(CC) CFLAGS="$(CFLAGS)" LDFLAGS=$(LDFLAGS) \
+	LDLIBS=$(LDLIBS) PYDIR=$(PYDIR); \
 	cd ../../$(BINDIR); \
+	rm -f _FS.so; \
+	rm -f *.py; \
 	ln -sf ../$(SWIGDIR)/_FS.so .; \
 	ln -sf ../$(SWIGDIR)/FS.py .; \
 	ln -sf ../$(SCRIPTDIR)/*.py .; \
 	cd ..; \
 
-libs:
+libFSindex:
 	cd $(LIBSDIR); \
-	make CC=$(CC) CFLAGS=$(CFLAGS) \
+	$(MAKE) CC=$(CC) CFLAGS="$(CFLAGS) $(CWARNINGS)"\
+
+libsarray:
+	cd $(SARRAYDIR); \
+	$(MAKE) CC=$(CC) CFLAGS="$(CFLAGS)" \
 
 clean:
 	rm -f core; \
 	cd $(PROGSDIR); \
-	make clean; \
+	$(MAKE) clean; \
 	cd ../..; \
 	cd $(LIBSDIR); \
-	make clean; \
+	$(MAKE) clean; \
+	cd ../..; \
+	cd $(SARRAYDIR); \
+	$(MAKE) clean; \
 	cd ../..; \
 	cd $(SWIGDIR); \
-	make clean; \
+	$(MAKE) clean_lib; \
 	cd ../..;\
 	cd $(BINDIR); \
 	rm -f core; \
@@ -77,22 +119,34 @@ clean:
 srcclean:
 	rm -f *~; \
 	cd $(PROGSDIR); \
-	make srcclean; \
+	$(MAKE) srcclean; \
 	cd ../..; \
 	cd $(LIBSDIR); \
-	make srcclean; \
+	$(MAKE) srcclean; \
 	cd ../..; \
 	cd $(INCLUDEDIR); \
 	rm -f *~; \
 	cd ../..; \
+	cd $(SWIGDIR); \
+	$(MAKE) srcclean; \
+	cd ../..; \
 
 tarball: 
-	tar -cvf FSindex.tar $(PROGSDIR)*.c; \
+	tar -cvf FSindex.tar Makefile; \
+	tar -rvf FSindex.tar data/*.*; \
+	tar -rvf FSindex.tar --exclude=CVS matrix/*; \
+	tar -rvf FSindex.tar $(PROGSDIR)*.c; \
 	tar -rvf FSindex.tar $(PROGSDIR)Makefile; \
 	tar -rvf FSindex.tar $(LIBSDIR)*.c; \
-	tar -rvf FSindex.tar $(INCLUDEDIR)*.h; \
 	tar -rvf FSindex.tar $(LIBSDIR)Makefile; \
+	tar -rvf FSindex.tar $(INCLUDEDIR)*.h; \
+	tar -rvf FSindex.tar $(SARRAYDIR)*.c; \
+	tar -rvf FSindex.tar $(SARRAYDIR)Makefile; \
+	tar -rvf FSindex.tar $(SARRAYDIR)*.h; \
 	tar -rvf FSindex.tar Makefile; \
+	tar -rvf FSindex.tar $(SWIGDIR)/*.i; \
+	tar -rvf FSindex.tar $(SWIGDIR)/Makefile; \
+	tar -rvf FSindex.tar $(SCRIPTDIR)/ShortFrags; \
 	gzip  FSindex.tar; \
 
 
