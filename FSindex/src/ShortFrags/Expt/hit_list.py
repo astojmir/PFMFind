@@ -167,7 +167,7 @@ def description(hits, query_seq, qs=0):
         
     return file_str.getvalue()
 
-class HitList(object):
+class HitList(list):
 
     """
     Provides the list of hits.
@@ -229,9 +229,10 @@ class HitList(object):
 		For the attributes provided in the dictionary of 
 		each hit please refer to the help for class B{Hit}.
 	"""
+        HL = [Hit(ht) for ht in dict['hits']] 
+        del dict['hits']
+        list.__init__(self, HL)
         self.__dict__ = dict
-        tmphits = [Hit(ht) for ht in self.hits]
-        self.hits = tmphits
 	
     def __str__(self):
         """
@@ -255,7 +256,7 @@ class HitList(object):
         file_str.write("Distance range: %d\n" % self.dist_range)
         file_str.write("Similarity score range: %d\n" % self.sim_range)
         file_str.write("Nearest neighbours cutoff: %d\n" % self.kNN)
-        file_str.write("Actual neighbours: %d\n\n" % len(self.hits))
+        file_str.write("Actual neighbours: %d\n\n" % len(self))
         return file_str.getvalue()
 
     def summary_str(self):
@@ -267,7 +268,7 @@ class HitList(object):
 
         file_str = StringIO()
         file_str.write("***** Summary *****\n")
-        file_str.write(summary(self.hits, 1))
+        file_str.write(summary(self, 1))
         file_str.write('\n')
         return file_str.getvalue()
 
@@ -282,7 +283,7 @@ class HitList(object):
 
         file_str = StringIO()
         file_str.write("***** Full Details *****\n")
-        file_str.write(description(self.hits, self.query_seq, qs))
+        file_str.write(description(self, self.query_seq, qs))
         file_str.write('\n')
         return file_str.getvalue()
 
@@ -361,13 +362,13 @@ class HitList(object):
         of priority.
         """
 
-        tmp = [[eval('ht.%s' % k) for k in attribs] + [i] for i, ht in enumerate(self.hits)]
+        tmp = [[eval('ht.%s' % k) for k in attribs] + [i] for i, ht in enumerate(self)]
         tmp.sort()
         if not incr:
             tmp.reverse()
         n = len(attribs)
-        htmp = [self.hits[a[n]] for a in tmp]
-        self.hits = htmp
+        htmp = [self[a[n]] for a in tmp]
+        self[:] = htmp
         
     def sort_by_similarity(self, incr=True):
         """
@@ -422,7 +423,7 @@ class HitList(object):
 	
 	@return: Sequences from hits.
 	"""
-        seqs = [ht.seq for ht in self.hits]
+        seqs = [ht.seq for ht in self]
         return seqs
 
     def get_deflines(self):
@@ -431,5 +432,5 @@ class HitList(object):
 	
 	@return: Descriptions from hits.
 	"""
-        deflines = [ht.defline for ht in self.hits]
+        deflines = [ht.defline for ht in self]
         return deflines
