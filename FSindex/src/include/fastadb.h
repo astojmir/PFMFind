@@ -41,7 +41,7 @@ typedef struct
     char *start;
   } BIOSEQ; 
 
-typedef enum {MEMORY, RANDOM} access_type_t;
+typedef enum {MEMORY, RANDOM, SEQUENTIAL} access_type_t;
 typedef enum {NO, YES} yn_bool_t; 
 
 
@@ -51,6 +51,7 @@ typedef struct
   /* General */
   const char *db_name;  /* Name of the database */
   FILE *dbfile;         /* Stream to read seqs from */
+  int real_file;        /* Non zero if dbfile is not stdin */
   ULINT length;         /* Total Length of Database in residues*/
 
   /* Sequences */
