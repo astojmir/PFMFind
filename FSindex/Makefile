@@ -45,7 +45,7 @@ CWARNINGS = -pipe -Wall -Wno-char-subscripts -Wshadow \
           -Wwrite-strings -Wstrict-prototypes \
           -Wformat -Wmissing-prototypes -funsigned-char #-Werror
 COPTIM=-O3 -fomit-frame-pointer -finline-functions -funroll-loops -D GCC_INLINE
-LDLIBS = "-lFSindex -lsarray -lgcc -lpthread"# -ldmalloc"
+LDLIBS = "-lFSindex -lsarray -lgcc -lm -lpthread"# -ldmalloc"
 else
 # Solaris cc flags 
 GPROF = -xpg
