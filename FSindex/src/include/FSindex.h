@@ -10,6 +10,7 @@
 #include "smatrix.h"
 #include "pmatrix.h"
 #include "hit_list.h"
+#include "keyword.h"
 #ifdef USE_MPATROL
 #include <mpatrol.h>
 #endif
@@ -40,6 +41,22 @@ typedef struct
   int n;
   FRAG_HNDL frag; 
 } UFRAG;
+
+/********************************************************************/    
+/*                                                                  */
+/*                     Filtering parameters                         */ 
+/*                                                                  */
+/********************************************************************/    
+
+typedef struct
+{
+  double ZE0;
+  double ZE1;
+  double CR0;
+  double CR1;
+  double KW0;
+} FPARAMS;
+
 
 
 /********************************************************************/    
@@ -112,24 +129,29 @@ void FS_INDEX_print_stats(FSINDX *FSI, FILE *stream, ULINT count,
 /* Search functions */
 
 HIT_LIST_t *FSINDX_rng_srch(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
-			    int d0, HIT_LIST_t *HL);
+			    int d0, HIT_LIST_t *HL, KW_INDEX *KWI, 
+			    FPARAMS *fp);
 
 HIT_LIST_t *FSINDX_kNN_srch(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
-			    int kNN, HIT_LIST_t *HL);
+			    int kNN, HIT_LIST_t *HL, KW_INDEX *KWI, 
+			    FPARAMS *fp);
 
 HIT_LIST_t *FSINDX_prof_rng_srch(FSINDX *FSI, BIOSEQ *query, 
 				 SCORE_MATRIX_t *D, int s0, 
 				 double lambda, double A,
 				 const char *freq_filename,
 				 int iters, int s1,
-				 HIT_LIST_t *HL);
+				 HIT_LIST_t *HL,
+				 KW_INDEX *KWI, FPARAMS *fp);
 
 HIT_LIST_t *FSINDX_prof_kNN_srch(FSINDX *FSI, BIOSEQ *query, 
 				 SCORE_MATRIX_t *D, int kNN, 
 				 double A,
 				 const char *freq_filename,
-				 int iters, HIT_LIST_t *HL); 
-
+				 int iters, 
+				 HIT_LIST_t *HL, 
+				 KW_INDEX *KWI,
+				 FPARAMS *fp);
 
 /* Experiments */
 HIT_LIST_t *SSCAN_QD_search(SEQUENCE_DB *s_db, const char *matrix, 

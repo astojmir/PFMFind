@@ -78,6 +78,11 @@ int cat_base_dir(char **full_name, const char *basename,
 		 const char *dirname);
  
 
+/* Getline implementation  from mailutils */
+extern int getline(char **_lineptr, size_t *_n, FILE *_stream);
+
+extern int getdelim(char **_lineptr, size_t *_n, int _delimiter, FILE *_stream);
+
 /********************************************************************/    
 /********************************************************************/    
 /***                                                              ***/

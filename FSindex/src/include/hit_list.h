@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "fastadb.h"
+#include "keyword.h"
 #ifdef USE_MPATROL
 #include <mpatrol.h>
 #endif
@@ -18,6 +19,23 @@
 /********************************************************************/    
 /********************************************************************/    
 
+/********************************************************************/    
+/*                                                                  */
+/*                   WRD_CNTR module                                */ 
+/*                                                                  */
+/********************************************************************/    
+
+typedef struct
+{
+  int item;
+  int count;
+  double score;
+} WRD_CNTR;
+
+void WRD_CNTR_add(WRD_CNTR **wc, int wc_size, int *wc_max);
+void WRD_CNTR_clear(WRD_CNTR *wc);
+
+void WRD_CNTR_sort_score(WRD_CNTR *wc, int wc_size);
 
 /********************************************************************/    
 /*                                                                  */
@@ -30,12 +48,14 @@ typedef struct
   BIOSEQ *subject;
   ULINT sequence_id;
   ULINT sequence_from;
+  int rejected;
   float value;
   double pvalue;
+  double evalue;
   double zvalue;
   int oc_cluster;
   double cratio;
-  double kw;
+  double kw_score;
 } SEQ_HIT_t;
 
 /* This type is presently not used */
@@ -61,6 +81,7 @@ typedef struct
   BIOSEQ *query;
   ULINT frag_len;
   SEQUENCE_DB *s_db;
+  KW_INDEX *KWI;
   const char *matrix;
   int range;
   int converted_range;
@@ -81,15 +102,24 @@ typedef struct
 
   ULINT max_hits;
   ULINT actual_seqs_hits;
+  ULINT accepted;
   SEQ_HIT_t *hits;
   struct pqueue *p_queue;
   ULINT max_tmp_hits;
   ULINT no_tmp_hits;
   SEQ_HIT_t *tmp_hits;
- 
-  int max_no_oc;           /* Maximum no. orthologous clusters      */
-  int no_oc;               /* No. orthologous clusters              */
-  int *oc;                 /* Orthologous clusters                  */
+
+  WRD_CNTR *oc;
+  int oc_max;
+  int oc_size;
+
+  WRD_CNTR *kw;
+  int kw_max;
+  int kw_size;
+
+  double shape;
+  double rate;
+  double Zmin; 
 } HIT_LIST_t;
 
 /* This type is presently not used */
@@ -97,10 +127,11 @@ typedef int HIT_LIST_PRINT_OPT_t;
 
 /* Main constructor */
 HIT_LIST_t *HIT_LIST_create(BIOSEQ *query, SEQUENCE_DB *s_db, 
-			    const char *matrix, int range);
+			    const char *matrix, int range, KW_INDEX *KWI);
 /* Reset list */
 void HIT_LIST_reset(HIT_LIST_t *HIT_list, BIOSEQ *query, 
-		    SEQUENCE_DB *s_db, const char *matrix, int range); 
+		    SEQUENCE_DB *s_db, const char *matrix, int range,
+		    KW_INDEX *KWI); 
 
 /* Destructor */
 void HIT_LIST_destroy(HIT_LIST_t *HIT_list);
@@ -142,12 +173,19 @@ void HIT_LIST_sort_incr(HIT_LIST_t *HIT_list);
 void HIT_LIST_sort_by_sequence(HIT_LIST_t *HIT_list);
 void HIT_LIST_sort_kNN(HIT_LIST_t *HL);
 void HIT_LIST_sort_oc(HIT_LIST_t *HL);
-
-
+void HIT_LIST_sort_evalue(HIT_LIST_t *HL, int offset);
+void HIT_LIST_sort_cratio(HIT_LIST_t *HL, int offset);
+void HIT_LIST_sort_kwscore(HIT_LIST_t *HL, int offset);
 
 /* Add p-values */
 void HIT_LIST_Gaussian_pvalues(HIT_LIST_t *HT, double mean, 
 			       double var);
+
+/* Keywords processing */
+
+void HIT_LIST_process_cl(HIT_LIST_t *HL, int offset);
+void HIT_LIST_process_kw(HIT_LIST_t *HL, int offset);
+
 
 
 #endif
