@@ -51,7 +51,7 @@ class HitsView(Tkinter.Frame, View):
                                      anchor='w',
                                      justify='left')
         stxt = "***** Summary *****\n" + \
-               '  %4.4s  %-*.*s %4.4s %4.4s' % ('Rank', DEFLINE_MAX, DEFLINE_MAX,
+               '  %4.4s  %-*.*s %4.4s %4.4s' % ('Rank', 57, 57,
                                                'Description', 'Dist', 'Sim')
         self.wSummaryTitle = Tkinter.Label(self.wFrame,
                                            font=self.ffont,
