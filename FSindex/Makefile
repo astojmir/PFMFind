@@ -64,7 +64,7 @@ CFLAGS = $(DEBUG) $(INCS) -fPIC # -D USE_DMALLOC -D THREADS=4
 
 all: progs
 
-progs: libFSindex libsarray
+progs: libFSindex libsarray swig
 	if [ ! -d  $(BINDIR) ]; then \
 	   mkdir $(BINDIR); \
 	fi 
@@ -78,13 +78,6 @@ swig:	libFSindex libsarray
 	cd $(SWIGDIR); \
 	$(MAKE) CC=$(CC) CFLAGS="$(CFLAGS)" LDFLAGS=$(LDFLAGS) \
 	LDLIBS=$(LDLIBS) PYDIR=$(PYDIR); \
-	cd ../../$(BINDIR); \
-	rm -f _FS.so; \
-	rm -f *.py; \
-	ln -sf ../$(SWIGDIR)/_FS.so .; \
-	ln -sf ../$(SWIGDIR)/FS.py .; \
-	ln -sf ../$(SCRIPTDIR)/*.py .; \
-	cd ..; \
 
 libFSindex:
 	cd $(LIBSDIR); \
@@ -112,7 +105,6 @@ clean:
 	rm -f core; \
 	for x in *; do if [ -x $$x -a -f ../$(PROGSDIR)$$x.c ]; \
 	then rm -f $$x; fi done; \
-	rm -f _FS.so; \
 	rm -f *.py*; \
 	cd ..; \
 
