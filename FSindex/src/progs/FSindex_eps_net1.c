@@ -16,7 +16,6 @@ int FS_INDEX_PRINT_BAR = 1;
 int main(int argc, char **argv)
 {
   BIOSEQ query;
-  FS_INDEX_t *FS_index;
   const char *index_file;
   const char *count_file;
   SEQ_GENERATOR_t *seq_generator;
@@ -67,23 +66,22 @@ int main(int argc, char **argv)
 	} 
     } 
 
-  FS_index = FS_INDEX_load(index_file);
+  FS_INDEX_load(index_file);
 
-  ptable = FS_INDEX_get_ptable(FS_index);
+  ptable = FS_INDEX_get_ptable();
   S = SCORE_MATRIX_create(matrix_full, ptable); 
   QMD = SCORE_MATRIX_S_2_Dquasi(S);
   MD = SCORE_MATRIX_S_2_Dmax(S);
   split_base_dir(matrix_full, &matrix_base, &matrix_dir);  
 
 
-
   seq_generator = SEQ_GENERATOR_create(count_file, ptable);
-  len = FS_index->frag_len;
+  len = FS_INDEX_get_frag_len(); 
   seq_heap = mallocec(len+1);
 
   one_percent = no_runs/100;
   fprintf(stream, "***** Epsilon neighbourhood of the %s"
-	  " database ******\n", FS_index->db_name);
+	  " database ******\n", FS_INDEX_get_db_name());
   fprintf(stream, "No runs: %ld\n", no_runs);
   fprintf(stream, "%8.8s %15.15s %15.15s %15.15s %15.15s %15.15s\n",\
 	  "D_cutoff", "QD Neighbours", "QD Proportion",
@@ -105,11 +103,9 @@ int main(int argc, char **argv)
 	{
 	  SEQ_GENERATOR_rand_seq(seq_generator, &query, len,
 				 seq_heap); 
-	  FS_INDEX_set_matrix(FS_index, matrix_base, S, QMD);
-	  if (FS_INDEX_has_neighbour(FS_index, &query, D_cutoff))
+	  if (FS_INDEX_has_neighbour(&query, QMD, D_cutoff))
 	    no_QMDneighbours++;
-	  FS_INDEX_set_matrix(FS_index, matrix_base, S, MD);
-	  if (FS_INDEX_has_neighbour(FS_index, &query, D_cutoff))
+	  if (FS_INDEX_has_neighbour(&query, MD, D_cutoff))
 	    no_MDneighbours++;
 	  /* Print progress bar */
 	  printbar(stdout, i+1, one_percent, 50);  
