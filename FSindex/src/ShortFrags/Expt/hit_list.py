@@ -1,6 +1,12 @@
 from cStringIO import StringIO
 
 class Hit:
+    """
+    Contains the functions to print a summary of hits 
+    and the details for a list of hits.
+    
+    """     
+
     Idata = None
     attr = {'defline': 'self.Idata.get_def(self.seq_id)',
             'seq': 'self.Idata.get_frag(self.seq_id, self.seq_from, self.seq_to)',
@@ -80,10 +86,19 @@ def description(hits, query_seq, qs=0):
     return file_str.getvalue()
 
 class HitList:
+    """
+    Contains the functions to print query details, print a full summary, print full details for all hits,
+    and to print performance statistics.  The class also contains the functions necessary to sort
+    and print the results by priority, similarity score, distance, sequence (alphabetical), 
+    sequence id, and by orthologous cluster.
+    """
     def __init__(self, dict):
         self.__dict__ = dict
         tmphits = [Hit(ht) for ht in self.hits]
         self.hits = tmphits
+	
+    def __str__(self):
+        return self.print_str()
 
     def header_str(self):
         """
@@ -166,7 +181,6 @@ class HitList:
 
         file_str.write("Search time: %.2f sec.\n" % self.search_time)
         return file_str.getvalue()
-
     
     def print_str(self, Idata=None, qs=0):
         file_str = StringIO()
@@ -176,8 +190,6 @@ class HitList:
         file_str.write(self.perf_str(Idata))
         return file_str.getvalue()
         
-    def __str__(self):
-        return self.print_str()
     
     def _sort_hits(self, incr, attribs):
         """
