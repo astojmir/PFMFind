@@ -2,15 +2,16 @@
 This module loads and prints the index.
 
 Exceptions:
-RuntimeError
-IOError
+    - RuntimeError
+    - IOError
 
 Classes:
-IndexedDb  -  Load the databases and print the index.
+   - IndexedDb  
+         -  Load the databases and print the index.
 
 Functions:
-md5digest(filename)
-    Read a file in as a message digest.
+   - md5digest(filename) 
+         - Read a file in as a message digest.
 
 
 """
@@ -29,8 +30,8 @@ def md5digest(filename):
     """
     Open a file and read it in as a new message digest.
 
-    Return a message digest as a string of length 32 with only hexadecimal 
-    digits.
+    @return: Return a message digest as a string of length 
+    32 with only hexadecimal digits.
     """
     fp = open(filename, "rb")
     sum = md5.new()
@@ -50,14 +51,11 @@ class IndexedDb:
     print the index.
     
     Methods:
-    __init__(self)
-    load_fasta_db(self, filename, md5sum = None)
-    load_index(self, filename, md5sum = None)
-    load_descriptions(self, filename)
-    _default_deflines(self)
-    _fasta_deflines(self)
-    _clusters_deflines(self)
-    print_str(self)
+        - __init__(self)
+        - load_fasta_db(self, filename, md5sum = None)
+        - load_index(self, filename, md5sum = None)
+        - load_descriptions(self, filename)
+        - print_str(self)
     """
     def __init__(self):
         self.I = None
@@ -74,12 +72,14 @@ class IndexedDb:
 
     def load_fasta_db(self, filename, md5sum = None):
         """
-	Load fasta database.
+	Load the fasta database.
 	
-	Return the new message digest.
+	Exceptions:
+	    - Throws a RuntimeError exception if the loaded 
+	    database does not match the database given as 
+	    an argument.
 	
-	Throws a RuntimeError exception if the loaded database does not
-	match the database given as an argument.
+	@return: Return the new message digest.
 	"""
         # Do md5digest and compare - throw exception if bad
         new_md5sum = md5digest(filename)
@@ -106,11 +106,12 @@ class IndexedDb:
         """
 	Load the index.
 	
-	Return the new message digest.
+	Exceptions: 
+	    - Throws a RuntimeError exception if the loaded 
+	    database does not match the fasta database.
+	    - Throws an IOError if the index file cannot be loaded.
 	
-	Throws a RuntimeError exception if the loaded database does not match
-	the fasta database.
-	Throws an IOError if the index file cannot be loaded.
+	@return: Return the new message digest.
         """
         # Read the name of fasta file - the first 4 bytes of the
         # file contain the length including the trailing '\0'.
@@ -156,25 +157,16 @@ class IndexedDb:
         pass
 
     def _default_deflines(self):
-        """
-	Set default defline values.  
-	"""
         self.get_def = lambda i: "Protein Sequence #%d" % i
         self.seq2cluster = lambda i: i
         self.get_accession = lambda i: str(i)
 
     def _fasta_deflines(self):
-        """
-	Set fasta deflines.
-	"""
         self.get_def = self.sdb.get_def 
         self.seq2cluster = lambda i: i
         self.get_accession = lambda i: str(i)
 
     def _clusters_deflines(self):
-        """
-	Set cluster deflines.
-	"""
         self.get_def = lambda i: self.deflines[i]
         self.seq2cluster = lambda i: self.seq2clusters[i]
         self.get_accession = lambda i: self.accessions[i]
@@ -185,14 +177,11 @@ class IndexedDb:
 	
 	Will print nothing if index does not exist.
 	
-	Return file string.
+	@return: Return file string.
 	"""
         if self.I == None: return ""
 
         class Data:
-	    """
-	    Class does nothing, employs the pass statement
-	    """
             pass
         data = Data()
         data.__dict__ = self.I.get_data()

@@ -1,3 +1,13 @@
+"""
+This module generates a random sequence based on letter composition.
+
+Classes:
+    - RandFrag  
+        - Generate the random sequence.
+	
+
+"""
+
 from random import seed, random
 from bisect import bisect
 from string import join
@@ -6,6 +16,15 @@ from string import join
 # based on letter composition
 
 class RandFrag:
+    """
+    The class contains the functions which will generate a random
+    sequence of letters based on letter composition.
+    
+    Methods:
+        - __init__(self, probs_dict)
+	- rand_frag(self, length)
+    """
+
     def __init__(self, probs_dict):
         self.probs_dict = probs_dict
         self.alphabet = probs_dict.keys()

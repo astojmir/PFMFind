@@ -3,17 +3,19 @@ This module contains the classes and functions needed to print
 and manipulate hit results.
 
 Exceptions:
-KeyError
+    - KeyError
 
 Classes:
-Hit  -  Define dictionary for possible values of name.
-HitList  -  More options for printing and sorting hit results.
+    - Hit  
+        -  Define dictionary for possible values of name.
+    - HitList  
+        -  More options for printing and sorting hit results.
 
 Functions:
-description(hits, query_seq, qs=0):
-    Print details for hits
-summary(hits, show_rank=0, defline_width=DEFLINE_MAX, rank_offset=0)
-    Print summary for  hits
+    - description(hits, query_seq, qs=0):
+        - Print details for hits
+    - summary(hits, show_rank=0, defline_width=DEFLINE_MAX, rank_offset=0)
+        - Print summary for  hits
     
 """
 
@@ -31,8 +33,8 @@ class Hit:
     be returned.
     
     Methods:
-    __init__(self, dict)
-    __getattr__(self, name)
+        - __init__(self, dict)
+        - __getattr__(self, name)
     """     
 
     Idata = None
@@ -127,21 +129,19 @@ class HitList:
     sequence(alphabetical), sequence id, and by orthologous cluster.
     
     Methods:
-    __init__(self, dict)
-    __str__(self)
-    header_str(self)
-    summary_str(self)
-    full_str(self)
-    perf_str(self, Idata=None)
-    print_str(self, Idata=None, qs=0)
-    _sort_hits(self, incr, attribs)
-    sort_by_similarity(self, incr=True)
-    sort_by_distance(self, incr=True)
-    sort_by_seq(self, incr=True)
-    sort_by_seqid(self, incr=True)
-    sort_by_orthologs(self, incr=True)
-    get_seqs(self)
-    get_deflines(self)
+        - __init__(self, dict)
+        - __str__(self)
+        - header_str(self)
+        - summary_str(self)
+        - full_str(self)
+        - perf_str(self, Idata=None)
+        - print_str(self, Idata=None, qs=0)
+        - _sort_hits(self, incr, attribs)
+        - sort_by_similarity(self, incr=True)
+        - sort_by_distance(self, incr=True)
+        - sort_by_seq(self, incr=True)
+        - sort_by_seqid(self, incr=True)
+        - sort_by_orthologs(self, incr=True)
     
     """
     

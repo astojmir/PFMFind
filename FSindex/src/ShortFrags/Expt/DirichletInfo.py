@@ -1,14 +1,18 @@
 """
 Contains information needed for indexing.
 
-Functions:
-get_mix  -  Get information from DIR_MIX dictionary.
-get_names  -  Get information from NAMES dictionary.
+Lambda Functions:
+    - get_mix  
+        -  Get information from DIR_MIX dictionary.
+    - get_names  
+        -  Get information from NAMES dictionary.
 
 Variables:
-NAMES - A dictionary of names.
-DIR_MIX - A dictionary containing the reduced alphabet and other 
-calculations for each name in the dictionary NAMES.
+    - NAMES 
+        - A dictionary of names.
+    - DIR_MIX 
+        - A dictionary containing the reduced alphabet and other 
+        calculations for each name in the dictionary NAMES.
    
 """
 
