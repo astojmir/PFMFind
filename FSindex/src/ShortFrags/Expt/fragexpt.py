@@ -118,6 +118,12 @@ class FullExptDB(object):
         iters.append(HL)
         
 
+def _seq_filter(seq):
+    if 'X' in seq or 'B' in seq or 'Z' in seq:
+        return False
+    else:
+        return True
+    
 class FullExpt(object):
     """
     Provides the functions to load an index and 
@@ -143,8 +149,8 @@ class FullExpt(object):
         self.search_client = SearchClient()
 
         
-    def set_params(self, *args):
-        self.data = FullExptDB(*args)
+    def set_params(self, *args, **kwargs):
+        self.data = FullExptDB(*args, **kwargs)
 
     def load_descriptions(self, filename):
         """
@@ -204,7 +210,7 @@ class FullExpt(object):
             i = coords[2]
 
             # Assuming that the iteration is correct
-            seqs = self.data.get_iter(l,f,i-1).get_seqs()
+            seqs = filter(_seq_filter, self.data.get_iter(l,f,i-1).get_seqs())
         
             if conv_type == -1:
                 conv_type = 'None'
@@ -377,7 +383,8 @@ class FullExpt(object):
         dct = {}
         for f, frag in enumerate(self.data.get_length(l)):
             if not len(frag): continue 
-            if iter >= len(frag): iter = len(frag)-1
+##             if iter >= len(frag): iter = len(frag)-1
+            if iter >= len(frag): continue
             for ht in frag[iter]:
                 seqid = ht.accession
                 if seqid not in dct:
@@ -402,7 +409,7 @@ class FullExpt(object):
         dct = {}
         for f, frag in enumerate(self.data.get_length(l)):
             if not len(frag): continue 
-            if iter >= len(frag): iter = len(frag)-1
+            if iter >= len(frag): continue
             for ht in frag[iter]:
                 for k in ht.keywords:
                     if k not in dct:
