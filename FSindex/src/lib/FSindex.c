@@ -149,6 +149,7 @@ FSINDX *FS_INDEX_create(const char *database, uint32_t len, const char **sepn, i
   char *db_base = NULL;
 
   ULINT i, j;
+  uint32_t bin_size;
   char *s;
   FS_SEQ_t FS_seq;
 
@@ -157,7 +158,6 @@ FSINDX *FS_INDEX_create(const char *database, uint32_t len, const char **sepn, i
   uint32_t bs = 0;
 
   uint32_t no_bins = 0;
-  int **tmp_bin = NULL;
   uint32_t *tmp_size = NULL;
   int *tmp_lcpx = NULL;
 
@@ -192,9 +192,6 @@ FSINDX *FS_INDEX_create(const char *database, uint32_t len, const char **sepn, i
     _len_ = len; 
     _rank_ = ptable->rank;
     
-    tmp_size = callocec(FSI->no_bins+1, sizeof(uint32_t));
-    tmp_size++;
-    tmp_size[-1] = 0;
 
     if (use_sa) {
       *_end_ = '_';
@@ -229,23 +226,28 @@ FSINDX *FS_INDEX_create(const char *database, uint32_t len, const char **sepn, i
       printf("***** FSindex bins *****\n");
       printf("Counting fragments ...\n");
     }
+
+    tmp_size = callocec(FSI->no_bins+2, sizeof(uint32_t));
+    tmp_size[0] = 0;
+    tmp_size[1] = 0;
+
     for (s=_base_; s <= _end_; s++) {
       FS_seq = FS_SEQ(ptable, s, len); 
       if (FS_seq != -1) {
-	tmp_size[FS_seq]++;
+	tmp_size[FS_seq+2]++;
 	FSI->no_seqs++;
       }
     }  
     FSI->db_no_frags = FSI->no_seqs;
+
+    for (j=2; j < FSI->no_bins+2; j++)
+      tmp_size[j] += tmp_size[j-1];
+
     if (print_flag) {
       printf("Allocating bins ...\n");
     }    
-    tmp_bin = callocec(no_bins, sizeof(uint32_t *));    
-    for (j=0; j < FSI->no_bins; j++)
-      if (tmp_size[j]) {
-	tmp_bin[j] = callocec(tmp_size[j], sizeof(uint32_t));
-	tmp_size[j] = 0;
-      }
+
+    FSI->oa = mallocec(FSI->no_seqs * sizeof(int));
 
     if (print_flag) {
       printf("Collecting fragments ...\n");
@@ -253,34 +255,29 @@ FSINDX *FS_INDEX_create(const char *database, uint32_t len, const char **sepn, i
     for (s=_base_; s <= _end_; s++) {
       FS_seq = FS_SEQ(ptable, s, len);
       if (FS_seq != -1) {
-	tmp_bin[FS_seq][tmp_size[FS_seq]]
-	  = s - _base_;
-	tmp_size[FS_seq]++;
+	FSI->oa[tmp_size[FS_seq+1]++] = s - _base_;
       }
     }
 
     if (print_flag) {
       printf("Sorting each bin ...\n");
     }
-    FSI->oa = mallocec(FSI->no_seqs * sizeof(int));
+
+    /* TO DO: use radixsort instead of qsort */
+    /* TO DO: convert oa to char * pointers - offsets only
+       when saving */
+
     for (j=0; j < no_bins; j++) {
-      if (tmp_size[j]) {
-	qsort(tmp_bin[j], tmp_size[j], sizeof(int), comp_frags);
-	if (bs < tmp_size[j]) {
+      bin_size = tmp_size[j+1] - tmp_size[j];
+      if (bin_size) {
+	qsort(FSI->oa + tmp_size[j], bin_size, sizeof(int), comp_frags);
+	if (bs < bin_size) {
 	  FSI->binL = j;
-	  bs = tmp_size[j];
+	  bs = bin_size;
 	}
       }
-      memcpy(FSI->oa+tmp_size[j-1], tmp_bin[j], tmp_size[j]*sizeof(int));
-      tmp_size[j] += tmp_size[j-1];
-      if (tmp_bin[j]) {
-	free(tmp_bin[j]);
-	tmp_bin[j] = NULL;
-      }
     }
-    free(tmp_bin);
-    tmp_bin = NULL;
-    tmp_size--;
+  
     FSI->bins = tmp_size;
 
     if (print_flag) {
@@ -317,16 +314,8 @@ FSINDX *FS_INDEX_create(const char *database, uint32_t len, const char **sepn, i
       alloc_FSSRCH(FSI->FSS+i, FSI->m, FSI->ptable->nbpt);
   }
   Catch (except) {
-    if (tmp_bin) { 
-      for (j=0; j < no_bins; j++)
-	free(tmp_bin[j]);
-      free(tmp_bin);
-    }
     free(tmp_lcpx);
-    if (tmp_size) {
-      tmp_size--;
-      free(tmp_size);
-    }
+    free(tmp_size);
     FS_INDEX_destroy(FSI);
     Throw except;
   }
