@@ -16,6 +16,7 @@ class StatusShow(Tkinter.Frame):
         self.ranges = [lrange,
                        (0, seqlen - lrange[0]+1),
                        (0, iter_func(lrange[0],0)+1)]
+        self.true_lrange = lrange
         
         self.wFrame = Tkinter.Frame(self)
         self.wFrame.pack(anchor='w', pady=2)
@@ -67,6 +68,7 @@ class StatusShow(Tkinter.Frame):
         self.ranges = [lrange,
                        (0, seqlen - lrange[0]+1),
                        (0, iter_func(lrange[0],0)+1)]
+        self.true_lrange = lrange
         self.rqseq = rqseq
         self.reset_values()
 
@@ -146,3 +148,11 @@ class StatusShow(Tkinter.Frame):
     def _iter_changed(self):
         self._set_qseq()
         self.update_func()
+
+    def disable_length(self):
+        (l,f,i) = self.get_values()
+        self.ranges[0] = (l, l+1)
+
+    def enable_length(self):
+        self.ranges[0] = self.true_lrange
+    
