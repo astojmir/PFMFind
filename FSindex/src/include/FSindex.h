@@ -167,43 +167,20 @@ int SSCAN_has_neighbour(SEQUENCE_DB *s_db,  SCORE_MATRIX_t *D,
 /*                     PROFILE BASED SEARCHES                       */ 
 /*                                                                  */
 /********************************************************************/    
-#if 0
-typedef void FS_INDEX_profile_process_func(FS_INDEX_t *FS_index, 
-					   HIT_LIST_t *hit_list,
-					   POS_MATRIX *PS,
-					   ULINT Pfrom, ULINT Pto,
-					   FS_SEQ_t FS_query, 
-					   int S_cutoff);
+typedef void FS_INDEX_profile_process_func(FS_SEQ_t FSneighbour); 
 
 
-int FS_INDEX_profile_search(FS_INDEX_t *FS_index, 
-			    HIT_LIST_t *hit_list, 
-			    POS_MATRIX *PS, POS_MATRIX *PD, 
-			    ULINT Pfrom, ULINT Pto, BIOSEQ *query,
-			    ULINT cutoff, 
-			    FS_INDEX_profile_process_func *pfunc, 
-			    POS_MATRIX_range_convert_func *cfunc);
-
-
-
+int FS_INDEX_profile_search(HIT_LIST_t *hit_list0, BIOSEQ *query0, 
+			    POS_MATRIX *PS0, POS_MATRIX *PD0, 
+			    ULINT Pfrom0, ULINT Pto0, int cutoff, 
+			    FS_INDEX_profile_process_func *ppfunc0, 
+			    FS_INDEX_range_convert_func *cfunc);
 
 /* Process bin functions */
 
-void FS_INDEX_profile_S_process_bin(FS_INDEX_t *FS_index, 
-				    HIT_LIST_t *hit_list,
-				    POS_MATRIX *PS,
-				    ULINT Pfrom, ULINT Pto,
-				    FS_SEQ_t FS_query, 
-				    int S_cutoff);
+FS_INDEX_profile_process_func FS_INDEX_profile_S_process_bin;
+FS_INDEX_profile_process_func FS_INDEX_profile_D_process_bin;
 
-void FS_INDEX_profile_D_process_bin(FS_INDEX_t *FS_index, 
-				    HIT_LIST_t *hit_list,
-				    POS_MATRIX *PD,
-				    ULINT Pfrom, ULINT Pto,
-				    FS_SEQ_t FS_query,
-				    int D_cutoff);
-
-#endif
 
 
 
