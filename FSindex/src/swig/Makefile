@@ -1,19 +1,29 @@
 SHELL=/bin/sh
+VPATH = ../lib:../sarray
+all: _FS.so
 
-all: wrap
+FS_wrap.c: FS.i
+	swig -python FS.i;\
+	cp FS.py ../ShortFrags;
 
-wrap: 	FS.i
-	swig -python FS.i; \
-	gcc -g -c FS_wrap.c -I ../include -I /usr/include/python2.2; \
-	gcc -shared -L ../lib -L ../lib/expat-1.95.7 FS_wrap.o -lFSindex -lmd -lexpat -o _FS.so
+FS_wrap.o: FS_wrap.c
+	$(CC) $(CFLAGS) -fPIC -c FS_wrap.c -I$(PYDIR)
 
-clean:
-	rm -f *.o; \
-	rm -f *.a; \
-	rm -f *.so;\
+_FS.so: FS_wrap.o libFSindex.a libsarray.a
+	$(CC) -shared -g FS_wrap.o $(LDFLAGS) $(LDLIBS) -o _FS.so
+
+clean_wrap:
 	rm -f *.pyc;\
 	rm -f *.py;\
-	rm -f *_wrap.c;
+	rm -f *_wrap.c;\
+	rm -f ../ShortFrags/FS.py
+
+clean_lib:
+	rm -f *.o; \
+	rm -f *.a; \
+	rm -f *.so;
+
+clean: clean_wrap clean_lib
 
 srcclean: clean
 	rm -f *~; 
