@@ -34,8 +34,7 @@
 FS_HASH_TABLE_t *FS_HASH_TABLE_create(ULINT no_bins, ULINT def_size) 
 {
   FS_HASH_TABLE_t *FS_HT = mallocec(sizeof(FS_HASH_TABLE_t));
-  ULINT i;
-
+ 
   FS_HT->no_bins = no_bins;
   FS_HT->no_seqs = 0;
   FS_HT->max_seqs_per_bin = 5 * def_size;
@@ -48,13 +47,11 @@ FS_HASH_TABLE_t *FS_HASH_TABLE_create(ULINT no_bins, ULINT def_size)
   FS_HT->bin_size = mallocec(no_bins * sizeof(ULINT));
   FS_HT->max_bin_size = mallocec(no_bins * sizeof(ULINT)); 
   FS_HT->bin = mallocec(no_bins * sizeof(SEQ_index_t *));
-  for (i=0; i < no_bins; i++)
-    {
-      FS_HT->bin_size[i] = 0;      
-      FS_HT->max_bin_size[i] = def_size;
-      FS_HT->bin[i] = mallocec(def_size * sizeof(SEQ_index_t));
-    }
- return FS_HT;  
+
+  memset(FS_HT->bin_size, 0, no_bins * sizeof(ULINT));
+  memset(FS_HT->max_bin_size, 0, no_bins * sizeof(ULINT));
+ 
+  return FS_HT;  
 }
 
 /* Destructor */
@@ -75,31 +72,23 @@ void FS_HASH_TABLE_destroy(FS_HASH_TABLE_t *FS_HT)
 }
 
 /* Insertion */
-void FS_HASH_TABLE_insert_seq(FS_HASH_TABLE_t *FS_HT, ULINT i,
+void FS_HASH_TABLE_count_seq(FS_HASH_TABLE_t *FS_HT, ULINT i,
 			      SEQ_index_t seq_i)
 {
   ULINT old_seqs_per_bin;
-  FS_HT->freq_seqs_per_bin[FS_HT->bin_size[seq_i]]--;
+  FS_HT->freq_seqs_per_bin[FS_HT->max_bin_size[seq_i]]--;
 
-  FS_HT->bin[seq_i][FS_HT->bin_size[seq_i]] = i;
-  FS_HT->bin_size[seq_i]++;  
-  if (FS_HT->bin_size[seq_i] >=  FS_HT->max_bin_size[seq_i])
-    {
-      /* FS_HT->max_bin_size[seq_i] *= 2; */
-      FS_HT->max_bin_size[seq_i] += 1;
-      FS_HT->bin[seq_i] = reallocec(FS_HT->bin[seq_i], 
-			FS_HT->max_bin_size[seq_i] *
-				    sizeof(SEQ_index_t));   
-    }
+  FS_HT->max_bin_size[seq_i]++;
   FS_HT->no_seqs++;
 
-  if (FS_HT->bin_size[seq_i] > FS_HT->bin_size[FS_HT->largest_bin])
+  if (FS_HT->max_bin_size[seq_i] > 
+      FS_HT->max_bin_size[FS_HT->largest_bin]) 
     FS_HT->largest_bin = seq_i;
 
-  if (FS_HT->bin_size[seq_i] >= FS_HT->max_seqs_per_bin)
+  if (FS_HT->max_bin_size[seq_i] >= FS_HT->max_seqs_per_bin)
     {
       old_seqs_per_bin = FS_HT->max_seqs_per_bin;
-      FS_HT->max_seqs_per_bin = FS_HT->bin_size[seq_i] + 1;       
+      FS_HT->max_seqs_per_bin = FS_HT->max_bin_size[seq_i] + 1;       
       FS_HT->freq_seqs_per_bin = reallocec(FS_HT->freq_seqs_per_bin,
 				   FS_HT->max_seqs_per_bin *
 					   sizeof(ULINT)); 
@@ -107,7 +96,22 @@ void FS_HASH_TABLE_insert_seq(FS_HASH_TABLE_t *FS_HT, ULINT i,
 	     (FS_HT->max_seqs_per_bin - old_seqs_per_bin) 
 	     * sizeof(ULINT));
     }
-  FS_HT->freq_seqs_per_bin[FS_HT->bin_size[seq_i]]++;
+  FS_HT->freq_seqs_per_bin[FS_HT->max_bin_size[seq_i]]++;
+}
+
+void FS_HASH_TABLE_allocate_bins(FS_HASH_TABLE_t *FS_HT)
+{
+  ULINT i;
+  for (i=0; i < FS_HT->no_bins; i++)
+    FS_HT->bin[i] = mallocec(FS_HT->max_bin_size[i] 
+			     * sizeof(SEQ_index_t));
+}
+
+void FS_HASH_TABLE_insert_seq(FS_HASH_TABLE_t *FS_HT, ULINT i,
+			      SEQ_index_t seq_i)
+{
+  FS_HT->bin[seq_i][FS_HT->bin_size[seq_i]] = i;
+  FS_HT->bin_size[seq_i]++;  
 }
 
 /* Trimming */
@@ -366,8 +370,28 @@ void FS_INDEX_create(const char *database, ULINT flen,
   /* Initialise hash table */
   HT = FS_HASH_TABLE_create(no_FS, bin_size);
 
-  /* For each fragment */ 
+  /* We do it in two passes - first we count the fragments, then put
+     them */
+
+  /* Counting */ 
   j = 0;
+  while (fastadb_get_next_Ffrag(s_db, frag_len, frag, &i, skip))  
+    {
+      j++;
+      /* Calculate its FS_seq */
+      if (BIOSEQ_2_FS_SEQ(frag, ptable, &FS_seq))
+	FS_HASH_TABLE_count_seq(HT, i, FS_seq);
+	
+      /* Print progress bar */
+      if (FS_INDEX_PRINT_BAR > 0)
+	printbar(stdout, j+1, one_percent_fragments, 50);  
+    }  
+  /* Allocating */
+  FS_HASH_TABLE_allocate_bins(HT);
+
+  /* Commiting */
+  j = 0;
+  fastadb_init_Ffrags(s_db, frag_len);
   while (fastadb_get_next_Ffrag(s_db, frag_len, frag, &i, skip))  
     {
       j++;
@@ -384,8 +408,11 @@ void FS_INDEX_create(const char *database, ULINT flen,
 	printbar(stdout, j+1, one_percent_fragments, 50);  
     }  
 
+
+#if 0
   /* Resize bins */
   FS_HASH_TABLE_resize(HT); 
+#endif
 
   /* Take time */
   time1 = time(NULL);

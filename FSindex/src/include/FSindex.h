@@ -51,6 +51,9 @@ FS_HASH_TABLE_t *FS_HASH_TABLE_create(ULINT no_bins, ULINT def_size);
 void FS_HASH_TABLE_destroy(FS_HASH_TABLE_t *FS_HT);
 
 /* Insertion */
+void FS_HASH_TABLE_count_seq(FS_HASH_TABLE_t *FS_HT, ULINT i,
+			     SEQ_index_t seq_i);
+void FS_HASH_TABLE_allocate_bins(FS_HASH_TABLE_t *FS_HT);
 void FS_HASH_TABLE_insert_seq(FS_HASH_TABLE_t *FS_HT, ULINT i,
 			      SEQ_index_t seq_i);
 void FS_HASH_TABLE_resize(FS_HASH_TABLE_t *FS_HT);
