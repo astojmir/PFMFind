@@ -33,7 +33,6 @@ SEED_HIST *seedhist_init(SLINT min_bin, SLINT max_bin);
 void seedhist_init1(SEED_HIST *hist, SLINT min_bin, SLINT max_bin);
 int seedhist_clear(SEED_HIST *hist);
 int seedhist_clear1(SEED_HIST *hist);
-inline
 void seedhist_add_acount(SEED_HIST *hist, SLINT bin);
 void seedhist_add_ucount(SEED_HIST *hist);
 int seedhist_merge(SEED_HIST *hist1, SEED_HIST *hist2);
