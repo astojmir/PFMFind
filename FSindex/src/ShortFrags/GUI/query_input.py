@@ -13,24 +13,11 @@ class QuerySeqInput(Pmw.Dialog):
         Pmw.Dialog.__init__(self, parent, 
                             buttons = ('Accept', 'Cancel', 'Reset'),
                             defaultbutton = 'Accept',
-                            title = 'Setup index and query sequence',
+                            title = 'Setup query sequence and files',
                             command = self.command)
         w = self.interior()
         self.parent = parent
        
-##         # Index
-##         self.Ilst = ind_lst
-##         self.Idef = ind_default
-##         if len(ind_lst) > 0:
-##             Tkinter.Label(w, text='Index:').grid(row=0, column=0)
-##             self.Ivar = Tkinter.StringVar()
-##             self.Ivar.set(ind_lst[ind_default])
-##             self.Imnu = Pmw.OptionMenu(w,
-##                                        menubutton_textvariable = self.Ivar,
-##                                        items = self.Ilst,
-##                                        menubutton_width = 25)
-##             self.Imnu.grid(row=0, column=1, columnspan=2, sticky='w')
-
         # Description
         Tkinter.Label(w, text='Query\nDescription:').grid(row=1, column=0)
         self.Dtxt = Pmw.ScrolledText(w, text_width=65, text_height=2,
@@ -85,22 +72,22 @@ class QuerySeqInput(Pmw.Dialog):
                                  entry_width = 3, validate = self.V2, value=13)
         self.L1.pack(side='left', pady=5)
 
-        # Index name
-        self.index_name = None
-        Tkinter.Label(w, text='Index File:').grid(row=6, column=0)
+        # Descriptions file
+        self.desc_file = ""
+        Tkinter.Label(w, text='Descriptions File:').grid(row=6, column=0)
         self.Itxt = Tkinter.Text(w, width=55, height=1, wrap='none', state='disabled')
         self.Itxt.grid(row=6, column=1, columnspan=2, padx=5, pady=5)
         self.Ibut = Tkinter.Button(w, text='Choose...', width=5,
-                                   command = self.set_index_file)
+                                   command = self.set_desc_file)
         self.Ibut.grid(row=6, column=3, padx=5, pady=5)
 
-        # Clusters name
-        self.clusters_file = None
-        Tkinter.Label(w, text='Clusters File:').grid(row=7, column=0)
+        # Keywords name
+        self.keywords_file = ""
+        Tkinter.Label(w, text='Keywords File:').grid(row=7, column=0)
         self.Mtxt = Tkinter.Text(w, width=55, height=1, wrap='none', state='disabled')
         self.Mtxt.grid(row=7, column=1, columnspan=2, padx=5, pady=5)
         self.Mbut = Tkinter.Button(w, text='Choose...', width=5,
-                                   command = self.set_clusters_file)
+                                   command = self.set_keywords_file)
         self.Mbut.grid(row=7, column=3, padx=5, pady=5)
         
 
@@ -154,10 +141,6 @@ class QuerySeqInput(Pmw.Dialog):
             showerror('Input Error', 'Invalid lengths.', parent=hull)
             return
 
-##         # Get index
-##         if len(self.Ilst) > 0:
-##             res['index'] = self.Ivar.get()
-
         # Get description
         desc = strip(self.Dtxt.get())
         if len(desc) == 0:
@@ -173,18 +156,11 @@ class QuerySeqInput(Pmw.Dialog):
         r1 = int(self.R1.getvalue())
         res['range'] = (r0,r1)
 
-        # Get Index Name
-        if self.index_name == None:
-            showerror('Input Error', 'Missing Index Name.', parent=hull)
-            return
-        res['index'] = self.index_name
+        # Get Descriptions File
+        res['desc_file'] = self.desc_file
 
-        # Get Clusters File
-        if self.index_name == None:
-            self.clusters_file = ""
-            #showerror('Input Error', 'Missing Clusters File.', parent=hull)
-            #return
-        res['clusters_file'] = self.clusters_file
+        # Get Keywords File
+        res['keywords_file'] = self.keywords_file
         
         # Get Save Name
         if self.save_name == None:
@@ -265,8 +241,8 @@ class QuerySeqInput(Pmw.Dialog):
         self.L1.setvalue(13)
         if len(self.Ilst) > 0:
             self.Ivar.set(self.Ilst[self.Idef])
-        self.index_name = None
-        self.clusters_file = None
+        self.desc_file = ""
+        self.keywords_file = ""
         self.save_name = None
         self.Itxt.configure(state='normal')
         self.Itxt.delete(1.0, 'end')
@@ -278,11 +254,11 @@ class QuerySeqInput(Pmw.Dialog):
         self.Ftxt.delete(1.0, 'end')
         self.Ftxt.configure(state='disabled')
 
-    def set_index_file(self):
-        path = askopenfilename(defaultextension='.ix',
-                               filetypes=[('Index','.ix')],
+    def set_desc_file(self):
+        path = askopenfilename(defaultextension='.txt',
+                               filetypes=[('Text File','.txt')],
                                parent = self.interior(),
-                               title = 'Choose Index File',
+                               title = 'Choose Descriptions File',
                                initialdir=os.getcwd()
                                )
         if path == ():
@@ -291,13 +267,13 @@ class QuerySeqInput(Pmw.Dialog):
         self.Itxt.delete(1.0, 'end')
         self.Itxt.insert(1.0, path)
         self.Itxt.configure(state='disabled')
-        self.index_name = path
+        self.desc_file = path
 
-    def set_clusters_file(self):
-        path = askopenfilename(parent = self.interior(),
-                               title = 'Choose Clusters File',
-                               defaultextension='.cls',
-                               filetypes=[('Clusters','.cls')],
+    def set_keywords_file(self):
+        path = askopenfilename(defaultextension='.txt',
+                               filetypes=[('Text File','.txt')],
+                               parent = self.interior(),
+                               title = 'Choose Keywords File',
                                initialdir=os.getcwd()
                                )
         if path == ():
@@ -306,7 +282,7 @@ class QuerySeqInput(Pmw.Dialog):
         self.Mtxt.delete(1.0, 'end')
         self.Mtxt.insert(1.0, path)
         self.Mtxt.configure(state='disabled')
-        self.clusters_file = path
+        self.keywords_file = path
 
     def set_save_file(self):
         path = asksaveasfilename(defaultextension='.ftb',
