@@ -350,8 +350,8 @@ class HitList(list):
 	"""
         file_str = StringIO()
         file_str.write(self.header_str())
-        file_str.write(self.summary_str(defline_func))
-        file_str.write(self.full_str(defline_func, qs))
+        file_str.write(self.summary_str())
+        file_str.write(self.full_str(qs))
         file_str.write(self.perf_str(Idata))
         return file_str.getvalue()
         
