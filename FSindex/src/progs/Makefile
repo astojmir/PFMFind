@@ -16,8 +16,9 @@ all: $(FSLIB) \
      QD_ddist \
      split_db \
      check_db \
-     print_doublets
-#     FSindex_delta \
+     print_doublets \
+     FSindex_delta \
+     FSindex_eps_net1
 #     cluster_test \
 #     FSindex_rand_perf \
 #     FSindex_benchmark \
