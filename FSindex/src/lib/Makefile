@@ -1,15 +1,16 @@
 SHELL=/bin/sh
 
 INCLUDES= ../include/misclib.h ../include/fastadb.h ../include/partition.h \
-	  ../include/FSindex.h ../include/hit_list.h  \
-          ../include/randseq.h ../include/smatrix.h ../include/quadtree.h \
-          ../include/pmatrix.h ../include/clusters.h ../include/avl.h \
+	  ../include/FSindex.h ../include/hit_list.h \
+          ../include/randseq.h ../include/smatrix.h \
+          ../include/pmatrix.h ../include/avl.h \
           ../include/keyword.h ../include/bioseq.h
-# ../include/blastlib.h
+# ../include/blastlib.h ../include/clusters.h ../include/quadtree.h
+
 OBJECTS= misclib.o fastadb.o partition.o FSindex.o hit_list.o \
-         randseq.o smatrix.o quadtree.o pmatrix.o clusters.o \
+         randseq.o smatrix.o pmatrix.o \
 	 sequential.o avl.o keyword.o bioseq.o
-# blastlib.o
+# blastlib.o quadtree.o clusters.o
 
 all: libFSindex.a libmd.a
 

@@ -1,6 +1,5 @@
 #include "misclib.h"
 #include "fastadb.h"
-#include "blastlib.h"
 #include <time.h>
 #include <stdlib.h>
 #include <string.h>
