@@ -27,20 +27,128 @@ void eval_pairwise_distances(SEQ_CLUSTERS *sclusters)
   BIOSEQ query;
   BIOSEQ subject;
 
-  for (i=1; i < sclusters->no_seqs; i++)
+  for (i=1; i < sclusters->no_clusters; i++)
     {
       fastadb_get_Ffrag(sclusters->s_db, sclusters->frag_len, 
-			&query, sclusters->seqs[i]);      
+	       &query, sclusters->seqs[sclusters->cfirst[i]]);      
       for (j=0; j < i; j++)
 	{
 	  fastadb_get_Ffrag(sclusters->s_db, sclusters->frag_len, 
-			    &subject, sclusters->seqs[j]);
+	       &subject, sclusters->seqs[sclusters->cfirst[j]]);
 	  sclusters->dist[k] = SCORE_MATRIX_evaluate(sclusters->D, 
 				 &query, &subject);
 	  k++;
 	}
     }
 } 
+
+static inline
+void merge_all_identical_seqs(SEQ_CLUSTERS *sclusters)
+{
+  ULINT i;
+  struct seq_cluster *j;
+  struct seq_cluster *k;
+  int create_qtree = 0;
+
+  BIOSEQ query;
+  BIOSEQ subject;
+
+
+  if (sclusters->no_seqs == 0)
+    return;
+
+  /* Initialise the linked list */
+  if (sclusters->max_no_seqs < sclusters->no_seqs)
+    {
+      sclusters->max_no_seqs = sclusters->no_seqs;
+      sclusters->next_seq = reallocec(sclusters->next_seq, 
+		   sclusters->no_seqs * sizeof(ULINT)); 
+      sclusters->rseqs = reallocec(sclusters->rseqs, 
+		   sclusters->no_seqs * sizeof(struct seq_cluster));  
+    }     
+  memset(sclusters->next_seq, -1, sclusters->no_seqs * sizeof(ULINT));
+  sclusters->rfirst = sclusters->rseqs; 
+  for (i = 0; i < sclusters->no_seqs; i++)
+    {
+      sclusters->rseqs[i].ccount = 1;
+      sclusters->rseqs[i].cfirst = i;
+      sclusters->rseqs[i].clast = i;
+      sclusters->rseqs[i].next = sclusters->rfirst + i + 1;      
+    }
+  sclusters->rseqs[sclusters->no_seqs-1].next = NULL;      
+
+
+  /* Merge identical sequences */
+  k = sclusters->rfirst;
+  do
+    {
+      fastadb_get_Ffrag(sclusters->s_db, sclusters->frag_len, 
+			&query, sclusters->seqs[k->cfirst]);      
+      j = k->next; 
+      while (j != NULL)
+	{
+	  fastadb_get_Ffrag(sclusters->s_db, sclusters->frag_len, 
+			    &subject, sclusters->seqs[j->cfirst]);      
+	  if (!strncmp(query.start, subject.start,
+		       sclusters->frag_len)) 
+	    {
+	      sclusters->next_seq[k->clast] = j->cfirst;
+	      k->clast = j->clast;
+	      k->ccount += j->ccount;
+	      (j-1)->next = j->next;
+	      j->next = NULL;
+	      sclusters->no_clusters--;
+	    }
+	  j = j->next;
+	}
+      k = k->next;
+    }
+  while(k != NULL);
+
+  /* Allocate arrays */
+  if (sclusters->max_no_clusters < sclusters->no_clusters)
+    {
+      if (sclusters->max_no_clusters == 0)
+	create_qtree = 1; 
+      sclusters->max_no_clusters = sclusters->no_clusters;
+      sclusters->ccount = reallocec(sclusters->ccount, 
+			 sclusters->no_clusters * sizeof(ULINT)); 
+      sclusters->cfirst = reallocec(sclusters->cfirst, 
+			 sclusters->no_clusters * sizeof(ULINT)); 
+      sclusters->clast = reallocec(sclusters->clast,
+			 sclusters->no_clusters * sizeof(ULINT));  
+      sclusters->dist = reallocec(sclusters->dist, 
+			 half_array(sclusters->no_clusters, 0)); 
+    }
+
+  /* Copy the linked list into array */
+  k = sclusters->rfirst;
+  i = 0;
+  do
+    {
+      sclusters->ccount[i] = k->ccount;
+      sclusters->cfirst[i] = k->cfirst;    
+      sclusters->clast[i] = k->clast;    
+      
+      k = k->next;
+      i++;
+    }
+  while(k != NULL);
+
+  /* Evaluate pairwise distances */
+  eval_pairwise_distances(sclusters);
+
+  
+  /* Initialise quadtree */
+  if (create_qtree)
+    sclusters->qtree = QUAD_TREE_create(sclusters->no_clusters, 
+					sclusters->dist);
+  else
+    QUAD_TREE_reset(sclusters->qtree, sclusters->no_clusters,
+		    sclusters->dist);
+
+}
+
 
 static inline
 void merge_clusters(SEQ_CLUSTERS *sclusters, ULINT cl1, ULINT cl2)
@@ -59,7 +167,10 @@ void merge_clusters(SEQ_CLUSTERS *sclusters, ULINT cl1, ULINT cl2)
       j = cl2;
     }
   if (sclusters->ccount[i] == 0)
-    sclusters->cfirst[i] = sclusters->cfirst[j]; 
+    {
+      sclusters->cfirst[i] = sclusters->cfirst[j]; 
+      sclusters->no_clusters ++;
+    }
   else
     sclusters->next_seq[sclusters->clast[i]] = sclusters->cfirst[j];
   sclusters->clast[i] = sclusters->clast[j];
@@ -78,8 +189,12 @@ ULINT collect_small_clusters(SEQ_CLUSTERS *sclusters, ULINT K)
    Has to be the largest index because merge_clusters() merges into
    the cluster with larger index. Note also that there will be one
    such cluster (possibly empty) for K > 1. */
-  ULINT first_small = sclusters->no_seqs-1;  			    
+  ULINT first_small;  			    
   int i;
+
+  if (sclusters->no_seqs == 0)
+    return;
+  first_small = sclusters->no_seqs-1;
 
   while (sclusters->ccount[first_small] >= K && first_small >= 0)
     first_small--;
@@ -113,13 +228,39 @@ void get_patterns(SEQ_CLUSTERS *sclusters, CLUSTER_BIN *cbin,
 
   /* Allocate entries of cbin */
   cbin->no_seq = sclusters->no_seqs;
-  cbin->no_clusters = sclusters->no_clusters - 1;
-  cbin->cluster_size = mallocec(cbin->no_clusters * sizeof(ULINT));
-  cbin->cluster_pattern = mallocec(cbin->no_clusters *
-				   sclusters->frag_len);    
-  cbin->seqs = mallocec(cbin->no_seq * sizeof(SEQ_index_t));
+  if (sclusters->ccount[unclassified] == 0)
+    cbin->no_clusters = sclusters->no_clusters;
+  else
+    cbin->no_clusters = sclusters->no_clusters - 1;
+#if 0
+  if (cbin->no_clusters > 0)
+    {
+      cbin->cluster_size = reallocec(cbin->cluster_size,
+			       cbin->no_clusters * sizeof(ULINT));
+      cbin->cluster_pattern = reallocec(cbin->cluster_pattern,
+					cbin->no_clusters *
+					sclusters->frag_len);
+    }    
+  cbin->seqs = reallocec(cbin->seqs, 
+			 cbin->no_seq * sizeof(SEQ_index_t));
 
-  
+#endif
+  if (cbin->no_clusters > 0)
+    {
+      cbin->cluster_size = mallocec(cbin->no_clusters * sizeof(ULINT));
+      cbin->cluster_pattern = mallocec(cbin->no_clusters *
+					sclusters->frag_len);
+    }
+  else
+    {
+      cbin->cluster_size = NULL;
+      cbin->cluster_pattern = NULL;
+    }
+  if (cbin->no_seq > 0)
+    cbin->seqs = mallocec(cbin->no_seq * sizeof(SEQ_index_t));
+  else
+    cbin->seqs = NULL;   
+
   /* Process clusters with patterns */
   for (i=0; i < sclusters->no_seqs; i++)
     {
@@ -165,16 +306,18 @@ void get_patterns(SEQ_CLUSTERS *sclusters, CLUSTER_BIN *cbin,
   i = unclassified;
   assert(s == cbin->no_seq - sclusters->ccount[i]);
 
-  q = sclusters->cfirst[i]; 
-  while (1)
+  if (sclusters->ccount[i] > 0)
     {
-      cbin->seqs[s++] = sclusters->seqs[q];
-      
-      if (q == sclusters->clast[i])
-	break;
-      q = sclusters->next_seq[q];
+      q = sclusters->cfirst[i]; 
+      while (1)
+	{
+	  cbin->seqs[s++] = sclusters->seqs[q];
+	  
+	  if (q == sclusters->clast[i])
+	    break;
+	  q = sclusters->next_seq[q];
+	}
     }
-
   assert(s == cbin->no_seq);
 }
 
@@ -196,7 +339,6 @@ void SEQ_CLUSTERS_reset(SEQ_CLUSTERS *sclusters, ULINT no_seqs,
 			SCORE_MATRIX_t *D, SEQUENCE_DB *s_db,
 			FS_PARTITION_t *ptable)
 {
-  int create_qtree = 0;
   int pttn;
   BIOSEQ query;
   ULINT i;
@@ -210,38 +352,9 @@ void SEQ_CLUSTERS_reset(SEQ_CLUSTERS *sclusters, ULINT no_seqs,
   sclusters->frag_len = frag_len;
   sclusters->ptable = ptable;
 
-  if (sclusters->max_no_seqs < no_seqs)
-    {
-      if (sclusters->max_no_seqs == 0)
-	create_qtree = 1; 
-      sclusters->max_no_seqs = no_seqs;
-      sclusters->next_seq = reallocec(sclusters->next_seq, no_seqs *
-				      sizeof(ULINT)); 
-      sclusters->ccount = reallocec(sclusters->ccount, no_seqs *
-				      sizeof(ULINT)); 
-      sclusters->cfirst = reallocec(sclusters->cfirst, no_seqs *
-				      sizeof(ULINT)); 
-      sclusters->clast = reallocec(sclusters->clast, no_seqs *
-				   sizeof(ULINT)); 
-      sclusters->dist = reallocec(sclusters->dist, 
-				  half_array(no_seqs, 0)); 
-    }
 
-  memset(sclusters->next_seq, -1, no_seqs * sizeof(ULINT));
-  for (i = 0; i < no_seqs; i++)
-    sclusters->ccount[i] = 1;
-  for (i = 0; i < no_seqs; i++)
-    {
-      sclusters->cfirst[i] = i;    
-      sclusters->clast[i] = i;    
-    }
-
-  eval_pairwise_distances(sclusters);
-
-  if (create_qtree)
-    sclusters->qtree = QUAD_TREE_create(no_seqs, sclusters->dist);
-  else
-    QUAD_TREE_reset(sclusters->qtree, no_seqs, sclusters->dist);
+  /* Merge all identical sequences and allocate quadtree */
+  merge_all_identical_seqs(sclusters);
 
   /* Allocate pattern_temp and offset_temp */
   if (sclusters->max_frag_len < sclusters->frag_len)
