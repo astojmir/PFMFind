@@ -179,14 +179,18 @@ int fastadb_put_line(char *buffer, char **heap, ULINT *len,
 {
   int l;
   l = strlen(buffer);
+
   if (*len + l + 2 >= *max_len)
     {
       *max_len *= 2;
       *heap = reallocec(*heap, *max_len); 
     }
   if (buffer[l-1] == '\n')
-    l--;  
-  memcpy(*heap+*len, buffer, l);
+    l--;
+  
+  if (l > 0)
+    memcpy(*heap+*len, buffer, l);
+
   *len += l;
   return l;  
 }
@@ -271,14 +275,17 @@ int fastadb_reduce_array_size(SEQUENCE_DB *s_db)
    SEQUENCE_DB *s_db - Sequence database.
 
 */
-
 #define BUF_SIZE 512
 static inline
 int fastadb_load_next_seq(SEQUENCE_DB *s_db)
 {
   int c;
   int l;
-  static char buffer[BUF_SIZE];
+  static char buffer[BUF_SIZE+1];
+
+  /* Just in case the line is bigger than buffer, this would give
+     BUF_SIZE as strlen */
+  buffer[BUF_SIZE] = '\0';
 
   if (feof(s_db->dbfile))
     return 0;
