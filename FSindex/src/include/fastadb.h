@@ -255,9 +255,9 @@ MY_INLINE
 int fastadb_find_Ffrag_seq(SEQUENCE_DB *s_db, BIOSEQ *frag, 
 			   ULINT *seq_id, ULINT *rel_offset) 
 {
-  ULINT k; 
   ULINT a = 0;
   ULINT b = s_db->no_seq - 1;
+  ULINT k = b/2; 
 
   if (frag->start > s_db->seq[s_db->no_seq - 1].start)
     {

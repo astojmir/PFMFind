@@ -153,9 +153,9 @@ static inline
 ULINT find_residue_seq(ULINT residue, const ULINT *boundaries,
 		       const ULINT length)
 {
-  ULINT k; 
   ULINT a = 0;
   ULINT b = length-1;
+  ULINT k = b/2; 
 
   while (a<=b)
     {
