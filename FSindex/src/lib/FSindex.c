@@ -1132,7 +1132,7 @@ HIT_LIST_t *run_search(FSINDX *FSI, int thread, SCORE_MATRIX *M,
     subject.start = FSS->base + FSS->hits[i].offset;
     subject.len = qlen;
     if (M->Stype == SIMILARITY) 
-       sim = M->eval_score(M, qseq, subject.start, qlen);
+       sim = M->eval_score(M, subject.start, qseq, qlen);
     else
       sim = 0;
     HIT_LIST_insert_hit(FSS->HL, &subject, FSS->hits[i].dist, sim);
@@ -1144,7 +1144,7 @@ HIT_LIST_t *run_search(FSINDX *FSI, int thread, SCORE_MATRIX *M,
       subject.start = FSS->base + top.offset;
       subject.len = qlen;
       if (M->Stype == SIMILARITY) 
-	sim = M->eval_score(M, qseq, subject.start, qlen);
+	sim = M->eval_score(M, subject.start, qseq, qlen);
       else
 	sim = 0;
       HIT_LIST_insert_hit(FSS->HL, &subject, top.dist, sim);
