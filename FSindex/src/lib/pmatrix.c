@@ -49,6 +49,7 @@ void create_counts(POS_MATRIX *PS)
       }
 }
 
+#ifdef DEBUG
 static
 void print_counts(POS_MATRIX *PS, FILE *stream)
 {
@@ -78,6 +79,7 @@ void print_counts(POS_MATRIX *PS, FILE *stream)
       
 
 }
+
 static
 void print_M(POS_MATRIX *PS, FILE *stream)
 {
@@ -99,6 +101,8 @@ void print_M(POS_MATRIX *PS, FILE *stream)
       fprintf(stream, "\n");
     }
 }
+#endif /* DEBUG */
+
 
 static inline
 void compute_log_odds(POS_MATRIX *PS)
