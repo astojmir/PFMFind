@@ -56,7 +56,7 @@ SEQ_GENERATOR_t *SEQ_GENERATOR_create(const char *filename,
 	}
       else
 	{
-	  sscanf(buffer+25, "%ld", &freq[c & A_SIZE_MASK]);
+	  sscanf(buffer+23, "%ld", &freq[c & A_SIZE_MASK]);
 	}
 #if 0
       printf("%c %12d\n", c, freq[c & A_SIZE_MASK]);
