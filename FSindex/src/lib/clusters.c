@@ -348,7 +348,6 @@ void SEQ_CLUSTERS_reset(SEQ_CLUSTERS *sclusters, ULINT no_seqs,
 {
   int pttn;
   BIOSEQ query;
-  ULINT i;
   ULINT k;
 
   sclusters->no_seqs = no_seqs;
