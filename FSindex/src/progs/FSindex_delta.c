@@ -45,7 +45,6 @@ int main(int argc, char **argv)
   int no_runs;
   HIT_LIST_t *hit_list;
   BIOSEQ query;
-  FS_INDEX_t *FS_index;
   SEQ_GENERATOR_t *seq_generator;
   FS_PARTITION_t *ptable;
   SCORE_MATRIX_t *S;
@@ -86,19 +85,18 @@ int main(int argc, char **argv)
   k_neighbours = atoi(argv[4]);
   no_runs = atoi(argv[5]);
 
-  FS_index = FS_INDEX_load(filename);
+  FS_INDEX_load(filename);
 
-  len = FS_index->frag_len;
+  len = FS_INDEX_get_frag_len();
   seq_heap = mallocec(len+1);
-  ptable = FS_INDEX_get_ptable(FS_index);
+  ptable = FS_INDEX_get_ptable();
   S = SCORE_MATRIX_create(matrix_full, ptable); 
   D = SCORE_MATRIX_S_2_Dquasi(S);
   MD = SCORE_MATRIX_S_2_Dmax(S);
   split_base_dir(matrix_full, &matrix_base, &matrix_dir);  
-  FS_INDEX_set_matrix(FS_index, matrix_base, S, D);
   seq_generator = SEQ_GENERATOR_create(count_file, ptable);
 
-  hit_list = HIT_LIST_create(&query, FS_INDEX_get_database(FS_index), 
+  hit_list = HIT_LIST_create(&query, FS_INDEX_get_database(), 
 			     matrix_base, 0);
 
   fprintf(stdout, "%*.*s %5s %12s %12s %12s %12s %5s %12s %12s"
@@ -110,14 +108,13 @@ int main(int argc, char **argv)
   for (i=0; i < no_runs; i++)
     {
       /* Generate sequence */
-      SEQ_GENERATOR_rand_seq(seq_generator, &query, len,
-			     seq_heap); 
+      SEQ_GENERATOR_rand_seq(seq_generator, &query, len, seq_heap);  
 
       /* Find quasi-metric ball */
-      FS_INDEX_set_matrix(FS_index, matrix_base, S, D);
-      FS_INDEX_kNN_search(FS_index, hit_list, &query, k_neighbours, 
-			  25, FS_INDEX_QD_process_bin, 
+      FS_INDEX_kNN_search(hit_list, &query, S, D, k_neighbours, 25,
+			  FS_INDEX_QD_process_bin, 
 			  FS_INDEX_identity_convert);
+
       eps = hit_list->range;
       qFS_visited = hit_list->FS_seqs_visited;
       qFS_hits = hit_list->FS_seqs_hits;
@@ -125,16 +122,10 @@ int main(int argc, char **argv)
       qm_size = HIT_LIST_get_seqs_hits(hit_list);
 
 
-#if 0
-      HIT_LIST_sort_by_sequence(hit_list);
-      HIT_LIST_sort_incr(hit_list);
-      HIT_LIST_print(hit_list, stdout, 0); 
-#endif  
       /* Find metric ball */
       delta = get_max_distance_hit(&query, hit_list, MD);
 
-      FS_INDEX_set_matrix(FS_index, matrix_base, S, MD);
-      FS_INDEX_search(FS_index, hit_list, &query, delta,
+      FS_INDEX_search(hit_list, &query, S, MD, delta,
 		      FS_INDEX_QD_process_bin, 
 		      FS_INDEX_identity_convert);
       m_size = HIT_LIST_get_seqs_hits(hit_list);
