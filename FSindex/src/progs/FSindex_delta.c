@@ -109,6 +109,8 @@ int main(int argc, char **argv)
     {
       /* Generate sequence */
       SEQ_GENERATOR_rand_seq(seq_generator, &query, len, seq_heap);  
+      HIT_LIST_reset(hit_list, &query, FS_INDEX_get_database(),
+		     matrix_base, 0);
 
       /* Find quasi-metric ball */
       FS_INDEX_kNN_search(hit_list, &query, S, D, k_neighbours);
@@ -123,6 +125,8 @@ int main(int argc, char **argv)
       /* Find metric ball */
       delta = get_max_distance_hit(&query, hit_list, MD);
 
+      HIT_LIST_reset(hit_list, &query, FS_INDEX_get_database(),
+		     matrix_base, eps);
       FS_INDEX_search(hit_list, &query, S, MD, delta,
 		      FS_INDEX_QD_process_bin, 
 		      FS_INDEX_identity_convert);
