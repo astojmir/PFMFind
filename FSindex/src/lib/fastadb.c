@@ -222,7 +222,6 @@ void fastadb_update_seq_data(SEQUENCE_DB *s_db, char **oldheap)
 
   if (*oldheap == s_db->seq_data)
     return;
-  fprintf(stderr, "Changing heap; current = %ld\n", s_db->current_seq);
   if (s_db->keep_oldseqs == NO)
     from = s_db->current_seq;
       
