@@ -89,11 +89,6 @@ class ActionChooser(Tkinter.Frame):
             b = self.rradio.button(i)
             b.config(state='normal')
             b.update()
-        nb = self.action.index(Pmw.END)
-        for i in range(nb+1):
-            b = self.action.button(i)
-            b.config(state='normal')
-            b.update()
         nb = self.buttons.index(Pmw.END)
         for i in range(nb+1):
             b = self.buttons.button(i)
