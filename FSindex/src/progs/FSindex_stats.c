@@ -13,6 +13,7 @@ int FS_INDEX_PRINT_BAR = 1;
 int main(int argc, char **argv)
 {
   const char *filename;
+  FSINDX *FSI;
 
   if (argc < 2)
     {
@@ -23,8 +24,8 @@ int main(int argc, char **argv)
     }
   filename = argv[1];
   fprintf(stdout, "Loading index... \n");
-  FS_INDEX_load(filename);
-  FS_INDEX_print_stats(stdout, 0, 0); 
+  FSI = FS_INDEX_load(filename);
+  FS_INDEX_print_stats(FSI, stdout, 0, 0); 
 
  return EXIT_SUCCESS;
 }

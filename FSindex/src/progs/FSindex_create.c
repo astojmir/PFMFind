@@ -52,6 +52,7 @@ int main(int argc, char **argv)
   int skip = 1;
 
   int filename_flag = 0;
+  FSINDX *FSI;
 
   while ((c = getopt(argc, argv, "d:p:m:F:s:Vvb")) != EOF)
     switch (c) 
@@ -113,24 +114,13 @@ int main(int argc, char **argv)
     }
 
   printf("Creating index...\n");
-  FS_INDEX_create(db_name, frag_len, alphabet, separator, skip); 
+  FSI = FS_INDEX_create(db_name, frag_len, alphabet, separator, skip); 
 
   if (filename_flag)
     {
       printf("Saving index...\n");
-      FS_INDEX_save(filename);
+      FS_INDEX_save(FSI, filename);
     }
 
-  /* This part is removed as it was used for testing only */
-#if 0
-  printf("Removing index\n");
-  FS_INDEX_destroy(FS_index); 
-
-  printf("Loading database\n");
-  FS_index = FS_INDEX_load(filename);
-  /* This takes way too long */
-  printf("Removing index\n");
-  FS_INDEX_destroy(FS_index); 
-#endif
   return EXIT_SUCCESS;
 }

@@ -3,13 +3,10 @@ SHELL=/bin/sh
 FSLIB=../lib/libFSindex.a
 
 all: $(FSLIB) \
-     distances \
-     FSindex_search \
-     FSindex_cluster \
-     FSindex_bin_size \
-     FSindex_self_sim \
      FSindex_create \
      FSindex_stats \
+     FSindex_search \
+     FSindex_bin_size \
      SS_search \
      count_letters \
      Sscan_eps_net \
@@ -17,19 +14,22 @@ all: $(FSLIB) \
      QD_ddist \
      split_db \
      check_db \
-     print_doublets \
-     FSindex_delta \
-     FSindex_delta1 \
-     FSindex_rand_perf \
-     FSindex_rand_perf1 \
-     FSindex_rand_perf2 \
-     FSindex_eps_net1 \
      FSindex_show_bin \
      fragdist
+#     print_doublets \
+#     FSindex_self_sim \
+#     FSindex_cluster \
 #     cluster_test \
 #     FSindex_rand_perf \
 #     FSindex_benchmark \
 #     FSindex_eps_net1 \
+#     distances \
+#    FSindex_delta \
+#    FSindex_delta1 \
+#    FSindex_rand_perf \
+#    FSindex_rand_perf1 \
+#    FSindex_rand_perf2 \
+#    FSindex_eps_net1 \
 
 distances:
 

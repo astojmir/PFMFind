@@ -36,7 +36,7 @@ int main(int argc, char **argv)
 {
   /* Index data */
   const char *filename = NULL;
-  FS_HASH_TABLE_t *HT = NULL;
+  FSINDX *FSI;
   int frag_len;
   SEQUENCE_DB *s_db;
   
@@ -60,7 +60,7 @@ int main(int argc, char **argv)
   
   FS_SEQ_t FS_query;
   int j;
-  ULINT frag_offset;
+  ULINT frag_offset = 0;
   BIOSEQ subject;
   int m=0;
   char sc[2];
@@ -100,11 +100,10 @@ int main(int argc, char **argv)
 
 
   fprintf(stdout, "Loading index... \n");
-  FS_INDEX_load(filename);
-  ptable = FS_INDEX_get_ptable();
-  s_db = FS_INDEX_get_database();
-  HT = FS_INDEX_get_hash_table(); 
-  frag_len = FS_INDEX_get_frag_len();
+  FSI = FS_INDEX_load(filename);
+  ptable = FS_INDEX_get_ptable(FSI);
+  s_db = FS_INDEX_get_database(FSI);
+  frag_len = FS_INDEX_get_frag_len(FSI);
   if (m != frag_len)
     {
       fprintf(stderr, "Wrong sequence length\n");
@@ -126,11 +125,13 @@ int main(int argc, char **argv)
       FS_query += C*KK;
     }
   fprintf(stdout, "Bin: %s\n", seq);
-  fprintf(stdout, "Size: %ld\n", HT->bin_size[FS_query]);
-  fprintf(stdout, "'Unique' size: %ld\n\n", HT->u_size[FS_query]);
-  for (j=0; j < HT->bin_size[FS_query]; j++)
+  fprintf(stdout, "Size: %ld\n", 
+	  FS_INDEX_get_no_seqs(FSI, FS_query)); 
+  fprintf(stdout, "'Unique' size: %ld\n\n",
+	  FS_INDEX_get_no_useqs(FSI, FS_query));
+  for (j=0; j < FS_INDEX_get_no_seqs(FSI, FS_query); j++)
     {
-      frag_offset = FS_HASH_TABLE_retrieve_seq(HT, FS_query, j);
+      frag_offset = FS_INDEX_retrieve_seq(FSI, FS_query, j);
       fastadb_get_Ffrag(s_db, frag_len, &subject, frag_offset);
       fastadb_find_Ffrag_seq(s_db, &subject, &id, &from);
       defline = s_db->seq[id].id.defline;
