@@ -25,11 +25,11 @@ int main(int argc, char **argv)
   char *seq_heap;
   const char *out_file = NULL;
 
-  ULINT D_cutoff = 0;
-  ULINT end;
+  int K0;
+  int K1;
+  int step;
   FILE *stream = stdout;
   ULINT one_percent;
-  ULINT step_size;
   SCORE_MATRIX_t *D;
   char *matrix_full;
   char *matrix_base;
@@ -38,21 +38,23 @@ int main(int argc, char **argv)
   FS_PARTITION_t *ptable;
   SCORE_MATRIX_t *S;
   HIT_LIST_t *hit_list;
+  FS_HASH_TABLE_t *HT;
 
   if (argc < no_args+1)
     {
       fprintf(stderr,"Insufficient arguments \n");
       fprintf(stderr,"Usage: %s index_file matrix_file count_file"
-	      " no_runs start_D step_size end_dist <out_file>\n", argv[0]);  
+	      " no_runs start_K step_size end_K <out_file>\n", argv[0]);  
       exit(EXIT_FAILURE);
     }
   index_file = argv[1];
   matrix_full = argv[2]; 
   count_file = argv[3];
   no_runs = atoi(argv[4]);
-  D_cutoff = atoi(argv[5]);
-  step_size = atoi(argv[6]);
-  end = atoi(argv[7]);
+  K0 = atoi(argv[5]);
+  step = atoi(argv[6]);
+  K1 = atoi(argv[7]);
+
  if (argc >= no_args+2)
     {
       out_file = argv[8];
@@ -63,18 +65,16 @@ int main(int argc, char **argv)
 	} 
     } 
 
-  FS_index = FS_INDEX_load(index_file);
-
-  ptable = FS_INDEX_get_ptable(FS_index);
+  FS_INDEX_load(index_file);
+  ptable = FS_INDEX_get_ptable();
   S = SCORE_MATRIX_create(matrix_full, ptable); 
   D = SCORE_MATRIX_S_2_Dquasi(S);
   split_base_dir(matrix_full, &matrix_base, &matrix_dir);  
-  FS_INDEX_set_matrix(FS_index, matrix_base, S, D);
   seq_generator = SEQ_GENERATOR_create(count_file, ptable);
-  len = FS_index->frag_len;
+  len = FS_INDEX_get_frag_len();
   seq_heap = mallocec(len+1);
 
-  hit_list = HIT_LIST_create(&query, FS_INDEX_get_database(FS_index), 
+  hit_list = HIT_LIST_create(&query, FS_INDEX_get_database(), 
 			     matrix_base, 0);
   if (no_runs < 100)
     one_percent = 1;
@@ -83,44 +83,48 @@ int main(int argc, char **argv)
 
 
   fprintf(stream, "***** FSsearch random runs: %s"
-	  " database ******\n", FS_index->db_name);
+	  " database ******\n", FS_INDEX_get_db_name());
   fprintf(stream, "No runs: %ld\n", no_runs);
-  fprintf(stream, "Total fragments: %ld\n", FS_index->HT->no_seqs);
-  fprintf(stream, "Total bins: %ld\n", FS_index->HT->no_bins);
-  fprintf(stream, "Clustering: %s\n", FS_index->alphabet);
+  HT = FS_INDEX_get_hash_table();
+  fprintf(stream, "Total fragments: %ld\n", FS_HASH_TABLE_get_total_seqs(HT));
+  fprintf(stream, "Total bins: %ld\n", FS_HASH_TABLE_get_no_bins(HT));
+  fprintf(stream, "Clustering: %s\n", FS_index_get_alphabet());
   fprintf(stream, "Matrix: %s\n", matrix_base);
 
  
-  if (D_cutoff == 0)
+  if (K0 <= 0)
+    K1 = 1;
+
+  while (K0 <= K1)
     {
-      D_cutoff++;
-    }
-  while (D_cutoff <= end)
-    {
-      fprintf(stdout,"\n\nD = %ld\n", D_cutoff);
-      fprintf(stream,"\n\nD = %ld\n", D_cutoff);
-      fprintf(stream, "%*.*s %4.4s %10.10s %10.10s %10.10s %10.10s\n",
-	      (int) len , (int) len, "query", "eps", "FS_visited",
-	      "FS_hits", "s_visited", "s_hits");   
+      fprintf(stdout,"\nk = %d\n", K0);
+      fprintf(stream,"\nk = %d\n", K0);
+      fprintf(stream, "%*.*s %6.6s %6.6s %10.10s %10.10s %10.10s %10.10s %10.10s %10.10s \n",
+	      (int) len , (int) len, "query", "k", "eps", "FS_visited",
+	      "FS_hits", "FS_ratio", "s_visited", "s_hits", "s_ratio");   
       for (i = 0; i < no_runs; i++)
 	{
 	  SEQ_GENERATOR_rand_seq(seq_generator, &query, len,
 				 seq_heap); 
-	  HIT_LIST_reset(hit_list, &query, FS_index->s_db,
-			 matrix_base, D_cutoff);
-	  FS_INDEX_search(FS_index, hit_list, &query, D_cutoff,
-			  FS_INDEX_QD_process_bin,
-			  FS_INDEX_identity_convert);
-	  fprintf(stream, "%*.*s %4ld %10ld %10ld %10ld"
-		  " %10ld\n", (int) len , (int) len, query.start,
-		  D_cutoff, hit_list->FS_seqs_visited,
-		  hit_list->FS_seqs_hits, hit_list->seqs_visited,
-		  hit_list->seqs_hits);
+	  HIT_LIST_reset(hit_list, &query, FS_INDEX_get_database(),
+			 matrix_base, K0);
+
+	  FS_INDEX_kNN_search(hit_list, &query, S, D, K0, 30,
+			      FS_INDEX_QD_process_bin,
+			      FS_INDEX_identity_convert);
+
+	  fprintf(stream, "%*.*s %6d %6d %10ld %10ld %10.2f %10ld"
+		  " %10ld %10.2f\n", (int) len , (int) len, query.start,
+		  K0, hit_list->range, hit_list->FS_seqs_visited,
+		  hit_list->FS_seqs_hits, 
+		  (double) hit_list->FS_seqs_visited / hit_list->FS_seqs_hits, 
+		  hit_list->seqs_visited, hit_list->seqs_hits,
+		  (double) hit_list->seqs_visited / hit_list->seqs_hits);
 	  fflush(stream);
 	  /* Print progress bar */
 	  printbar(stdout, i+1, one_percent, 50);  
 	}
-      D_cutoff += step_size;
+      K0 += step;
     }
   fprintf(stdout,"\n");
   if (out_file != NULL)
