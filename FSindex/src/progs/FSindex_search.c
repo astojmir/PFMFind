@@ -33,8 +33,11 @@ void print_help(const char *progname)
 	  "-I  n   Run n profile iterations (Optional)\n"
 	  "          If n = 0 run until convergence\n"
 	  "-L  n   Scaling factor to use when producing PSMs\n"
-	  "-d  f   Read background distribution of amino acids from"
-	  " file f\n", progname);
+	  "-S  n   Cutoff score to use on second and subsequent"
+	  " iterations\n"
+	  "-f  f   Read background distribution of amino acids from"
+	  " file f\n" 
+	  "-A  x   Add x pseudo counted sequences\n", progname);
 }
 
 
@@ -74,13 +77,16 @@ int main(int argc, char **argv)
   SCORE_MATRIX_t *S;
   SCORE_MATRIX_t *D;
   POS_MATRIX *PS;
-  POS_MATRIX *PD;
+  double lambda = 1.0;
+  double A = 20.0;
+  const char *freq_filename = NULL;
+  int cutoff2;
 
   enum {T_SIMILARITY, T_QUASI_METRIC, T_METRIC, T_PROFILE} search_type 
     = T_SIMILARITY; 
   int cutoff_flag = 0;
 
-  while ((c = getopt(argc, argv, "F:M:s:d:q:p:i:o:")) != EOF)
+  while ((c = getopt(argc, argv, "F:M:s:d:q:p:i:o:I:L:S:f:A:")) != EOF)
     switch (c) 
       {
       case 'F':
@@ -123,6 +129,19 @@ int main(int argc, char **argv)
 	    exit(EXIT_FAILURE);
 	  }
 	break;
+      case 'L':
+	lambda = atof(optarg);
+	break;
+      case 'f':
+	freq_filename = optarg;
+	break;
+      case 'A':
+	A = atof(optarg);
+	break;
+      case 'S':
+	cutoff2 = atoi(optarg);
+	break;
+
       case '?':
       default:
 	errflg++;
@@ -199,13 +218,23 @@ int main(int argc, char **argv)
 	{
 	case T_PROFILE:
 	  PS = SCORE_2_POS_MATRIX(S, query);
-	  PD = POS_MATRIX_S_2_D(PS, query);      
-	  FS_INDEX_profile_search(hit_list, query, PS, PD, 0,
-			      query->len-1, cutoff,
-			      FS_INDEX_profile_S_process_bin,
-			      FS_INDEX_S2QD_convert);
+	  POS_MATRIX_init(PS, lambda, POS_MATRIX_simple_pseudo_counts,
+			  freq_filename);
+	  POS_MATRIX_simple_pseudo_counts_init(PS, A);
+
+	  
+	  FS_INDEX_profile_search(hit_list, PS,0, query->len-1, cutoff, 
+				  FS_INDEX_profile_S_process_bin,
+				  FS_INDEX_S2QD_convert);
+      
 	  HIT_LIST_sort_by_sequence(hit_list);
 	  HIT_LIST_sort_decr(hit_list);
+
+	  HIT_LIST_get_hit_seqs(hit_list, &PS->seq, cutoff, 
+				&PS->no_seqs, &PS->max_no_seqs);
+	  POS_MATRIX_equal_weights(PS);
+	  POS_MATRIX_update(PS);
+
 	  break;
 	case T_SIMILARITY:
 	  FS_INDEX_search(hit_list, query, S, D, cutoff,
