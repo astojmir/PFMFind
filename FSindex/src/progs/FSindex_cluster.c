@@ -40,29 +40,29 @@ void print_help(const char *progname)
 int main(int argc, char **argv)
 {
   /* Index data */
-  const char *filename;
-  FS_HASH_TABLE_t *HT;
+  const char *filename = NULL;
+  FS_HASH_TABLE_t *HT = NULL;
   ULINT no_bins;
   ULINT no_seqs; 
   ULINT frag_len;
-  SEQ_index_t *seqs;
+  SEQ_index_t *seqs = NULL;
   SEQUENCE_DB *s_db;
   
   /* Matrices */
-  FS_PARTITION_t *ptable;
-  SCORE_MATRIX_t *S;
-  SCORE_MATRIX_t *D;
-  char *matrix_full;
-  char *matrix_base;
-  char *matrix_dir;
+  FS_PARTITION_t *ptable = NULL;
+  SCORE_MATRIX_t *S = NULL;
+  SCORE_MATRIX_t *D = NULL;
+  char *matrix_full = NULL;
+  char *matrix_base = NULL;
+  char *matrix_dir = NULL;
 
   /* Cluster data */
   SEQ_CLUSTERS *sclusters;
   CLUSTER_BIN *cbin = callocec(1, sizeof(CLUSTER_BIN));
 
   /* Clustering params */
-  unsigned int T;
-  ULINT K;
+  unsigned int T = 10;
+  ULINT K = 10;
 
   /* Stats */
   SEED_HIST *clusters_per_bin = seedhist_init(0, 10);
@@ -85,9 +85,9 @@ int main(int argc, char **argv)
   const char *outfile = NULL;
   const char *outfile1 = NULL;
   const char *debug_file = NULL;
-  FILE *stream;
-  FILE *stream1;
-  FILE *stream2;
+  FILE *stream = NULL;
+  FILE *stream1 = NULL;
+  FILE *stream2 = NULL;
 
 
   int index_flag = 0;
@@ -210,7 +210,7 @@ int main(int argc, char **argv)
       if (debug_flag)
 	{
 	  rewind(stream2);
-	  fprintf(stream2, "Last bin:%d, Size: %ld\n", i, no_seqs);
+	  fprintf(stream2, "Last bin:%ld, Size: %ld\n", i, no_seqs);
 	}
       if (no_seqs > 0 && no_seqs < TOO_BIG)
 	{
