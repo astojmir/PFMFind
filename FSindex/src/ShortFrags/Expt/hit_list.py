@@ -153,16 +153,16 @@ class HitList:
         file_str.write("Accepted out of generated fragments:  %.2f %%\n\n" \
                        % (100.0 * self.frags_hit / self.frags_visited))
 
-        if self.unique_frags_visited:
-             file_str.write("Number of checked distinct fragments : %d" %\
-                            self.unique_frags_visited)
-             file_str.write(perc_func(self.unique_frags_visited,
-                                      'unique_fragments'))
-             file_str.write("Number of accepted distinct fragments : %d" %\
-                            self.unique_frags_hit)
-             file_str.write(perc_func(self.unique_frags_hit, 'unique_fragments'))
-             file_str.write("Accepted out of generated distinct fragments:  %.2f %%\n\n" \
-                            % (100.0 * self.unique_frags_hit / self.unique_frags_visited))
+#         if self.unique_frags_visited:
+#              file_str.write("Number of checked distinct fragments : %d" %\
+#                             self.unique_frags_visited)
+#              file_str.write(perc_func(self.unique_frags_visited,
+#                                       'unique_fragments'))
+#              file_str.write("Number of accepted distinct fragments : %d" %\
+#                             self.unique_frags_hit)
+#              file_str.write(perc_func(self.unique_frags_hit, 'unique_fragments'))
+#              file_str.write("Accepted out of generated distinct fragments:  %.2f %%\n\n" \
+#                             % (100.0 * self.unique_frags_hit / self.unique_frags_visited))
 
         file_str.write("Search time: %.2f sec.\n" % self.search_time)
         return file_str.getvalue()
