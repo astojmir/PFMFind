@@ -17,7 +17,8 @@ static
 void print_help(const char *progname)
 {
   fprintf(stderr, "Usage: %s options\n"
-	  "Options:\n"
+	  "\n"
+	  "General Options:\n"
 	  "-F  f   Use FSindex index file f (Mandatory)\n"
 	  "-M  f   Use score matrix file f (Mandatory)\n"
 	  "[-s | -q | -d | -p] n (Mandatory)\n"
@@ -26,18 +27,26 @@ void print_help(const char *progname)
 	  "           -q non-symmetric distance scores\n"
 	  "           -d symmetric distance scores\n"
 	  "           -p PSM scores\n"
-	  "-i  f   Read input from file f (Optional)\n"
-	  "          If ommitted, read from stdin\n"
-	  "-o  f   Write output to file f (Optional)\n"
-	  "          If ommitted, write to stdout\n"
-	  "-I  n   Run n profile iterations (Optional)\n"
+	  "-i  f   Read input from file f (Default = stdin)\n"
+	  "-o  f   Write output to file f (Default = stdout)\n"
+	  "\n"
+	  "Profile General Options (only if -p used):\n"
+	  "-f  f   Read background amino acid distribution from" 
+	  " file f\n"
+	  "          (Mandatory)\n" 
+	  "-I  n   Run n profile iterations (Default = 5)\n" 
 	  "          If n = 0 run until convergence\n"
-	  "-L  n   Scaling factor to use when producing PSMs\n"
+	  "-L  x   Scaling factor to use when producing PSMs"
+	  " (Default = 1.0)\n"
 	  "-S  n   Cutoff score to use on second and subsequent"
 	  " iterations\n"
-	  "-f  f   Read background distribution of amino acids from"
-	  " file f\n" 
-	  "-A  x   Add x pseudo counted sequences\n", progname);
+	  "         (Default = the same score as specified in -p"
+	  " option)\n" 
+	  "\n"
+	  "Profile Pseudo-count Options (only if -p used):\n"
+	  "-A  x   Add x pseudo counted sequences (Default = 20.0)\n"
+	  "\n"
+	  ,progname);
 }
 
 
@@ -76,17 +85,27 @@ int main(int argc, char **argv)
   FS_PARTITION_t *ptable;
   SCORE_MATRIX_t *S;
   SCORE_MATRIX_t *D;
+
   POS_MATRIX *PS;
   double lambda = 1.0;
   double A = 20.0;
   const char *freq_filename = NULL;
+  int iters = 5;
   int cutoff2;
+  int cutoff2_flag = 0;
+  int profile_flag = 0;
+
+  int i;
 
   enum {T_SIMILARITY, T_QUASI_METRIC, T_METRIC, T_PROFILE} search_type 
     = T_SIMILARITY; 
   int cutoff_flag = 0;
 
-  while ((c = getopt(argc, argv, "F:M:s:d:q:p:i:o:I:L:S:f:A:")) != EOF)
+
+
+
+  while ((c = getopt(argc, argv, 
+		     "F:M:s:d:q:p:i:o:I:L:S:f:A:")) != EOF)
     switch (c) 
       {
       case 'F':
@@ -101,6 +120,7 @@ int main(int argc, char **argv)
 	search_type = T_PROFILE;
 	cutoff = atoi(optarg);
 	cutoff_flag++;
+	profile_flag++;
 	break;
       case 's':
 	search_type = T_SIMILARITY;
@@ -132,6 +152,9 @@ int main(int argc, char **argv)
       case 'L':
 	lambda = atof(optarg);
 	break;
+      case 'I':
+	iters = atoi(optarg);
+	break;
       case 'f':
 	freq_filename = optarg;
 	break;
@@ -140,6 +163,7 @@ int main(int argc, char **argv)
 	break;
       case 'S':
 	cutoff2 = atoi(optarg);
+	cutoff2_flag++;
 	break;
 
       case '?':
@@ -169,6 +193,12 @@ int main(int argc, char **argv)
       fprintf(stderr,"Warning: Too many search types and cutoff"
 	      " values specified.\n");
     }
+  if (profile_flag && freq_filename == NULL)
+    {
+      errflg++;
+      fprintf(stderr,"Error: Missing amino acid frequency filename.\n"
+	      "This must be specified when using profile search.\n");
+    }
   if (errflg)
     {
       fprintf(stderr,"Error: Insufficient or invalid arguments \n");
@@ -177,6 +207,9 @@ int main(int argc, char **argv)
     }
 
   fprintf(stdout,"Loading database and index ... \n");
+  if (!cutoff2_flag)
+    cutoff2 = cutoff;
+
   FS_INDEX_load(filename);
   ptable = FS_INDEX_get_ptable();
   split_base_dir(matrix_full, &matrix_base, &matrix_dir);  
@@ -221,20 +254,34 @@ int main(int argc, char **argv)
 	  POS_MATRIX_init(PS, lambda, POS_MATRIX_simple_pseudo_counts,
 			  freq_filename);
 	  POS_MATRIX_simple_pseudo_counts_init(PS, A);
-
 	  
-	  FS_INDEX_profile_search(hit_list, PS,0, query->len-1, cutoff, 
-				  FS_INDEX_profile_S_process_bin,
+	  FS_INDEX_profile_search(hit_list, PS,0, query->len-1,
+				  cutoff,
+				  FS_INDEX_profile_S_process_bin, 
 				  FS_INDEX_S2QD_convert);
-      
 	  HIT_LIST_sort_by_sequence(hit_list);
 	  HIT_LIST_sort_decr(hit_list);
+	  HIT_LIST_print(hit_list, out_stream, 0); 
 
-	  HIT_LIST_get_hit_seqs(hit_list, &PS->seq, cutoff, 
-				&PS->no_seqs, &PS->max_no_seqs);
-	  POS_MATRIX_equal_weights(PS);
-	  POS_MATRIX_update(PS);
-
+	  i = iters;
+	  while (i--)
+	    {
+	      HIT_LIST_get_hit_seqs(hit_list, &PS->seq, cutoff, 
+				    &PS->no_seqs, &PS->max_no_seqs);
+	      POS_MATRIX_equal_weights(PS);
+	      POS_MATRIX_update(PS);
+	      HIT_LIST_reset(hit_list, PS->query,
+			     FS_INDEX_get_database(), 
+			     matrix_base, cutoff2);
+	      FS_INDEX_profile_search(hit_list, PS,0, query->len-1,
+				      cutoff2,
+				      FS_INDEX_profile_S_process_bin, 
+				      FS_INDEX_S2QD_convert);
+      
+	      HIT_LIST_sort_by_sequence(hit_list);
+	      HIT_LIST_sort_decr(hit_list);
+	      HIT_LIST_print(hit_list, out_stream, 0); 
+	    }
 	  break;
 	case T_SIMILARITY:
 	  FS_INDEX_search(hit_list, query, S, D, cutoff,
@@ -242,20 +289,20 @@ int main(int argc, char **argv)
 			  FS_INDEX_S2QD_convert);
 	  HIT_LIST_sort_by_sequence(hit_list);
 	  HIT_LIST_sort_decr(hit_list);
+	  HIT_LIST_print(hit_list, out_stream, 0); 
 	  break;
 	case T_QUASI_METRIC:
 	case T_METRIC:
-	  D = SCORE_MATRIX_S_2_Dmax(S);
 	  FS_INDEX_search(hit_list, query, S, D, cutoff,
 			  FS_INDEX_QD_process_bin, 
 			  FS_INDEX_identity_convert);
 	  HIT_LIST_sort_by_sequence(hit_list);
 	  HIT_LIST_sort_incr(hit_list);
+	  HIT_LIST_print(hit_list, out_stream, 0); 
 	  break;
 	default:
 	  break;
 	}
-      HIT_LIST_print(hit_list, out_stream, 0); 
     }
   return EXIT_SUCCESS;
 }
