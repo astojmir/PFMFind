@@ -30,6 +30,7 @@ EXTENSIONS = [
                'lib/misclib.c',
                'lib/smatrix.c',
                'lib/partition.c',
+               'lib/avl.c',
                'sarray/lcp.c',
                'sarray/sarray.c',
                'sarray/scode.c',
@@ -50,7 +51,7 @@ SCRIPTS = [
 
 setup(
     name='ShortFrags',
-    version='0.4',
+    version='0.42',
     author='Aleksandar Stojmirovic',
     author_email='aleksand@mcs.vuw.ac.nz',
     url='http://www.mcs.vuw.ac.nz/~aleksand',
