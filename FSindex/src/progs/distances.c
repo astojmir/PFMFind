@@ -173,7 +173,7 @@ int main(int argc, char **argv)
 	{
 	  s = HT->heap[lrand48()%FS_HASH_TABLE_get_total_seqs(HT)];
 	  fastadb_get_Ffrag(FS_INDEX_get_database(), 10, &subject, s);
-	  fprintf(out_stream, "%*.*s %d", (int) subject.len,
+	  fprintf(out_stream, "%*.*s %3d", (int) subject.len,
 		  (int) subject.len, subject.start, 
 		  SCORE_MATRIX_evaluate(D, &query, &subject));
 	  for (dist=0, k=0; k < subject.len; k++)
@@ -181,7 +181,7 @@ int main(int argc, char **argv)
 	      poffset = FS_PARTITION_get_poffset(ptable,
 		FS_PARTITION_get_pttn(ptable, subject.start[k]));	       
 	      dist += D->pM[query.start[k] & A_SIZE_MASK][poffset];
-	      fprintf(out_stream, " %d", dist);
+	      fprintf(out_stream, " %3d", dist);
 	    }
 	  printbar(stdout, (ULINT) j+1, one_percent, 50);  
 	  fprintf(out_stream, "\n");
