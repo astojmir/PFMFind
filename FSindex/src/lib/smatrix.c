@@ -12,6 +12,7 @@
 #include "partition.h"
 #include "smatrix.h"
 #include "normsinv.h"
+#include "hit_list.h"
 
 /* Routines for computing distances to pattern letters (i.e. subsets
    of alphabet partitions. */
@@ -627,4 +628,21 @@ void SCORE_MATRIX_print(SCORE_MATRIX_t *S, FILE *stream,
     }
   fprintf(stream, "\n");
   fprintf(stream, "\n");
+}
+
+
+/********************************************************************/ 
+/*                 Conversion function                              */
+/********************************************************************/ 
+void SCORE_MATRIX_convert(int s0, HIT_LIST_t *HL)
+{
+  int hits = HIT_LIST_get_seqs_hits(HL);
+  int i;
+  SEQ_HIT_t *hit;
+  
+  for (i=0; i < hits; i++)
+    {
+      hit = HIT_LIST_get_hit(HL, i);
+      hit->value = s0 - hit->value;
+    }
 }

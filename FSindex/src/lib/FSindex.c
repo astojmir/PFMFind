@@ -587,8 +587,8 @@ void FS_INDEX_print_stats(FSINDX *FSI, FILE *stream, ULINT count,
 /* We only accept distance matrices. Conversion to be done outside.  */
 
 
-#define BITSET(a, b) ((a) |= (1 << (b)))
-#define BITTEST(a, b) ((a) & (1 << (b)))
+#define BITSET(a, b) ((a) |= (1LL << (b)))
+#define BITTEST(a, b) ((a) & (1LL << (b)))
 
 
 typedef struct
@@ -919,7 +919,7 @@ FSSRCH *FSSRCH_init(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
   FSS->args->M = (void *) D;
   FSS->args->query = query;
 
-  if (HL = NULL)  FSS->args->HL = 
+  if (HL == NULL)  FSS->args->HL = 
     HIT_LIST_create(query, FSI->s_db, SCORE_MATRIX_filename(D), d0);
   else
     HIT_LIST_reset(HL, query, FSI->s_db, SCORE_MATRIX_filename(D),
@@ -979,10 +979,56 @@ FSSRCH *FSSRCH_init(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
   else
     qsort(FSS->T, FSS->Tn, sizeof(FSTRANSF), FSTRANSF_comp_incr);
   /* Flag transformations by position */
+
+#if 0
+  printf("BIT VECTORS BEFORE\n");
+  for (i=0; i < FSI->m; i++)
+    {
+      printf("pos= %d  ", i);
+      for (k=0; k < FSS->Tn; k++)
+	if (BITTEST(FSS->UT[i], k))
+	  printf("1");
+        else
+	  printf("0");
+      putchar('\n');
+    }
+  putchar('\n');
+
+  printf("BIT VECTORS DURING\n");
+#endif
   for (k=0; k < FSS->Tn; k++)
-    BITSET(FSS->UT[FSS->T[k].pos], k);
+    {
+      BITSET(FSS->UT[FSS->T[k].pos], k);
+#if 0
+      printf("POS = %d  BIT= %d\n", FSS->T[k].pos, k );
+      for (i=0; i < FSI->m; i++)
+	{
+	  printf("pos= %d  ", i);
+	  for (j=0; j < FSS->Tn; j++)
+	    if (BITTEST(FSS->UT[i], j))
+	      printf("1");
+	    else
+	      printf("0");
+	  putchar('\n');
+	}
+      putchar('\n');
+#endif
+    }  
 
-
+#if 0
+  printf("BIT VECTORS\n");
+  for (i=0; i < FSI->m; i++)
+    {
+      printf("pos= %d  ", i);
+      for (k=0; k < FSS->Tn; k++)
+	if (BITTEST(FSS->UT[i], k))
+	  printf("1");
+        else
+	  printf("0");
+      putchar('\n');
+    }
+  putchar('\n');
+#endif     
   /* Set some info for hit list */
   HIT_LIST_set_converted_range(FSS->args->HL, FSS->eps);
   HIT_LIST_set_index_data(FSS->args->HL, FSI->index_name, 
@@ -1011,7 +1057,11 @@ FSSRCH *FSSRCH_profile_init(FSINDX *FSI, POS_MATRIX *PD,
   FSS->args = mallocec(sizeof(PFUNC_ARGS));
   FSS->args->M = PD;
   FSS->args->query = PD->query;
-  FSS->args->HL = HL;
+  if (HL == NULL)  FSS->args->HL = 
+    HIT_LIST_create(PD->query, FSI->s_db, POS_MATRIX_filename(PD), d0);
+  else
+    HIT_LIST_reset(HL, PD->query, FSI->s_db, POS_MATRIX_filename(PD), d0);
+
   FSS->args->FSI = FSI;
   FSS->args->eps = &FSS->eps;
   FSS->args->kNN = &FSS->kNN;
@@ -1105,6 +1155,7 @@ void check_bins(FSSRCH *FSS, int dist, FS_SEQ_t cbin, long long AT,
       printf("%d ", FSS->T[k].dist);
   putchar('\n');
 #endif
+
   for (k=k0; k < FSS->Tn; k++)
     if (BITTEST(AT, k))
     {
@@ -1233,7 +1284,6 @@ list(est.shape = est.shape, est.rate = est.rate)
 #endif
 
 
-
 /********************************************************************/ 
 /*      Search functions                                            */
 /********************************************************************/ 
@@ -1293,66 +1343,84 @@ HIT_LIST_t *FSINDX_kNN_srch(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
   return FSSRCH_search(FSSRCH_init(FSI, query, D, INT_MAX, kNN, HL));
 }
 
-HIT_LIST_t *FSINDX_prof_rng_srch(FSINDX *FSI, POS_MATRIX *PD, int d0, 
-			  HIT_LIST_t *HL)
-
 HIT_LIST_t *FSINDX_prof_rng_srch(FSINDX *FSI, BIOSEQ *query, 
-				 SCORE_MATRIX_t *D,
-				 int d0, HIT_LIST_t *HL)  
-
+				 SCORE_MATRIX_t *D, int s0, 
+				 double lambda, double A,
+				 const char *freq_filename,
+				 int iters, int s1,
+				 HIT_LIST_t *HL)  
 {
-  PS = SCORE_2_POS_MATRIX(D, query);
+  int i;
+  int d0;
+  POS_MATRIX *PS = SCORE_2_POS_MATRIX(D, query);
+ 
   POS_MATRIX_init(PS, lambda, POS_MATRIX_simple_pseudo_counts,
 		  freq_filename);
   POS_MATRIX_simple_pseudo_counts_init(PS, A);
 	  
-  /* First search comes here */
-  HL = FSSRCH_search(FSSRCH_profile_init(FSI, PS, d0, -1, HL));
-
-  /* TO DO: Convert results */
-  HIT_LIST_print(HL, out_stream, 0); 
+   d0 = PS->qS - s0;
+   HL = FSSRCH_search(FSSRCH_profile_init(FSI, PS, d0, -1, HL));
+   POS_MATRIX_convert(PS, HL);
+   HIT_LIST_sort_decr(HL);
+   HIT_LIST_print(HL, stdout, 0); 
 
   i = iters;
   while (i--)
     {
       /* Filter here */
 
-      HIT_LIST_get_hit_seqs(HL, &PS->seq, cutoff, 
+      HIT_LIST_get_hit_seqs(HL, &PS->seq, s0, 
 			    &PS->no_seqs, &PS->max_no_seqs);
       if (PS->no_seqs == 0)
 	break;
       POS_MATRIX_Henikoff_weights(PS);
       POS_MATRIX_update(PS);
       
-      /* Another search here */
+      d0 = PS->qS - s1;
       HL = FSSRCH_search(FSSRCH_profile_init(FSI, PS, d0, -1, HL));
-     /* TO DO: Convert results */
-
-      HIT_LIST_sort_by_sequence(HL);
+      POS_MATRIX_convert(PS, HL);
       HIT_LIST_sort_decr(HL);
-      HIT_LIST_print(HL, out_stream, 0); 
+      HIT_LIST_print(HL, stdout, 0); 
     }
-
-
-
-
-
-
-
-
-
-
-
-
-  FSSRCH_search(FSSRCH_profile_init(FSI, PD, d0, -1, HL));
-  return;
+  return HL;
 }
 
-HIT_LIST_t *FSINDX_prof_kNN_srch(FSINDX *FSI, POS_MATRIX *PD, int kNN, 
-			  HIT_LIST_t *HL)
+HIT_LIST_t *FSINDX_prof_kNN_srch(FSINDX *FSI, BIOSEQ *query, 
+				 SCORE_MATRIX_t *D, int kNN, 
+				 double A,
+				 const char *freq_filename,
+				 int iters, HIT_LIST_t *HL)  
 {
-  FSSRCH_search(FSSRCH_profile_init(FSI, PD, INT_MAX, kNN, HL));
-  return;
+  int i;
+
+  POS_MATRIX *PS = SCORE_2_POS_MATRIX(D, query);
+ 
+  POS_MATRIX_init(PS, 1.0, POS_MATRIX_simple_pseudo_counts,
+		  freq_filename);
+  POS_MATRIX_simple_pseudo_counts_init(PS, A);
+	  
+  HL = FSSRCH_search(FSSRCH_profile_init(FSI, PS, INT_MAX, kNN, HL));
+
+  POS_MATRIX_convert(PS, HL);
+  HIT_LIST_print(HL, stdout, 0); 
+
+  i = iters;
+  while (i--)
+    {
+      /* Filter here */
+
+      HIT_LIST_get_hit_seqs(HL, &PS->seq, -100000, 
+			    &PS->no_seqs, &PS->max_no_seqs);
+      if (PS->no_seqs == 0)
+	break;
+      POS_MATRIX_Henikoff_weights(PS);
+      POS_MATRIX_update(PS);
+
+      HL = FSSRCH_search(FSSRCH_profile_init(FSI, PS, INT_MAX, kNN, HL));
+      POS_MATRIX_convert(PS, HL);
+      HIT_LIST_print(HL, stdout, 0); 
+    }
+  return HL;
 }
 
 

@@ -15,6 +15,7 @@
 #include "fastadb.h"
 #include "pmatrix.h"
 #include "normsinv.h"
+#include "hit_list.h"
 
 static inline
 void create_counts(POS_MATRIX *PS)
@@ -571,4 +572,21 @@ void POS_MATRIX_S_2_D(POS_MATRIX *PS)
 
       PS->pMclosest[i] = maxS  - PS->pMclosest[i]; 
     }      
+}
+
+
+/********************************************************************/ 
+/*                 Conversion function                              */
+/********************************************************************/ 
+void POS_MATRIX_convert(POS_MATRIX *PS, HIT_LIST_t *HL)
+{
+  int hits = HIT_LIST_get_seqs_hits(HL);
+  int i;
+  SEQ_HIT_t *hit;
+  
+  for (i=0; i < hits; i++)
+    {
+      hit = HIT_LIST_get_hit(HL, i);
+      hit->value = PS->qS - hit->value;
+    }
 }
