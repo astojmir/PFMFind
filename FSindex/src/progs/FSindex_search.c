@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include "FSindex.h"
 #include "hit_list.h"
+#include "keyword.h"
 
 
 int FS_PARTITION_VERBOSE = 0;
@@ -56,6 +57,7 @@ void print_help(const char *progname)
 	  " iterations\n"
 	  "         (Default = the same score as specified in -p"
 	  " option)\n" 
+	  "-K  f   Keyword binary file created by KWindex_create.\n"
 	  "\n"
 	  "Profile Pseudo-count Options:\n"
 	  "-A  x   Add x pseudo counted sequences (Default = 20.0)\n"
@@ -81,6 +83,7 @@ int main(int argc, char **argv)
   FSINDX *FSI = NULL;
   HIT_LIST_t *HL = NULL;
   BIOSEQ *query = NULL;
+  FPARAMS *fp = NULL;
 
   const char *filename = NULL;
   const char *in_file = NULL;
@@ -100,6 +103,8 @@ int main(int argc, char **argv)
   double A = 20.0;
   const char *freq_filename = NULL;
   int iters = 5;
+  const char *kw_filename = NULL;
+  KW_INDEX *KWI = NULL;
 
   int cutoff  = 0;
   int cutoff2 = 0;
@@ -130,7 +135,7 @@ int main(int argc, char **argv)
 
 
   /* Process options */
-  while ((c = getopt(argc, argv, "i:o:t:c:f:I:L:S:A:v")) != EOF)
+  while ((c = getopt(argc, argv, "i:o:t:c:f:I:L:K:S:A:v")) != EOF)
     switch (c) 
       {
       case 'i':
@@ -189,6 +194,9 @@ int main(int argc, char **argv)
       case 'L':
 	lambda = atof(optarg);
 	break;
+      case 'K':
+	kw_filename = optarg;
+	break;
       case 'S':
 	cutoff2 = atoi(optarg);
 	cutoff2_flag++;
@@ -219,6 +227,17 @@ int main(int argc, char **argv)
   matrix_full = argv[optind+1];
   cutoff = atoi(argv[optind+2]);
 
+  /* Process filtering arguments */ 
+  if (optind + 8 == argc)
+    {
+      fp = mallocec(sizeof(FPARAMS));
+      fp->ZE0 = atof(argv[optind+3]);
+      fp->ZE1 = atof(argv[optind+4]);
+      fp->CR0 = atof(argv[optind+5]);
+      fp->CR1 = atof(argv[optind+6]);
+      fp->KW0 = atof(argv[optind+7]);
+    }
+      
   if (freq_filename == NULL && search_type == T_PROFILE)
     {
       fprintf(stderr,"Missing amino acid frequency filename.\n");
@@ -234,6 +253,10 @@ int main(int argc, char **argv)
   FSI = FS_INDEX_load(filename);
   ptable = FS_INDEX_get_ptable(FSI);
   S = SCORE_MATRIX_create(matrix_full, ptable); 
+
+  if (kw_filename != NULL)
+    KWI = KW_INDEX_load_bin(kw_filename);
+
 
   fprintf(stdout,"Searching ... \n");
 
@@ -264,13 +287,13 @@ int main(int argc, char **argv)
 	    {
 	      HL = FSINDX_prof_rng_srch(FSI, query, D, cutoff, lambda,
 					A, freq_filename, iters,
-					 cutoff2, HL);
+					cutoff2, HL, KWI, fp);
 	      HIT_LIST_sort_decr(HL);
 	    }
 	  else /* cutoff_type == kNN */
 	    {
 	      HL = FSINDX_prof_kNN_srch(FSI, query, D, cutoff, 
-					A, freq_filename, iters, HL); 
+					A, freq_filename, iters, HL, KWI, fp); 
 	    }
 
 	  HIT_LIST_print(HL, out_stream, 0); 	
@@ -280,11 +303,11 @@ int main(int argc, char **argv)
 	  if (cutoff_type == SCORE)
 	    {
 	      d0 = s0 - cutoff;
-	      HL = FSINDX_rng_srch(FSI, query, D, d0, HL);
+	      HL = FSINDX_rng_srch(FSI, query, D, d0, HL, KWI, fp);
 	    }
 	  else /* cutoff_type == kNN */
 	    {
-	      HL = FSINDX_kNN_srch(FSI, query, D, cutoff, HL);
+	      HL = FSINDX_kNN_srch(FSI, query, D, cutoff, HL, KWI, fp);
 	    }
 	  HIT_LIST_sort_incr(HL);
 	  SCORE_MATRIX_convert(s0, HL);
@@ -295,11 +318,11 @@ int main(int argc, char **argv)
 	  if (cutoff_type == SCORE)
 	    {
 	      d0 = cutoff;
-	      HL = FSINDX_rng_srch(FSI, query, D, d0, HL);
+	      HL = FSINDX_rng_srch(FSI, query, D, d0, HL, KWI, fp);
 	    }
 	  else /* cutoff_type == kNN */
 	    {
-	      HL = FSINDX_kNN_srch(FSI, query, D, cutoff, HL);
+	      HL = FSINDX_kNN_srch(FSI, query, D, cutoff, HL, KWI, fp);
 	    }
 	  HIT_LIST_sort_incr(HL);
 	  HIT_LIST_print(HL, out_stream, 0); 

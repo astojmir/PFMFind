@@ -12,10 +12,12 @@ all: $(FSLIB) \
      Sscan_eps_net \
      print_matrices \
      QD_ddist \
+     Zdist \
      split_db \
      check_db \
      FSindex_show_bin \
-     fragdist
+     fragdist \
+     KWindex_create
 #     print_doublets \
 #     FSindex_self_sim \
 #     FSindex_cluster \
