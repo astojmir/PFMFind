@@ -18,9 +18,9 @@ WARNINGS = -errwarn -v
 
 CC = cc
 
-CFLAGS = "-xc99 -I ../include $(WARNINGS) $(MAXOPT) -D DEBUG=2"
+CFLAGS = "-xc99 -I ../include $(WARNINGS) $(MAXOPT)"
 LDFLAGS = "-L $(LIBDIR)"
-LDLIBS = "-lm -lFSindex"
+LDLIBS = "-lFSindex -lmd -lm"
 
 
 all: progs

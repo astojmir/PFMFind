@@ -19,7 +19,7 @@ OBJECTS= misclib.o fastadb.o  bioseq.o partition.o FSindex.o hit_list.o \
 
 VPATH = cephes-double
 
-all: libFSindex.a libmd.a
+all: libFSindex.a libmd.a libexpat.la
 
 libFSindex.a: $(OBJECTS) $(INCLUDES)
 	ar crv libFSindex.a $(OBJECTS); \
@@ -31,14 +31,22 @@ libmd.a:
 	mv libmd.a ..;\
 	cd ..; \
 
+libexpat.la:
+	cd expat-1.95.7; \
+	./configure; \
+	make buildlib; \
+	cp libexpat.la ..; \
+	cd ..; \
+
 clean:
 	rm -f *.o; \
-	rm -f *.a; 
+	rm -f *.a; \
+	rm -f *.la; \
 	cd cephes-double; \
 	make -f makefile clean; \
+	cd expat-1.95.7; \
+	make clean; \
 	cd ..; \
 
 srcclean: clean
 	rm -f *~; 
-
-

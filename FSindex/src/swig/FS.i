@@ -1,5 +1,9 @@
 %module FS
 
+%typemap(in) FILE *stream {
+  $1 = PyFile_AsFile($input);
+}
+
 %{
 #include "misclib.h"
 #include "bioseq.h"
@@ -72,13 +76,13 @@ struct exception_context the_exception_context[1];
    return SSCAN_has_neighbour(s_db, D, pt, query->seq, D_cutoff);
  }
 
+ hit_list *parse_hl_xml(FILE *stream) {
+   return HIT_LIST_parse_xml(stream);
+ }
 
 
 %}
 
-%typemap(in) FILE *stream {
-  $1 = PyFile_AsFile($input);
-}
 
 
 %exception {
@@ -137,7 +141,7 @@ seqn;
 
 
 %extend seqn {
-  seqn(char *sqn, char *defline) {
+  seqn(char *sqn, char *defline="A sequence") {
     seqn *Fseq;
     
     Fseq = mallocec(sizeof(seqn));
@@ -450,17 +454,13 @@ smatrix;
 
 typedef struct 
 {
-%immutable;
+  /* %immutable; */
   ULINT sequence_id;
   ULINT sequence_from;
-  int rejected;
+  ULINT sequence_to;
+  ULINT bin;
+  ULINT pos;
   float value;
-  double pvalue;
-  double evalue;
-  double zvalue;
-  int oc_cluster;
-  double cratio;
-  double kw_score;
 } hit;
 
 %extend hit {
@@ -478,40 +478,62 @@ typedef struct
 typedef struct
 {
 %immutable;
-  ULINT frag_len;
+  /* db_stats */
   db *s_db;
+  char *db_name;
+  char *db_path;
+  ULINT db_length;
+  ULINT db_no_seq;
+  ULINT db_min_frag_len;
+  ULINT db_max_frag_len;
+  ULINT db_no_frags;
+
+  /* index_stats */
+  char *index_name;
+  char *alphabet;
+
+  /* FS_query */
+  ULINT frag_len;
+  SEARCH_TYPE_t srch_type;
+  BIOSEQ query;
   const char *matrix;
+  void *M;
+  eval_func *efunc;
   int range;
   int converted_range;
-  ULINT kNN;
-  const char *index_name;
-  const char *alphabet;
+  int kNN;
+
+  /* FS_search_stats */
   ULINT FS_seqs_total;
   ULINT FS_seqs_visited;
   ULINT FS_seqs_hits;
   ULINT index_seqs_total;
   ULINT seqs_visited;
   ULINT seqs_hits;
+  ULINT useqs_total;
   ULINT useqs_visited;
   ULINT useqs_hits;
   double start_time;
   double end_time;
   double search_time;
 
+
+  /* FS_hits */
   ULINT max_hits;
   ULINT actual_seqs_hits;
   ULINT accepted;
+  /*  hit *hits; */
 
-  double shape;
-  double rate;
-  double Zmin; 
 } hit_list;
+
+extern hit_list *parse_hl_xml(FILE *stream);
 
 %extend hit_list {
   /* No constructor - can get it only as results of searches */
   ~hit_list() {
     HIT_LIST_destroy(self);
   }
+
   void print_list(FILE *stream=stdout) {
     HIT_LIST_print(self, stream, NULL);
   } 
@@ -532,9 +554,63 @@ typedef struct
     Fseq->defline_flag = 1;
     return Fseq;
   }
+  %pythoncode %{
+  def HitList(self, HitList_class, Hit_class):
+    self.sort_incr()
+    HL = HitList_class()
+
+    HL.db_name = self.db_name
+    HL.db_path = self.db_path
+    HL.db_length = self.db_length
+    HL.db_no_seq = self.db_no_seq
+    HL.db_min_frag_len = self.db_min_frag_len
+    HL.db_max_frag_len = self.db_max_frag_len
+    HL.db_no_frags = self.db_no_frags
+
+    HL.index_name = self.index_name
+    HL.alphabet = self.alphabet
+  
+    HL.frag_len = self.frag_len
+    q = self.get_query()
+    HL.query_seq = q.seq
+    HL.query_defline = q.defline
+    HL.matrix = self.matrix
+    HL.range = self.range
+    HL.kNN = self.kNN
+
+    HL.FS_seqs_total = self.FS_seqs_total
+    HL.FS_seqs_visited = self.FS_seqs_visited
+    HL.FS_seqs_hits = self.FS_seqs_hits
+    HL.index_seqs_total = self.index_seqs_total
+    HL.seqs_visited = self.seqs_visited
+    HL.seqs_hits = self.seqs_hits
+    HL.useqs_total = self.useqs_total
+    HL.useqs_visited = self.useqs_visited
+    HL.useqs_hits = self.useqs_hits
+    HL.start_time = self.start_time
+    HL.end_time = self.end_time
+    HL.search_time = self.search_time
+    
+    HL.hits = list()
+    for i in range(self.actual_seqs_hits):
+      HL.hits.append(Hit_class())
+      ht = self.get_hit(i)
+      sbj = ht.get_subject()
+      HL.hits[i].seq = sbj.seq
+      HL.hits[i].defline = sbj.defline
+      HL.hits[i].sequence_id = ht.sequence_id
+      HL.hits[i].sequence_from = ht.sequence_from
+      HL.hits[i].sequence_to = ht.sequence_to
+      HL.hits[i].bin = ht.bin
+      HL.hits[i].pos = ht.pos
+      HL.hits[i].value = ht.value
+    return HL
+  %}
+#if 0
   void Z_scores() {
     HIT_LIST_Zscores(self);
   }
+#endif
   void sort_decr() {
     HIT_LIST_sort_decr(self);
   }
@@ -544,18 +620,6 @@ typedef struct
   void sort_by_seq() {
     HIT_LIST_sort_by_sequence(self);
   }
-  void sort_by_oc() {
-    HIT_LIST_sort_oc(self); 
-  }
-  void sort_by_evalue() {
-    HIT_LIST_sort_evalue(self, 0);    
-  }
-  void sort_by_cratio() {
-    HIT_LIST_sort_cratio(self, 0);  
-  }
-  void sort_by_kwscore() {
-    HIT_LIST_sort_kwscore(self, 0);
-  }    
 }
 
 /********************************************************************/ 

@@ -5,8 +5,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "expat.h"
 #include "fastadb.h"
-#include "keyword.h"
 #ifdef USE_MPATROL
 #include <mpatrol.h>
 #endif
@@ -18,24 +18,6 @@
 /***                                                              ***/
 /********************************************************************/    
 /********************************************************************/    
-
-/********************************************************************/    
-/*                                                                  */
-/*                   WRD_CNTR module                                */ 
-/*                                                                  */
-/********************************************************************/    
-
-typedef struct
-{
-  int item;
-  int count;
-  double score;
-} WRD_CNTR;
-
-void WRD_CNTR_add(WRD_CNTR **wc, int wc_size, int *wc_max);
-void WRD_CNTR_clear(WRD_CNTR *wc);
-
-void WRD_CNTR_sort_score(WRD_CNTR *wc, int wc_size);
 
 /********************************************************************/    
 /*                                                                  */
@@ -51,14 +33,7 @@ typedef struct
   ULINT sequence_to;
   ULINT bin;
   ULINT pos;
-  int rejected;
   float value;
-  double pvalue;
-  double evalue;
-  double zvalue;
-  int oc_cluster;
-  double cratio;
-  double kw_score;
 } SEQ_HIT_t;
 
 /* This type is presently not used */
@@ -83,40 +58,47 @@ typedef enum {RANGE, K_NN, NET, FS_RANGE} SEARCH_TYPE_t;
 
 typedef struct
 {
-  KW_INDEX *KWI;
 
-  /* <db_stats> */
+  /* db_stats */
   SEQUENCE_DB *s_db;
+  char *db_name;
+  char *db_path;
+  ULINT db_length;
+  ULINT db_no_seq;
+  ULINT db_min_frag_len;
+  ULINT db_max_frag_len;
+  ULINT db_no_frags;
 
-  /* <index_stats> */
-  const char *index_name;
-  const char *alphabet;
+  /* index_stats */
+  char *index_name;
+  char *alphabet;
 
-  /* <FS_query> */
+  /* FS_query */
   ULINT frag_len;
   SEARCH_TYPE_t srch_type;
   BIOSEQ query;
-  const char *matrix;
+  char *matrix;
   void *M;
   eval_func *efunc;
   int range;
   int converted_range;
   int kNN;
  
-  /* <FS_search_stats> */
+  /* FS_search_stats */
   ULINT FS_seqs_total;
   ULINT FS_seqs_visited;
   ULINT FS_seqs_hits;
   ULINT index_seqs_total;
   ULINT seqs_visited;
   ULINT seqs_hits;
+  ULINT useqs_total;
   ULINT useqs_visited;
   ULINT useqs_hits;
   double start_time;
   double end_time;
   double search_time;
 
-  /* <FS_hits> */
+  /* FS_hits */
   ULINT max_hits;
   ULINT actual_seqs_hits;
   ULINT accepted;
@@ -128,18 +110,8 @@ typedef struct
   ULINT no_tmp_hits;
   SEQ_HIT_t *tmp_hits;
 
-  WRD_CNTR *oc;
-  int oc_max;
-  int oc_size;
-
-  WRD_CNTR *kw;
-  int kw_max;
-  int kw_size;
-
-  /* Z-score parameters */
-  double shape;
-  double rate;
-  double Zmin; 
+  
+  int alloc_seqs;
 } HIT_LIST_t;
 
 /* This type is presently not used */
@@ -174,8 +146,55 @@ void HIT_LIST_stop_timer(HIT_LIST_t *HIT_list);
 /* Printing */
 void HIT_LIST_print(HIT_LIST_t *HIT_list, FILE *stream, 
 		    HIT_LIST_PRINT_OPT_t *options);
+
+/* XML routines */
+#define MAX_CHILDREN 15
+typedef enum {NOVAL, CHAR, SHORT, LONG, FLOAT, DOUBLE} val_type;
+typedef enum {NOOBJ, HIT_LIST, LIST} obj_type;
+
+struct valid_tag
+{
+  const char *tag;
+  int children;
+  int child[MAX_CHILDREN];
+  int parent;
+  val_type vtype;
+  obj_type otype;
+  size_t offset;
+};
+
+typedef struct valid_tag VALID_TAG;
+
+typedef struct
+{
+  const VALID_TAG *tags;
+  const VALID_TAG *top;
+  char *buffer;
+  int bufsize;
+  int max_bufsize;
+  HIT_LIST_t *HL;
+  int skip;
+  int opentag;
+} XML_PARSE_DATA;
+
 void HIT_LIST_xml(HIT_LIST_t *HL, FILE *fp, 
 		  HIT_LIST_PRINT_OPT_t *options);
+
+XML_PARSE_DATA *init_parse_data(void);
+void destroy_parse_data(XML_PARSE_DATA *PD);
+
+void
+HIT_LIST_XML_StartElementHandler(void *userData,
+				 const XML_Char *name,
+				 const XML_Char **atts);
+void
+HIT_LIST_XML_EndElementHandler(void *userData,
+			       const XML_Char *name);
+void HIT_LIST_XML_CharacterDataHandler(void *userData,
+				       const XML_Char *s,
+				       int len);
+
+HIT_LIST_t *HIT_LIST_parse_xml(FILE *stream);
 
 /* Element Access */
 ULINT HIT_LIST_get_seqs_hits(HIT_LIST_t *HIT_list);
@@ -185,8 +204,11 @@ void HIT_LIST_set_converted_range(HIT_LIST_t *HIT_list, int crange);
 void HIT_LIST_set_index_data(HIT_LIST_t *HIT_list, 
 			     const char *index_name,
 			     const char *alphabet,
+			     ULINT frag_len,
 			     ULINT FS_seqs_total,
-			     ULINT index_seqs_total);
+			     ULINT index_seqs_total,
+			     ULINT useqs_total);
+
 void HIT_LIST_get_hit_seqs(HIT_LIST_t *HIT_list, BIOSEQ **seqs,
 			   int cutoff, int *n, int *max_n);
 
@@ -195,23 +217,9 @@ void HIT_LIST_sort_decr(HIT_LIST_t *HIT_list);
 void HIT_LIST_sort_incr(HIT_LIST_t *HIT_list);
 void HIT_LIST_sort_by_sequence(HIT_LIST_t *HIT_list);
 void HIT_LIST_sort_kNN(HIT_LIST_t *HL);
-void HIT_LIST_sort_oc(HIT_LIST_t *HL);
-void HIT_LIST_sort_evalue(HIT_LIST_t *HL, int offset);
-void HIT_LIST_sort_cratio(HIT_LIST_t *HL, int offset);
-void HIT_LIST_sort_kwscore(HIT_LIST_t *HL, int offset);
 
-/* Add p-values */
-void HIT_LIST_Gaussian_pvalues(HIT_LIST_t *HT, double mean, 
-			       double var);
-
-/* Keywords processing */
-
-void HIT_LIST_process_cl(HIT_LIST_t *HL, int offset);
-void HIT_LIST_process_kw(HIT_LIST_t *HL, int offset);
-
-/* Z-scores */
-
+#if 0 /* Z-scores */
 void HIT_LIST_Zscores(HIT_LIST_t *HL);
-
+#endif
 
 #endif

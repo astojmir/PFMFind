@@ -183,6 +183,31 @@ SCORE_MATRIX_t *SCORE_MATRIX_create(const char *filename,
 
   return S;
 }
+
+SCORE_MATRIX_t *SCORE_MATRIX_from_matrix(SSINT M[A_SIZE][A_SIZE],
+					 FS_PARTITION_t *ptable)
+{
+  SCORE_MATRIX_t *S;
+  int i, j;
+  S = callocec(1, sizeof(SCORE_MATRIX_t));
+  S->similarity_flag = 1;
+  S->ptable = ptable;
+  S->filename = strdup("");
+
+  for (i=0; i < A_SIZE; i++) {
+    if (ptable->partition_table[i] == -1)
+      continue;     
+    for (j=0; j < A_SIZE; j++) {
+      S->M[i][j] = M[i][j];
+    }
+    S->SS[i] = S->M[i][i];
+    update_pM(S, i);
+  }
+
+  return S;
+}
+
+
 /* Destructor */
 void SCORE_MATRIX_destroy(SCORE_MATRIX_t *Score_matrix)
 {

@@ -1073,8 +1073,9 @@ FSSRCH *FSSRCH_init(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
     /* Set some info for hit list */
     HIT_LIST_set_converted_range(FSS->args->HL, FSS->eps);
     HIT_LIST_set_index_data(FSS->args->HL, FSI->index_name, 
-			    FSI->alphabet, FSI->no_bins,
-			    FSI->no_seqs);
+			    FSI->alphabet, FSI->m,
+			    FSI->no_bins, FSI->no_seqs, 
+			    FSI->no_useqs);
   }
   Catch (except) {
     FSSRCH_clean(FSS);
@@ -1169,8 +1170,9 @@ FSSRCH *FSSRCH_profile_init(FSINDX *FSI, POS_MATRIX *PD,
     /* Set some info for hit list */
     HIT_LIST_set_converted_range(FSS->args->HL, FSS->eps);
     HIT_LIST_set_index_data(FSS->args->HL, FSI->index_name, 
-			    FSI->alphabet, FSI->no_bins,
-			    FSI->no_seqs);
+			    FSI->alphabet, FSI->m, 
+			    FSI->no_bins, FSI->no_seqs, 
+			    FSI->no_useqs);
   }
   Catch (except) {
     FSSRCH_clean(FSS);

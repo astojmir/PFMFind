@@ -38,9 +38,13 @@ typedef struct
   double var;
 } SCORE_MATRIX_t;
 
-/* Main constructor */
+/* Constructors */
 SCORE_MATRIX_t *SCORE_MATRIX_create(const char *filename,
 				    FS_PARTITION_t *ptable); 
+
+SCORE_MATRIX_t *SCORE_MATRIX_from_matrix(SSINT M[A_SIZE][A_SIZE],
+					 FS_PARTITION_t *ptable); 
+
 /* Destructor */
 void SCORE_MATRIX_destroy(SCORE_MATRIX_t *Score_matrix);
 

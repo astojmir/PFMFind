@@ -52,7 +52,8 @@ extern struct exception_context the_exception_context[1];
 #define GETLINE_ERR 7
 #define INDEX_OUT_OF_RANGE 8
 #define INCONSITENT_DATA 9
-
+#define IO_ERR 10
+#define RUNTIME_ERR 11
 
 
 
