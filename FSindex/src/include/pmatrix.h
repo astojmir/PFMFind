@@ -195,6 +195,8 @@ int POS_MATRIX_max_entry_pos(POS_MATRIX *PS, int pos, int *col)
   *col = 0;
   for (j=0; j < A_SIZE; j++)
     {
+      if (PS->ptable->partition_table[j] == -1)
+	continue;
       if (maxS <  PS->M[PM_M(pos,j)])
 	{
 	  maxS = PS->M[PM_M(pos,j)];
