@@ -85,7 +85,8 @@ void FS_HASH_TABLE_insert_seq(FS_HASH_TABLE_t *FS_HT, ULINT i,
   FS_HT->bin_size[seq_i]++;  
   if (FS_HT->bin_size[seq_i] >=  FS_HT->max_bin_size[seq_i])
     {
-      FS_HT->max_bin_size[seq_i] *= 2;
+      /* FS_HT->max_bin_size[seq_i] *= 2; */
+      FS_HT->max_bin_size[seq_i] += 1;
       FS_HT->bin[seq_i] = reallocec(FS_HT->bin[seq_i], 
 			FS_HT->max_bin_size[seq_i] *
 				    sizeof(SEQ_index_t));   
@@ -359,8 +360,8 @@ void FS_INDEX_create(const char *database, ULINT flen,
       no_FS *= K;
     }
 
-  /* Make initial bin size slightly bigger than average */
-  bin_size = ((5 * no_frags) / (4 * no_FS)) + 1;
+  /* Make initial bin size half as large as mean size */
+  bin_size = (int)((float) no_frags / no_FS) + 1;
 
   /* Initialise hash table */
   HT = FS_HASH_TABLE_create(no_FS, bin_size);
@@ -564,6 +565,11 @@ void FS_INDEX_print_stats(FILE *stream, ULINT count, double dtime)
 SEQUENCE_DB *FS_INDEX_get_database(void)
 {
   return s_db;
+}
+
+const char *FS_INDEX_get_db_name(void)
+{
+  return db_name;
 }
 
 FS_PARTITION_t *FS_INDEX_get_ptable(void)
@@ -849,68 +855,122 @@ int FS_INDEX_kNN_search(HIT_LIST_t *hit_list0, BIOSEQ *query0,
   while (1);
 }
 
-#if 0
-/* Is there an epsilon neighbour */
 
-int FS_INDEX_has_neighbour(FS_INDEX_t *FS_index, BIOSEQ *query, 
-			   ULINT D_cutoff)
+/********************************************************************/
+/********************************************************************/
+
+/********************************************************************/    
+/*                                                                  */
+/*                     FS_INDEX_has_neighbour                       */ 
+/*                                                                  */
+/********************************************************************/    
+
+/* Is there an epsilon neighbour? */
+/* We use a copy of check_bin for efficiency */
+
+
+static int empty_nbhd = 1;
+
+static
+void check_bins_empty(FS_SEQ_t FS_neighbour, int i, int dist)
 {
+  int j;
+  int k;
+
+  for (k=i+1; k < frag_len; k++)
+    {
+      if (dist + D->pMclosest[qind[k]] <= D_cutoff)
+	{      
+	  for (j=1; j < K; j++)
+	    {
+	      R = K_modtable[FS_Q[k] + j];
+	      R_offset = 
+		FS_PARTITION_get_poffset(ptable, R);
+	      FS_neighbour1 = FS_neighbour + R * FS_KK[k];
+	      dist1 = dist + D->pM[qind[k]][R_offset]; 
+	      if (dist1 <= D_cutoff)
+		{
+		  if (FS_INDEX_is_empty_process_bin(FS_neighbour1 
+						    + FS_REM[k]))
+		    {
+		      empty_nbhd = 0;
+		      return;
+		    }
+
+		  check_bins_empty(FS_neighbour1, k, dist1);
+		  if (empty_nbhd == 0)
+		    return;
+		}
+	    }
+	}
+      FS_neighbour += FS_DC[k];
+    }
+  return;
+}
+
+
+int FS_INDEX_has_neighbour(BIOSEQ *query0, SCORE_MATRIX_t *D0, 
+			   int cutoff)
+{
+  int i;
+  ULINT powKtmp = 1;
   FS_SEQ_t FS_query;
-  FS_SEQ_t FS_neighbour;
-  int dist;
-  ULINT i;
-  int FS_range;
+
+  /* Copy arguments into global variables */
+  query = query0;
+  D = D0;
+
+  D_cutoff = cutoff;
+  empty_nbhd = 1;
+
+  /* Check length of query */
+  if (query->len != frag_len)
+    {
+      fprintf(stderr, 
+	      "FS_INDEX_search(): Query fragment length (%ld)"
+	      " different from\n index fragment length (%d)."
+	      "Query: %*s\n", query->len, frag_len, (int) query->len,
+	      query->start);
+      exit(EXIT_FAILURE);
+    }
 
   /* Calculate FS_seq from seq */
-  if (!FS_INDEX_verify_query(FS_index, query, &FS_query))
-    exit(EXIT_FAILURE);
-
- /* Initialise variables */
-  FS_K = ptable->no_partitions;
-  FS_KK[0] = 1;
-  for (i = 1; i <= frag_len; i++)
-    FS_KK[i] = FS_KK[i-1] * FS_K;
-
-  /* Calculate the maximum number of changes */
-  FS_range = FS_INDEX_get_no_changes(FS_index, query, D_cutoff); 
+  if (!BIOSEQ_2_FS_SEQ(query, ptable, &FS_query))
+    {
+      fprintf(stderr, 
+	      "FS_INDEX_search(): Could not convert query"
+	      " to FS fragment\n Query: %*s\n", (int) query->len, 
+	      query->start);
+      exit(EXIT_FAILURE);
+    }
+  
+  /* Initialise variables */
+  for (i = 0; i < frag_len; i++)
+    {
+      qind[i] = query->start[i] & A_SIZE_MASK;
+      FS_Q[i] = FS_PARTITION_get_pttn(ptable, query->start[i]); 
+      powKtmp *= K;      
+      FS_DC[i] = FS_query % powKtmp - FS_query % FS_KK[i];
+    }
+  FS_REM[frag_len-1] = 0;  
+  for (i = frag_len-2; i >= 0; i--)
+    FS_REM[i] = FS_REM[i+1] + FS_DC[i+1];
 
   /* Process the bin associated with the query sequence */
-  if (FS_INDEX_is_empty_process_bin(FS_index, query, FS_query,
-				    D_cutoff))
+
+  if (FS_INDEX_is_empty_process_bin(FS_query))
     return 1;
 
-  /* Process neighbouring bins */
-  i = 1;
-  do 
-    {
-      /* Initialize combination generator*/
-      kSubsetLexInit(i);
-      do 
-	{
-	  
-	  if (!SCORE_MATRIX_verify_pos(D, query, 
-				       TT, i, D_cutoff))
-	    continue;
-	  FS_INDEX_iter_init(FS_index, FS_query);
+  /* Process neighbouring bins - recursive */
+  check_bins_empty(0, -1, 0); 
 
-	  while (FS_INDEX_iter_next(FS_index, query, FS_query, 
-				    &dist, &FS_neighbour))
-	    {
-	      if (dist > D_cutoff)
-		continue;
-	      if (FS_INDEX_is_empty_process_bin(FS_index, 
-			       query, FS_neighbour, D_cutoff))
-		return 1;
-	    }
-	} 
-      while (kSubsetLexSuccessor(i, frag_len));
-      i++;
-    } 
-  while (i <= FS_range);
 
-  return 0;
+  if (empty_nbhd)
+    return 0;
+  else
+    return 1;
 }
-#endif
+
 
 
 /********************************************************************/
