@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <assert.h>
 
 #ifdef DEBUG
 #define FASTA_DB_INLINE
@@ -196,6 +197,41 @@ int fastadb_put_line(char *buffer, char **heap, ULINT *len,
 }
 
 static inline
+void fastadb_update_deflines(SEQUENCE_DB *s_db, char **oldheap)
+{
+  ULINT i;
+  ULINT from = 0;
+  ULINT to = s_db->current_seq + 1;
+
+  if (*oldheap == s_db->deflines)
+    return;
+  if (s_db->keep_oldseqs == NO)
+    from = s_db->current_seq;
+      
+  for (i=from; i < to; i++)
+    s_db->seq[i].id.defline += (s_db->deflines - *oldheap);
+  *oldheap = s_db->deflines; 
+}
+
+static inline
+void fastadb_update_seq_data(SEQUENCE_DB *s_db, char **oldheap)
+{
+  ULINT i;
+  ULINT from = 0;
+  ULINT to = s_db->current_seq + 1;
+
+  if (*oldheap == s_db->seq_data)
+    return;
+  fprintf(stderr, "Changing heap; current = %ld\n", s_db->current_seq);
+  if (s_db->keep_oldseqs == NO)
+    from = s_db->current_seq;
+      
+  for (i=from; i < to; i++)
+    s_db->seq[i].start += (s_db->seq_data - *oldheap);
+  *oldheap = s_db->seq_data;
+}
+
+static inline
 void fastadb_put_char(char c, char **heap, ULINT *len)
 {
   (*heap)[(*len)++] = c;
@@ -282,6 +318,8 @@ int fastadb_load_next_seq(SEQUENCE_DB *s_db)
   int c;
   int l;
   static char buffer[BUF_SIZE+1];
+  char *old_deflines;
+  char *old_seq_data;
 
   /* Just in case the line is bigger than buffer, this would give
      BUF_SIZE as strlen */
@@ -307,6 +345,7 @@ int fastadb_load_next_seq(SEQUENCE_DB *s_db)
       /* We know that the first character is '>' because this is a new
 	 sequence. We also know the new sequence exists (we exit at
 	 the beginning if EOF */
+      old_deflines = s_db->deflines;
       s_db->seq[s_db->current_seq].id.defline 
 	= s_db->deflines + s_db->deflines_len;
 
@@ -316,6 +355,7 @@ int fastadb_load_next_seq(SEQUENCE_DB *s_db)
 	  l = fastadb_put_line(buffer+1, &(s_db->deflines), 
 			   &(s_db->deflines_len),
 			       &(s_db->deflines_max_len));
+	  fastadb_update_deflines(s_db, &old_deflines);
 	  if (buffer[l+1] == '\n')	  
 	    break;
 	}
@@ -333,6 +373,7 @@ int fastadb_load_next_seq(SEQUENCE_DB *s_db)
     }
 
   /* Now read and store the sequence itself */
+  old_seq_data = s_db->seq_data;
   s_db->seq[s_db->current_seq].start = 
     s_db->seq_data + s_db->seq_data_len; 
   s_db->seq[s_db->current_seq].len = 0;
@@ -355,6 +396,7 @@ int fastadb_load_next_seq(SEQUENCE_DB *s_db)
 	  l = fastadb_put_line(buffer, &(s_db->seq_data), 
 			   &(s_db->seq_data_len),
 			   &(s_db->seq_data_max_len)); 
+	  fastadb_update_seq_data(s_db, &old_seq_data);
 	  s_db->seq[s_db->current_seq].len += l;
 	}
     }
@@ -589,8 +631,10 @@ SEQUENCE_DB *fastadb_open(const char *db_name, fastadb_arg *argt,
       argt++;
       argv++;
     }
-  if (s_db->access_type == MEMORY || s_db->access_type == RANDOM)
+  if (s_db->access_type == MEMORY)
     s_db->keep_oldseqs = YES;
+  else if (s_db->access_type == RANDOM)
+    s_db->keep_oldseqs = NO;
 
   /* Allocate the storage heap */
 
