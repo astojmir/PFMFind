@@ -24,7 +24,10 @@
 #define DEFAULT_SEQ_LENGTH 2048
 #define MAX_BINS 500
 
-int FS_PARTITION_VERBOSE = 0;
+
+EXCEPTION FSexcept_array[1];
+EXCEPTION *except;
+struct exception_context the_exception_context[1];
 
 struct unique_fragment
   {
@@ -80,13 +83,14 @@ struct avl_table *load_fragment_tree(SEQUENCE_DB *s_db, ULINT m,
   struct unique_fragment **tree_item;
   struct avl_table *tree;
   BIOSEQ *bfrag = mallocec(sizeof(BIOSEQ));
+  const char *sepn = "STANILVMKRDEQWFYHGPC";
   char *c;
   char *c1;
   int valid_frag;
   ULINT no_frags;
   ULINT one_percent_fragments;
-  FS_PARTITION_t *ptable = 
-    FS_PARTITION_create("STANILVMKRDEQWFYHGPC", '#'); 
+  FS_TABLE *ptable = 
+    FS_TABLE_init(&sepn, 1); 
 
   /* Load tree */
   *total_frags = 0;
@@ -103,7 +107,7 @@ struct avl_table *load_fragment_tree(SEQUENCE_DB *s_db, ULINT m,
       j++;
       valid_frag = 1;
       for (c=bfrag->start, c1=c+m; c < c1; c++)
-	if (ptable->partition_table[*c & A_SIZE_MASK] == -1) 
+	if (FS_TABLE_get_pttn(ptable, 0, *c) == -1)
 	  valid_frag = 0;
 
       if (valid_frag)
@@ -190,7 +194,7 @@ ULINT *count_fragments(struct avl_table *tree, ULINT *max_bins)
 static
 void print_results(struct avl_table *tree, ULINT *freq, ULINT bins,
 		   SEQUENCE_DB *s_db, char *db_file, ULINT m,
-		   ULINT total_frags, ULINT a_size) 
+		   ULINT total_frags, ULINT a_size, FILE *fp) 
 {
   ULINT i, j;
 
@@ -205,37 +209,37 @@ void print_results(struct avl_table *tree, ULINT *freq, ULINT bins,
      - log2 of number of unique fragments
      - Histogram of frequency vs multiplicity; */
 
-  printf("******* fragdist Results *******\n");
-  printf("Database: %s\n", db_file);
-  printf("Total sequences: %ld\n", s_db->no_seq);
+  fprintf(fp, "******* fragdist Results *******\n");
+  fprintf(fp, "Database: %s\n", db_file);
+  fprintf(fp, "Total sequences: %ld\n", s_db->no_seq);
   if (m > 0)
-    printf("Fragment length: %ld\n", m);
+    fprintf(fp, "Fragment length: %ld\n", m);
   else
-    printf("Fragment length: (full sequences)\n");
-  printf("Total fragments: %ld\n", total_frags);
+    fprintf(fp, "Fragment length: (full sequences)\n");
+  fprintf(fp, "Total fragments: %ld\n", total_frags);
   for (i=1, j=0; i < bins; i++)
     j+= freq[i]*i;
-  printf("Counted fragments: %ld\n",j);
-  printf("Unique fragments: %d (%.4f %%)\n", (int) avl_count(tree), 
+  fprintf(fp, "Counted fragments: %ld\n",j);
+  fprintf(fp, "Unique fragments: %d (%.4f %%)\n", (int) avl_count(tree), 
 	 100.0 * (float) avl_count(tree) / (float) total_frags);
-  printf("Alphabet size: %ld\n", a_size);
+  fprintf(fp, "Alphabet size: %ld\n", a_size);
   if (m > 0)
     {
-      printf("Theoretical fragments: %.4e\n", 
+      fprintf(fp, "Theoretical fragments: %.4e\n", 
 	     pow((double) a_size, (double) m));
-      printf("'Dataset sparsity': %8.4e\n",
+      fprintf(fp, "'Dataset sparsity': %8.4e\n",
 	     (double)avl_count(tree)/  
 	     pow((double) a_size, (double) m));
-      printf("'Apparent alphabet size': %.4f\n",
+      fprintf(fp, "'Apparent alphabet size': %.4f\n",
 	     pow((double) avl_count(tree), 1.0/(double)m));
     }
-  printf("Histogram: \n\n");
+  fprintf(fp, "Histogram: \n\n");
 
-  printf("%12s %10s %10s %10s\n", "Multiplicity", "Frequency",
+  fprintf(fp, "%12s %10s %10s %10s\n", "Multiplicity", "Frequency",
 	 "Total Pts.", "Percentage"); 
   for (i=1; i < bins; i++)
     if (freq[i] > 0)
-      printf("%6ld%6s %10ld %10ld %10.4f\n", i, "",freq[i], 
+      fprintf(fp, "%6ld%6s %10ld %10ld %10.4f\n", i, "",freq[i], 
 	     freq[i]*i, ((float)freq[i]*i *100.00) 
 	     / (float) j);
 }
@@ -244,6 +248,8 @@ int main(int argc, char **argv)
 {
   SEQUENCE_DB *s_db;                  /* Sequence database storage */
   char *db_file;
+  char *out_file = NULL;
+  FILE *outstream = stdout;
 
   ULINT frag_len = 0;
   ULINT a_size = 20;
@@ -270,41 +276,55 @@ int main(int argc, char **argv)
       if (argc >= 3)
 	frag_len = atoi(argv[2]);
       if (argc >= 4)
-	a_size = atoi(argv[3]);      
+	out_file = argv[3];      
     }
   else
     {
       fprintf(stderr,"Insufficient arguments \n");
-      fprintf(stderr,"Usage: %s database [length alphabet]\n", argv[0]); 
+      fprintf(stderr,"Usage: %s database [length out_file]\n", argv[0]); 
       exit(EXIT_FAILURE);
     }
 
-  /* Load the sequence database */
-  fprintf(stdout, "  Loading Sequence Database\n");
-  s_db = fastadb_open(db_file, fastadb_argt, fastadb_argv); 
-
-  /* Load tree */
-  fprintf(stdout, "  Loading Search Tree\n");
-  if (frag_len == 0)
-    {
-      tree = load_sequence_tree(s_db);
-      total_frags = s_db->no_seq;
+  Try {
+    if (out_file != NULL) { 
+      if((outstream = fopen(out_file, "w")) == NULL)
+	Throw FSexcept(FOPEN_ERR, "Could not open the file %s.",
+		       out_file);
     }
-  else
-    tree = load_fragment_tree(s_db, frag_len, &total_frags);
+
+    /* Load the sequence database */
+    fprintf(stdout, "  Loading Sequence Database\n");
+    s_db = fastadb_open(db_file, fastadb_argt, fastadb_argv); 
+    
+    /* Load tree */
+    fprintf(stdout, "  Loading Search Tree\n");
+    if (frag_len == 0)
+      {
+	tree = load_sequence_tree(s_db);
+	total_frags = s_db->no_seq;
+      }
+    else
+      tree = load_fragment_tree(s_db, frag_len, &total_frags);
     
 
-  /* Count fragments */
-  fprintf(stdout, "  Counting Fragments\n");
-  freq = count_fragments(tree, &bins);
+    /* Count fragments */
+    fprintf(stdout, "  Counting Fragments\n");
+    freq = count_fragments(tree, &bins);
 
-  /* Print Results */
-  print_results(tree, freq, bins, s_db, db_file, frag_len,
-		total_frags, a_size);
+    /* Print Results */
+    print_results(tree, freq, bins, s_db, db_file, frag_len,
+		  total_frags, a_size, outstream);
 
-  /* Clean up */
-  avl_destroy (tree, free_fragment);
-  free(freq);
+    /* Clean up */
+    avl_destroy (tree, free_fragment);
+    free(freq);
+    if (out_file != NULL)
+      fclose(outstream);
+  }
+  Catch(except) {
+    fprintf(stderr, "Error %d: %s\n", except->code, except->msg);  
+    return EXIT_FAILURE;
+  }
   return EXIT_SUCCESS;
 }
 
