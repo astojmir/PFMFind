@@ -341,7 +341,7 @@ extern Smatrix *Smatrix_pssm(int **M, int len, char *alphabet);
     SCORE_MATRIX_fprint(self, fp);
   }
   int eval_score(char *s1, int l1, char *s2, int l2) {
-    l2 = l1 > l2 ? l1 : l2;
+    l2 = l1 < l2 ? l1 : l2;
     return self->eval_score(self, s1, s2, l2);
   }
   int range_conv(char *s1, int l1, int r) {
