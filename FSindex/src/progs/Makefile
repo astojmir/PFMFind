@@ -20,6 +20,7 @@ all: $(FSLIB) \
      FSindex_delta \
      FSindex_rand_perf \
      FSindex_eps_net1 \
+     FSindex_show_bin \
      fragdist
 #     cluster_test \
 #     FSindex_rand_perf \
@@ -49,6 +50,8 @@ FSindex_eps_net1:
 FSindex_delta:  
 
 FSindex_stats:  
+
+FSindex_show_bin:  
 
 SS_search:  
 
