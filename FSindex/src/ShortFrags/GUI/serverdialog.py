@@ -22,7 +22,7 @@ class ServerDialog(Pmw.Dialog):
         # Host
         host = Tkinter.Frame(w)
         self.host = Pmw.EntryField(w, labelpos = 'w', label_text = 'Hostname:',
-                                   entry_width = 25, value='depot')
+                                   entry_width = 25, value='circa')
         self.host.pack(side='left', pady=5)
         self.port = Pmw.EntryField(w, labelpos = 'w', label_text = 'Port:',
                                    entry_width = 6, validate = self.V0, value=50007)
