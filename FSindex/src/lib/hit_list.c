@@ -215,10 +215,7 @@ void HIT_LIST_print(HIT_LIST_t *HIT_list, FILE *stream,
 				  HIT_list->query->len); 
 
   fprintf(stream, "**** List of hits ****\n\n");
-  fprintf(stream, "Query = %s\n", ""); 
-#if 0
-  (HIT_list->query->id.defline); 
-#endif
+  fprintf(stream, "Query = %s\n", HIT_list->query->id.defline); 
   fprintf(stream, "        %*s\n", (int) HIT_list->query->len,
 	  HIT_list->query->start);
   fprintf(stream, "        (%ld letters)\n\n", HIT_list->query->len); 
@@ -347,7 +344,7 @@ void HIT_LIST_get_hit_seqs(HIT_LIST_t *HIT_list, BIOSEQ **seqs,
     {
       if (hit->value >= cutoff)
 	{
-	  *seqs[*n] = *(hit->subject);
+	  (*seqs)[*n] = *(hit->subject);
 	  (*n)++;
 	}
       /* Some garbage collection */
