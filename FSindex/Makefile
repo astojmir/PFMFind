@@ -14,7 +14,7 @@ MPATROL = -D USE_MPATROL
 MPATROLLIBS = -lmpatrol -lbfd -liberty
 MAXOPT=-O3 -fomit-frame-pointer -finline-functions -funroll-loops -D GCC_INLINE
 GPROF = -pg
-WARNINGS = -pipe -Wall -Wno-char-subscripts -Wshadow -Wpointer-arith \
+WARNINGS = -pipe -Wall -Wno-char-subscripts -Wshadow \
           -Wwrite-strings -Wstrict-prototypes \
           -Wformat -Wmissing-prototypes -funsigned-char \
 
