@@ -80,7 +80,7 @@ int main(int argc, char **argv)
 	    c = 32;
 	  else 
 	    c = i;
-	  printf("%5d%5s %5c%5s %10d %10.4f\n", i, "", c, "",
+	  printf("%5ld%5s %5c%5s %10ld %10.4f\n", i, "", c, "",
 		 letter_count[i], 
 		 (((float)letter_count[i])/((float) sum))*100); 
 	}

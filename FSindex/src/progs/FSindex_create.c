@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "FSindex.h"
 
 
@@ -37,9 +38,6 @@ int main(int argc, char **argv)
 {
   int c;                              /* Option character          */ 
   extern char *optarg;                /* Option argument           */
-  extern int optind;
-  extern int optopt;
-  extern int opterr;
   int errflg = 0;                     /* Option error flag         */
 
   const char separator = '#';
@@ -54,7 +52,6 @@ int main(int argc, char **argv)
   int skip = 1;
 
   int filename_flag = 0;
-  int i;
 
   while ((c = getopt(argc, argv, "d:p:m:F:s:Vvb")) != EOF)
     switch (c) 

@@ -1,6 +1,6 @@
 /********************************************************************
 
-  count_letters.c
+  check_db.c
 
   counts letters in molecular sequence database
 
@@ -89,7 +89,7 @@ int main(int argc, char **argv)
       if (flag4 != flag5)
 	{
 	  fastadb_find_Ffrag_seq(s_db, frag, &seq_id, &rel_offset); 
-	  printf("%d%d SEQ: %ld, OFFSET: %ld, FRAGMENT: %d %.*s\n",
+	  printf("%d%d SEQ: %ld, OFFSET: %ld, FRAGMENT: %ld %.*s\n",
 		 flag4, flag5,
 		 seq_id, rel_offset, j, (int) frag_len, frag->start);
 	}

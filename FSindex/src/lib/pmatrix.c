@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include <math.h>
+#include <string.h>
 #include "partition.h"
 #include "smatrix.h"
 #include "fastadb.h"
@@ -149,7 +150,7 @@ void POS_MATRIX_init(POS_MATRIX *PS, double lambda,
       PS->query = mallocec(sizeof(BIOSEQ));
       PS->query->start = mallocec(PS->len + 1);
       PS->query->start[PS->len] = '\0';
-      PS->query->id.defline = "PSM";
+      PS->query->id.defline = strdup("PSM");
     }
 
   PS->pcnf = pcnf;
@@ -227,6 +228,7 @@ void pattern_similarity(int Score, int P, int pos)
   return;
 }
 
+
 void POS_MATRIX_update(POS_MATRIX *PS)
 {
   int j;
@@ -235,11 +237,9 @@ void POS_MATRIX_update(POS_MATRIX *PS)
   int maxS;
 
   /* Update score matrix */
-  create_counts(PS);
-#ifdef DEBUG
-  print_counts(PS, stdout);
-#endif
+
   PS->pcnf(PS);
+
 #ifdef DEBUG
   print_counts(PS, stdout);
 #endif
@@ -312,7 +312,7 @@ POS_MATRIX *SCORE_2_POS_MATRIX(SCORE_MATRIX_t *S, BIOSEQ *query)
   PS->query = mallocec(sizeof(BIOSEQ));
   PS->query->start = mallocec(PS->len + 1);
   memcpy(PS->query->start, query->start, PS->len + 1);
-  PS->query->id.defline = "PSM";
+  PS->query->id.defline = strdup("PSM");
   PS->query->len = query->len;
 
   /* Copy matrices position-wise */
@@ -379,8 +379,56 @@ void POS_MATRIX_equal_weights(POS_MATRIX *PS)
   PS->weight = reallocec(PS->weight, PS->max_no_seqs * sizeof(double));
   for (i=0; i < PS->no_seqs; i++)
     PS->weight[i] = 1.0;
+  create_counts(PS);
+#ifdef DEBUG
+  print_counts(PS, stdout);
+#endif
 }
 
+void POS_MATRIX_Henikoff_weights(POS_MATRIX *PS)
+{
+  int i, j, k;
+  int r=0;
+  double *bkgrnd = PS->bkgrnd;
+  double *count = PS->count;
+  double w;
+  double w_sum;
+
+  POS_MATRIX_equal_weights(PS);
+
+  memset(PS->weight, 0, PS->no_seqs * sizeof(double));
+
+  w_sum = 0.0;
+  for (i=0; i < PS->len; i++)
+    {
+      for (j=1; j < A_SIZE; j++) 
+	if (bkgrnd[j] != 0.0 && count[PM_M(i, j)] > 0.0)
+	  r++;
+      for (k=0; k < PS->no_seqs; k++)
+	{
+	  w = 1/(r * PS->count[PM_M(i, *(PS->seq[k].start+i) & A_SIZE_MASK)]);
+	  PS->weight[k] += w;
+	  w_sum += w;
+	}
+    }
+  w_sum = (double) PS->no_seqs / w_sum;
+
+  for (k=0; k < PS->no_seqs; k++)
+    PS->weight[k] *= w_sum;
+
+  create_counts(PS);
+#ifdef DEBUG
+  /* Print Weights */
+  fprintf(stdout, "SEQUENCE WEIGHTS\n");
+  for (k=0; k < PS->no_seqs; k++)
+    {
+      fprintf(stdout, "%.*s %6.2f\n", (int) PS->len, PS->seq[k].start,
+	      PS->weight[k]);
+    }  
+  fprintf(stdout, "\n\n");
+  print_counts(PS, stdout);
+#endif
+}
 
 /* Read, Write */
 int POS_MATRIX_write(POS_MATRIX *PS, FILE *stream) 
