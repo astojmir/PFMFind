@@ -4,10 +4,16 @@ FSLIB=libFSindex.a libsarray.a
 VPATH=../lib:../sarray
 all: $(FSLIB) \
      test_smatrix \
+     fragdist \
+     count_frags \
      FSindex_create \
      FSindex_rng_perf \
      FSindex_rng_perf_thr \
-     FSindex_kNN_perf 
+     FSindex_kNN_perf \
+     FSindex_ball_size \
+     MVPT2_create \
+     MVPT_test \
+     FSindex_delta2 
 #     FSindex_rand_perf \
 #     FSindex_rand_queries \
 #     fastadb_sample \
@@ -27,7 +33,6 @@ all: $(FSLIB) \
 #     split_db \
 #     check_db \
 #     FSindex_show_bin \
-#     fragdist \
 #     KWindex_create
 #     print_doublets \
 #     FSindex_self_sim \
