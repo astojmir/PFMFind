@@ -113,6 +113,8 @@ void HIT_LIST_set_index_data(HIT_LIST_t *HIT_list,
 			     const char *alphabet,
 			     ULINT FS_seqs_total,
 			     ULINT index_seqs_total);
+void HIT_LIST_get_hit_seqs(HIT_LIST_t *HIT_list, BIOSEQ **seqs,
+			   int cutoff, int *n, int *max_n);
 
 /* Sorting */
 void HIT_LIST_sort_decr(HIT_LIST_t *HIT_list);
