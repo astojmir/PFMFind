@@ -980,7 +980,7 @@ void check_bins_profile(FS_SEQ_t FS_neighbour, int i, int dist)
 		{
 		  HIT_LIST_count_FS_seq_hit(hit_list, 1);
 		  ppfunc(FS_neighbour1 + FS_REM[k]);
-		  check_bins(FS_neighbour1, k, dist1);
+		  check_bins_profile(FS_neighbour1, k, dist1);
 		}
 	    }
 	}
@@ -1012,10 +1012,10 @@ int FS_INDEX_profile_search(HIT_LIST_t *hit_list0, BIOSEQ *query0,
   Pto = Pto0;
   ppfunc = ppfunc0;
   S_cutoff = cutoff;
-  D_cutoff = cfunc(S, query, cutoff);
+  D_cutoff = POS_MATRIX_evaluate(PS, query, Pfrom, Pto) - cutoff;
   HIT_LIST_set_converted_range(hit_list, D_cutoff);
-  HIT_LIST_set_index_data(hit_list, index_name, alphabet, HT->no_bins,
-			  HT->no_seqs);
+  HIT_LIST_set_index_data(hit_list, index_name, alphabet, 
+			  HT->no_bins, HT->no_seqs);
 
   /* Check length of query */
   if (query->len != frag_len)
