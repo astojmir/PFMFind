@@ -30,6 +30,19 @@ class db(object):
     def get_frag(self, i, a, b):
         return FS.db_get_frag(self, i, a, b)
 
+    # Sequence iterator
+    def sequences(self):
+        for i in xrange(self.no_seq):
+            yield self.get_seq(i)
+            
+    # Fragment iterator
+    def fragments(self, length):
+        for i in xrange(self.no_seq):
+            seq = self.get_seq(i)
+            slen = len(seq)
+            for j in xrange(slen-length+1):
+                yield seq[j:j+length]
+        
     db_name = property(FS.db_db_name_get)
     length = property(FS.db_length_get)
     no_seq = property(FS.db_no_seq_get)
