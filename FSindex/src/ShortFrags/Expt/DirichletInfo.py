@@ -1,19 +1,22 @@
 """
-Contains information needed for indexing.
+This module contains the Dirichlet information. 
 
-Lambda Functions:
+For more information about Dirichlet mixtures please 
+refer to this website: 
+U{http://www.cse.ucsc.edu/research/compbio/dirichlets/}
+
+B{Lambda Functions:}
     - get_mix  
-        -  Get information from DIR_MIX dictionary.
+        -  Find corresponding entry for a given B{name} 
+	from the list of dictionaries in B{DIR_MIX}.
     - get_names  
-        -  Get information from NAMES dictionary.
+        -  Load list of names.
 
-Variables:
+B{Variables:}
     - NAMES 
-        - A dictionary of names.
+        - A list of names of Dirichlet mixtures.
     - DIR_MIX 
-        - A dictionary containing the reduced alphabet and other 
-        calculations for each name in the dictionary NAMES.
-   
+        - A list of dictionaries containing the Dirichlet information.
 """
 
 import DirichletMix
