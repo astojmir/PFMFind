@@ -60,11 +60,13 @@ void FS_HASH_TABLE_resize(FS_HASH_TABLE_t *FS_HT);
 
 /* Element access */
 ULINT FS_HASH_TABLE_get_no_bins(FS_HASH_TABLE_t *FS_HT);
+ULINT FS_HASH_TABLE_get_total_seqs(FS_HASH_TABLE_t *FS_HT);
 ULINT FS_HASH_TABLE_get_no_seqs(FS_HASH_TABLE_t *FS_HT, ULINT i);
 SEQ_index_t FS_HASH_TABLE_retrieve_seq(FS_HASH_TABLE_t *FS_HT, ULINT i, 
 				       ULINT j);
 SEQ_index_t *FS_HASH_TABLE_get_all_seqs(FS_HASH_TABLE_t *FS_HT, 
 					ULINT i);
+
 
 /* Reading, writing to file */
 int FS_HASH_TABLE_write(FS_HASH_TABLE_t *FS_HT, FILE *stream);
@@ -131,6 +133,7 @@ const char *FS_INDEX_get_db_name(void);
 FS_PARTITION_t *FS_INDEX_get_ptable(void);
 int FS_INDEX_get_frag_len(void);
 FS_HASH_TABLE_t *FS_INDEX_get_hash_table(void);
+const char *FS_index_get_alphabet(void);
 
 /* Main general range search */
 int FS_INDEX_search(HIT_LIST_t *hit_list0, BIOSEQ *query0, 

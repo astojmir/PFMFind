@@ -227,6 +227,14 @@ void FS_HASH_TABLE_print_stats(FS_HASH_TABLE_t *FS_HT, FILE *stream,
   fprintf(stream, "\n");
 }
 
+ULINT FS_HASH_TABLE_get_total_seqs(FS_HASH_TABLE_t *HT)
+{
+  return HT->no_seqs;
+}
+
+
+
+
 /********************************************************************/ 
 /*                                                                  */
 /*                     FS_INDEX module                              */ 
@@ -612,6 +620,11 @@ int FS_INDEX_get_frag_len(void)
 FS_HASH_TABLE_t *FS_INDEX_get_hash_table(void)
 {
   return HT;
+}
+
+const char *FS_index_get_alphabet(void)
+{
+  return alphabet;
 }
 
 
