@@ -202,10 +202,10 @@ void print_results(struct avl_table *tree, ULINT *freq, ULINT bins,
     {
       printf("Theoretical fragments: %.4e\n", 
 	     pow((double) a_size, (double) m));
-      printf("'Dataset sparsity': %8.4le\n",
+      printf("'Dataset sparsity': %8.4e\n",
 	     (double)avl_count(tree)/  
 	     pow((double) a_size, (double) m));
-      printf("'Apparent alphabet size': %.4lf\n",
+      printf("'Apparent alphabet size': %.4f\n",
 	     pow((double) avl_count(tree), 1.0/(double)m));
     }
   printf("Histogram: \n\n");
