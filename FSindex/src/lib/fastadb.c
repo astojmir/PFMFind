@@ -7,6 +7,11 @@
 #include "avl.h"
 #include "misclib.h"
 
+/* Allocate memory in 8 Mb blocks */
+#ifndef ALLOC_BLOCK_SIZE
+#define ALLOC_BLOCK_SIZE (1 << 23)
+#endif
+
 /****************************************************************
  ****************************************************************/
 
@@ -66,7 +71,7 @@ int fastadb_put_line(char *buffer, char **heap, ULINT *len,
 
   if (*len + l + 2 >= *max_len)
     {
-      *max_len *= 2;
+      *max_len += ALLOC_BLOCK_SIZE;
       *heap = reallocec(*heap, *max_len); 
     }
   if (buffer[l-1] == '\n')
@@ -460,11 +465,11 @@ SEQUENCE_DB *fastadb_open(const char *db_name, fastadb_arg *argt,
 
     s_db->seq_data = NULL;
     s_db->seq_data_len = 0;
-    s_db->seq_data_max_len = 1 << 26;
+    s_db->seq_data_max_len = ALLOC_BLOCK_SIZE;
 
     s_db->deflines = NULL;
     s_db->deflines_len = 0;
-    s_db->deflines_max_len = s_db->seq_data_max_len / 4;
+    s_db->deflines_max_len = ALLOC_BLOCK_SIZE;
 
     s_db->dbfile = stream;
     s_db->real_file = real_file;
