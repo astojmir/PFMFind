@@ -173,10 +173,7 @@ typedef int FS_INDEX_profile_range_convert_func(POS_MATRIX *PS0,
 						BIOSEQ *query0,
 						int cutoff);	
 
-
-
-int FS_INDEX_profile_search(HIT_LIST_t *hit_list0, BIOSEQ *query0, 
-			    POS_MATRIX *PS0, POS_MATRIX *PD0, 
+int FS_INDEX_profile_search(HIT_LIST_t *hit_list0, POS_MATRIX *PS0, 
 			    ULINT Pfrom0, ULINT Pto0, int cutoff, 
 			    FS_INDEX_profile_process_func *ppfunc0, 
 			    FS_INDEX_range_convert_func *cfunc);
