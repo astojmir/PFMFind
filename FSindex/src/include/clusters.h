@@ -27,6 +27,23 @@
 /********************************************************************/    
 /********************************************************************/    
 
+
+/* The seq_cluster structure is used for storing clusters in a linked
+   list. We copy them into array before using quadtree */ 
+
+struct seq_cluster
+{
+  ULINT ccount;     /* Sequences/ cluster counter */
+  ULINT cfirst;     /* Points to the first sequence in each cluster
+		      */ 
+  ULINT clast;      /* Points to the last sequence in each cluster */
+  struct seq_cluster *next; 
+};
+
+/* Note that we have a two-dimensional linked list. Then we copy into
+   an array of linked lists. */
+
+
 typedef struct
 {
   SEQUENCE_DB *s_db; /* Sequence database */
@@ -34,6 +51,7 @@ typedef struct
   ULINT no_seqs;     /* Number of sequences loaded */  
   ULINT max_no_seqs; /* Number of allocated spaces for sequences */
   ULINT no_clusters; /* Current number of clusters */
+  ULINT max_no_clusters; /* Allocated space for clusters */
   SEQ_index_t *seqs; /* Array of fragments */
   ULINT *next_seq;   /* Array of pointers to next fragment - for
 			linked list */
@@ -41,7 +59,9 @@ typedef struct
   ULINT *cfirst;     /* Points to the first sequence in each cluster
 		      */ 
   ULINT *clast;      /* Points to the last sequence in each cluster
-		      */ 
+		      */
+  struct seq_cluster *rfirst;
+  struct seq_cluster *rseqs;
   QUAD_TREE *qtree;  /* Quad tree to dynamically merge clusters */
   SCORE_MATRIX_t *D; /* Symmetric distance matrix on sequences */
   FS_PARTITION_t *ptable; /* Partition table */
