@@ -430,8 +430,8 @@ class MainGui(Tkinter.Frame):
 
     def load_descriptions(self, desc_filename=None):
         if desc_filename == None:
-            desc_filename = askopenfilename(defaultextension='.txt',
-                                            filetypes=[('Descriptions File','.txt')],
+            desc_filename = askopenfilename(defaultextension='.db',
+                                            filetypes=[('Descriptions File','.db')],
                                             parent=self,
                                             title='Load Descriptions',
                                             initialdir=os.getcwd()
@@ -440,9 +440,9 @@ class MainGui(Tkinter.Frame):
             return
 
         try:
-            self.messageBar.message('state','Loading Keywords...') 
+            self.messageBar.message('state','Loading Descriptions...') 
             self.messageBar.update_idletasks()
-            self.FE.Idata.load_descriptions(desc_filename)
+            self.FE.Idata.load_descriptions(os.path.splitext(desc_filename)[0])
         except Exception, inst:
             showerror('Open Error',  inst.__str__(), parent=self)
             return
@@ -544,7 +544,7 @@ class MainGui(Tkinter.Frame):
             self.CutoffParams.restore_defaults()
 
         cur_view = self.viewVar.get()
-        if cur_view == 'Hits' or cur_view == 'Full':
+        if cur_view == 'Hits' or cur_view == 'Full' or cur_view == 'Keywords':
             self.current_view.reset(self.state)
             
     def update_matrix(self):
@@ -628,7 +628,7 @@ class MainGui(Tkinter.Frame):
 
         # View menu
         mb = self.menu_bar.component('View' + '-menu')
-        for text in ['Hits', 'Full']: 
+        for text in ['Hits', 'Full', 'Keywords']: 
             i = self.view_bar.index(text)
             self.view_bar.button(i).config(state='normal')
             i = mb.index(text)
