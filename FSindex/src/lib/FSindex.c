@@ -253,15 +253,17 @@ void FS_HASH_TABLE_print_stats(FS_HASH_TABLE_t *HT, FILE *stream,
 	  HT->no_bins);
   fprintf(stream, "Average size of index entry: %.2f\n", 
 	  (float) HT->no_seqs / (float) HT->no_bins);
-  fprintf(stream, "Largest index entry: %s (%ld)\n",
-	  FS_seq_print(HT->binL, FS_partition, frag_len),
-	  HT->bin_size[HT->binL]);
+  fprintf(stream, "Largest index entry: %s\n",
+	  FS_seq_print(HT->binL, FS_partition, frag_len));
+  fprintf(stream, "Size of largest index entry: %ld\n",
+       	  HT->bin_size[HT->binL]);
   fprintf(stream, "Total number of distinct fragments in index: %ld\n", 
 	  HT->no_useqs);
   fprintf(stream, "Average 'distinct' size of index entry: %.2f\n", 
 	  (float) HT->no_useqs / (float) HT->no_bins);
-  fprintf(stream, "Largest 'distinct' index entry: %s (%ld)\n",
-	  FS_seq_print(HT->uL, FS_partition, frag_len),
+  fprintf(stream, "Largest 'distinct' index entry: %s\n",
+	  FS_seq_print(HT->uL, FS_partition, frag_len));
+  fprintf(stream, "Size of largest 'distinct' index entry: %ld\n",
 	  HT->u_size[HT->uL]);
 
   fprintf(stream, "\n* Distribution of numbers of fragments per"
