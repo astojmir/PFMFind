@@ -74,7 +74,9 @@ void merge_all_identical_seqs(SEQ_CLUSTERS *sclusters)
       sclusters->rseqs[i].cfirst = i;
       sclusters->rseqs[i].clast = i;
       sclusters->rseqs[i].next = sclusters->rfirst + i + 1;      
+      sclusters->rseqs[i].previous = sclusters->rfirst + i - 1;      
     }
+  sclusters->rseqs[0].previous = NULL;      
   sclusters->rseqs[sclusters->no_seqs-1].next = NULL;      
 
 
@@ -95,7 +97,10 @@ void merge_all_identical_seqs(SEQ_CLUSTERS *sclusters)
 	      sclusters->next_seq[k->clast] = j->cfirst;
 	      k->clast = j->clast;
 	      k->ccount += j->ccount;
-	      (j-1)->next = j->next;
+	      j->previous->next = j->next;
+	      if (j->next != NULL)
+		j->next->previous = j->previous;
+	      j->previous = NULL;
 	      j->next = NULL;
 	      sclusters->no_clusters--;
 	    }
@@ -106,6 +111,7 @@ void merge_all_identical_seqs(SEQ_CLUSTERS *sclusters)
   while(k != NULL);
 
   /* Allocate arrays */
+  sclusters->no_clusters0 = sclusters->no_clusters;
   if (sclusters->max_no_clusters < sclusters->no_clusters)
     {
       if (sclusters->max_no_clusters == 0)
@@ -134,7 +140,7 @@ void merge_all_identical_seqs(SEQ_CLUSTERS *sclusters)
       i++;
     }
   while(k != NULL);
-
+  assert(i == sclusters->no_clusters);
   /* Evaluate pairwise distances */
   eval_pairwise_distances(sclusters);
 
@@ -169,13 +175,13 @@ void merge_clusters(SEQ_CLUSTERS *sclusters, ULINT cl1, ULINT cl2)
   if (sclusters->ccount[i] == 0)
     {
       sclusters->cfirst[i] = sclusters->cfirst[j]; 
-      sclusters->no_clusters ++;
+      sclusters->no_clusters++;
     }
   else
     sclusters->next_seq[sclusters->clast[i]] = sclusters->cfirst[j];
   sclusters->clast[i] = sclusters->clast[j];
   sclusters->ccount[i] += sclusters->ccount[j];
-  sclusters->no_clusters --;
+  sclusters->no_clusters--;
   sclusters->ccount[j] = 0;
   sclusters->cfirst[j] = -1;
   sclusters->clast[j] = -1;
@@ -189,12 +195,13 @@ ULINT collect_small_clusters(SEQ_CLUSTERS *sclusters, ULINT K)
    Has to be the largest index because merge_clusters() merges into
    the cluster with larger index. Note also that there will be one
    such cluster (possibly empty) for K > 1. */
-  ULINT first_small;  			    
+  int first_small;  			    
   int i;
 
   if (sclusters->no_seqs == 0)
-    return;
-  first_small = sclusters->no_seqs-1;
+    return 0;
+
+  first_small = sclusters->no_clusters0 - 1;
 
   while (sclusters->ccount[first_small] >= K && first_small >= 0)
     first_small--;
@@ -212,7 +219,7 @@ ULINT collect_small_clusters(SEQ_CLUSTERS *sclusters, ULINT K)
 
 static inline
 void get_patterns(SEQ_CLUSTERS *sclusters, CLUSTER_BIN *cbin, 
-		  ULINT unclassified)
+		  int unclassified)
 {
   ULINT i = 0; /* Cluster counter */
   ULINT j = 0; /* Non-empty cluster counter */ 
@@ -262,7 +269,7 @@ void get_patterns(SEQ_CLUSTERS *sclusters, CLUSTER_BIN *cbin,
     cbin->seqs = NULL;   
 
   /* Process clusters with patterns */
-  for (i=0; i < sclusters->no_seqs; i++)
+  for (i=0; i < sclusters->no_clusters0; i++)
     {
       if (sclusters->ccount[i] == 0 || unclassified == i)
 	continue;
@@ -306,7 +313,7 @@ void get_patterns(SEQ_CLUSTERS *sclusters, CLUSTER_BIN *cbin,
   i = unclassified;
   assert(s == cbin->no_seq - sclusters->ccount[i]);
 
-  if (sclusters->ccount[i] > 0)
+  if (i >= 0 && sclusters->ccount[i] > 0)
     {
       q = sclusters->cfirst[i]; 
       while (1)
@@ -396,7 +403,7 @@ void SEQ_CLUSTERS_CLT_cluster(SEQ_CLUSTERS *sclusters,
   ULINT cl2;
   int d;
   int T0 = T;
-  ULINT unclassified;
+  int unclassified;
 
 #if DEBUG > 10
   int l;
