@@ -63,35 +63,35 @@ int main(int argc, char **argv)
   int errflg = 0;                     /* Option error flag         */
 
 
-  int cutoff;
+  int cutoff  = 0;
   HIT_LIST_t *hit_list;
   BIOSEQ *query = NULL;
 
-  const char *filename;
+  const char *filename = NULL;
   int index_flag = 0;
 
   const char *in_file = NULL;
   const char *out_file = NULL;
   FILE *out_stream = stdout;
-  SEQUENCE_DB *input_db;
+  SEQUENCE_DB *input_db = NULL;
   fastadb_arg fastadb_argt[4];
   fastadb_argv_t fastadb_argv[4];
 
-  char *matrix_full;
-  char *matrix_base;
-  char *matrix_dir;
+  char *matrix_full = NULL;
+  char *matrix_base = NULL;
+  char *matrix_dir = NULL;
   int matrix_flag = 0;
 
-  FS_PARTITION_t *ptable;
-  SCORE_MATRIX_t *S;
-  SCORE_MATRIX_t *D;
+  FS_PARTITION_t *ptable = NULL;
+  SCORE_MATRIX_t *S = NULL;
+  SCORE_MATRIX_t *D = NULL;
 
-  POS_MATRIX *PS;
+  POS_MATRIX *PS = NULL;
   double lambda = 1.0;
   double A = 20.0;
   const char *freq_filename = NULL;
   int iters = 5;
-  int cutoff2;
+  int cutoff2 = 0;
   int cutoff2_flag = 0;
   int profile_flag = 0;
 
@@ -268,7 +268,7 @@ int main(int argc, char **argv)
 	    {
 	      HIT_LIST_get_hit_seqs(hit_list, &PS->seq, cutoff, 
 				    &PS->no_seqs, &PS->max_no_seqs);
-	      POS_MATRIX_equal_weights(PS);
+	      POS_MATRIX_Henikoff_weights(PS);
 	      POS_MATRIX_update(PS);
 	      HIT_LIST_reset(hit_list, PS->query,
 			     FS_INDEX_get_database(), 
