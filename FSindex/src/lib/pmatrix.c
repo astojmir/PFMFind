@@ -194,7 +194,7 @@ POS_MATRIX *POS_MATRIX_S_2_D(POS_MATRIX *PS, BIOSEQ *query)
   for (i=0; i < PS->len; i++)
     {
       maxS = POS_MATRIX_max_entry_pos(PS, i, &k);
-      query->start[i] = 'A' + k;
+      query->start[i] = 64 + k;
       for (j=0; j < A_SIZE; j++)
 	PD->M[PM_M(i,j)] = maxS -  PS->M[PM_M(i,j)];
 
