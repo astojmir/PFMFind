@@ -18,7 +18,9 @@ all: $(FSLIB) \
      check_db \
      print_doublets \
      FSindex_delta \
-     FSindex_eps_net1
+     FSindex_rand_perf \
+     FSindex_eps_net1 \
+     fragdist
 #     cluster_test \
 #     FSindex_rand_perf \
 #     FSindex_benchmark \
@@ -53,6 +55,8 @@ SS_search:
 Sscan_eps_net:  
 
 count_letters:  
+
+fragdist:  
 
 clean:
 	for x in *; do [ -x $$x -a -f $$x.c ] && echo $$x; done\
