@@ -12,6 +12,33 @@ int SCORE_MATRIX_VERBOSE = 0;
 int FS_INDEX_VERBOSE = 0;
 int FS_INDEX_PRINT_BAR = 1;
 
+static 
+void print_help(const char *progname)
+{
+  fprintf(stderr, "%s Arguments:\n\n"
+	  "-F  f   Use FSindex index file f (Mandatory)\n"
+	  "-M  f   Use score matrix file f (Mandatory)\n"
+	  "[-s | -q | -d | -p] n (Mandatory)\n"
+	  "        Use cutoff value n with\n"
+	  "           -s similarity scores\n"
+	  "           -q non-symmetric distance scores\n"
+	  "           -d symmetric distance scores\n"
+	  "           -p PSM scores\n"
+	  "-i  f   Read input from file f (Optional)\n"
+	  "          If ommitted, read from stdin\n"
+	  "-o  f   Write output to file f (Optional)\n"
+	  "          If ommitted, write to stdout\n"
+	  "-I  n   Run n profile iterations (Optional)\n"
+	  "          If n = 0 run until convergence\n"
+	  "-L  n   Scaling factor to use when producing PSMs\n"
+	  "-d  f   Read background distribution of amino acids from"
+	  " file f\n", progname);
+}
+
+
+
+
+
 int main(int argc, char **argv)
 {
   const char *query_seq;
@@ -26,15 +53,21 @@ int main(int argc, char **argv)
   FS_PARTITION_t *ptable;
   SCORE_MATRIX_t *S;
   SCORE_MATRIX_t *D;
-  enum {T_SIMILARITY, T_QUASI_METRIC, T_METRIC} search_type 
+  POS_MATRIX *PS;
+  POS_MATRIX *PD;
+
+
+  enum {T_SIMILARITY, T_QUASI_METRIC, T_METRIC, T_PROFILE} search_type 
     = T_SIMILARITY; 
 
   if (argc < no_args+1)
     {
       fprintf(stderr,"Insufficient arguments \n");
       fprintf(stderr,"Usage: %s index_file matrix query_seq"
-	      " cutoff [-s | -m | -q];\n", argv[0]);  
+	      " cutoff [-s | -m | -q];\n", argv[0]);
+      print_help(argv[0]);
       exit(EXIT_FAILURE);
+
     }
   filename = argv[1];
   matrix_full = argv[2]; 
@@ -46,6 +79,9 @@ int main(int argc, char **argv)
       if (argv[5][0] == '-')
 	switch (argv[5][1])
 	  {
+	  case 'p':
+	    search_type = T_PROFILE;
+	    break;
 	  case 's':
 	    search_type = T_SIMILARITY;
 	    break;
@@ -74,6 +110,16 @@ int main(int argc, char **argv)
   fprintf(stdout,"Searching ... \n");
   switch (search_type)
     {
+    case T_PROFILE:
+      PS = SCORE_2_POS_MATRIX(S, &query);
+      PD = POS_MATRIX_S_2_D(PS, &query);      
+      FS_INDEX_profile_search(hit_list, &query, PS, PD, 0,
+			      query.len-1, cutoff,
+			      FS_INDEX_profile_S_process_bin,
+			      FS_INDEX_S2QD_convert);
+      HIT_LIST_sort_by_sequence(hit_list);
+      HIT_LIST_sort_decr(hit_list);
+      break;
     case T_SIMILARITY:
       D = SCORE_MATRIX_S_2_Dquasi(S);
       FS_INDEX_search(hit_list, &query, S, D, cutoff,
