@@ -283,9 +283,9 @@ BPARAMS *default_blast_params(void)
 {
   BPARAMS *BP = mallocec(sizeof(BPARAMS));
 
-  BP->program_name = "blastp";
+  BP->program_name = strdup("blastp");
   BP->expectation_value = 10.0;
-  BP->filter_query_sequence = "T";
+  BP->filter_query_sequence = strdup("T");
   BP->cost_to_open_gap = 11;
   BP->cost_to_extend_gap = 1;
   BP->X_dropoff_value = 0;
@@ -294,11 +294,11 @@ BPARAMS *default_blast_params(void)
   BP->no_one_line_descriptions = 500;
   BP->no_allignments = 50000;
   BP->threshold_for_extending_hits = 0;
-  BP->gapped_alignment = "T";
+  BP->gapped_alignment = strdup("T");
   BP->query_genetic_code = 1;
   BP->db_genetic_code = 1;
-  BP->believe_defline = "F";
-  BP->matrix = "BLOSUM62";
+  BP->believe_defline = strdup("F");
+  BP->matrix = strdup("BLOSUM62");
   BP->word_size = 0;
   BP->effective_db_length = 0;
   BP->no_best_hits_to_keep = 0;
