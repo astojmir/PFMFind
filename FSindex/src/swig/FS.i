@@ -16,7 +16,7 @@ struct exception_context the_exception_context[1];
 
  typedef SCORE_MATRIX Smatrix;
  typedef SEQUENCE_DB db;
- typedef FSINDX index;
+ typedef FSINDX Index;
  typedef SEQ_HIT_t hit;
  typedef HIT_LIST_t hit_list;
  typedef HIT_LIST_t * hit_list_array;
@@ -379,7 +379,7 @@ void Smatrix_conv_type_set(Smatrix *S, int ctype) {
 
 
 /********************************************************************/ 
-/*         index                                                    */
+/*         Index                                                    */
 /********************************************************************/ 
 
 /* Conversion of hit lists into Python dictionaries */
@@ -599,7 +599,7 @@ typedef struct
 {
   %immutable;
   db *s_db;                /* Pointer to the fasta database         */
-} index;
+} Index;
 
 /* Only database attribute is available - everything else can be
    obtained as Python dictionary by calling get_data() method */
@@ -607,9 +607,9 @@ typedef struct
 typedef enum {FS_BINS, SUFFIX_ARRAY, SEQ_SCAN} SFUNC_TYPE;
 typedef enum {SARRAY, DUPS_ONLY, FULL_SCAN} PFUNC_TYPE;
 
-%extend index {
+%extend Index {
   /* Call with [] (empty list) as second argument to load from file */
- index(const char *database, ULINT len, 
+ Index(const char *database, ULINT len, 
        const char **sepn, int use_sa = 1,
        int print_flag=0) {
    if (len) 
@@ -617,7 +617,7 @@ typedef enum {SARRAY, DUPS_ONLY, FULL_SCAN} PFUNC_TYPE;
    else
      return FS_INDEX_load(database);
   }
-  ~index() {
+  ~Index() {
     FS_INDEX_destroy(self);
   }
   void save(const char *filename) {

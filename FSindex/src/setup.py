@@ -21,9 +21,8 @@ if sys.platform == 'win32':
     libs.append("gw32c")
 
 EXTENSIONS = [
-    Extension('ShortFrags._FS',
+    Extension('ShortFrags.Expt.FS',
               ['swig/FS_wrap.c',
-               #'ShortFrags/FS.i',
                'lib/bioseq.c',
                'lib/FSindex.c',
                'lib/fastadb.c',
@@ -51,7 +50,7 @@ SCRIPTS = [
 
 setup(
     name='ShortFrags',
-    version='0.3',
+    version='0.4',
     author='Aleksandar Stojmirovic',
     author_email='aleksand@mcs.vuw.ac.nz',
     url='http://www.mcs.vuw.ac.nz/~aleksand',
