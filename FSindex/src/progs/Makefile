@@ -4,6 +4,7 @@ FSLIB=../lib/libFSindex.a
 
 all: $(FSLIB) \
      FSindex_search \
+     FSindex_cluster \
      FSindex_self_sim \
      FSindex_create \
      FSindex_stats \
