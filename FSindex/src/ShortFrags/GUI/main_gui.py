@@ -1,16 +1,15 @@
-import Tkinter
+import Tkinter, tkMessageBox, Pmw
 from tkMessageBox import askquestion
-import tkMessageBox
-import Pmw
-import os
-import sys
-import cPickle
-import gzip
+import os, sys, threading, Queue
+
 from ShortFrags.Expt import fragexpt
 from ShortFrags.Expt import index
 from ShortFrags.Expt import DirichletInfo
+from Bio.SubsMat import MatrixInfo
+
 from matrix_opts import *
 from query_input import *
+from serverdialog import *
 from search_action import *
 from search_params import *
 from status import *
@@ -18,19 +17,19 @@ from matrix_view import *
 from index_view import *
 from hits_view import *
 from full_view import *
+from keyword_view import KeywordView
 from index_creation import CreateIndexDialog
 from Console import Console
 from progress_bar import ProgressBar
-import threading
-from Bio.SubsMat import MatrixInfo
 
-THREADS = 5
 
 class MainGui(Tkinter.Frame):
     def __init__(self, parent=None, dict={}):
         Tkinter.Frame.__init__(self,parent)
         self.pack(fill='both', expand = 1)
         self.parent=parent
+
+
 
         # Get screen resolution and set (fixed) heights and widths
         # Others are variable
@@ -40,9 +39,11 @@ class MainGui(Tkinter.Frame):
         self.msg_bar_height = 20
         
         # State variables 
+        self.FE = fragexpt.FullExpt()
         self.saved = True
         self.state = {}
         self.jobs = {}
+        self.queue = Queue.Queue() 
 
         # ***** Basic Layout *****
         # Menu on the top
@@ -113,7 +114,7 @@ class MainGui(Tkinter.Frame):
                                           lambda tag: self.update_matrix())
         self.pm = self.MatParams.add_case(['PSSM', 'subst mat'],
                                           update_func = lambda tag: self.update_matrix(),
-                                          scale_default=1.0,
+                                          scale_default=2.0,
                                           weights = ['None', 'Henikoff'],
                                           regularisers = DirichletInfo.NAMES,
                                           reg_default = 'recode3.20comp')
@@ -150,6 +151,10 @@ class MainGui(Tkinter.Frame):
                                   msg_func = lambda text:
                                   self.messageBar.message('state',text),
                                   set_func = self.IndxStatus.set_values)
+        self.wKeywordsView = KeywordView(self.mainPart,
+                                      msg_func = lambda text:
+                                      self.messageBar.message('state',text),
+                                      set_func = self.IndxStatus.set_values)
 
         # **** End of Main displays ****
 
@@ -169,6 +174,10 @@ class MainGui(Tkinter.Frame):
         self.menu_bar.addmenuitem('File', 'command', 'Close this window',
                             command = self.close, label = 'Close')
         self.menu_bar.addmenuitem('File', 'separator')
+        self.menu_bar.addmenuitem('File', 'command', 'Load Keywords',
+                            command = self.load_keywords, label = 'Load Keywords')
+        self.menu_bar.addmenuitem('File', 'command', 'Load Descriptions',
+                            command = self.load_descriptions, label = 'Load Descriptions')
         self.menu_bar.addmenuitem('File', 'command', 'Create Index',
                             command = self.create_index, label = 'Create Index')
         self.menu_bar.addmenuitem('File', 'separator')
@@ -186,6 +195,10 @@ class MainGui(Tkinter.Frame):
         self.menu_bar.addmenu('Options', 'Set search and filter options')
         self.menu_bar.addmenuitem('Options', 'command', 'Settings',
                                   command = None, label = 'Settings...')
+        self.menu_bar.addmenuitem('Options', 'command', 'Attach Server',
+                                  command = self.attach_server, label = 'Attach Server')
+        self.menu_bar.addmenuitem('Options', 'command', 'Detach Server',
+                                  command = self.detach_server, label = 'Detach Server')
 
 ##         self.menu_bar.addmenu('Tools', 'Search and filter')
         
@@ -206,12 +219,14 @@ class MainGui(Tkinter.Frame):
                            'Matrix',
                            'Hits',
                            'Full',
+                           'Keywords',
                            ]
         self.views = {'Console': self.console_view,
                       'Index': self.index_view,
                       'Matrix': self.matrix_view,
                       'Hits': self.wHitsView,
                       'Full': self.wFullView,
+                      'Keywords': self.wKeywordsView,
                       }
         self.viewVar = Tkinter.StringVar()
         for text in self.view_names: 
@@ -237,13 +252,33 @@ class MainGui(Tkinter.Frame):
 
         # Disable all
         self.current_view = self.index_view
-        self.disable_search()
+        self.detach_server() # this will call disable_search()
         self.disable_views()
+
         
         # Redirect messages to console
         sys.stdout = self.console_view.stdout
         sys.stderr = self.console_view.stderr
 
+        self.process_incoming()
+
+    def process_incoming(self):
+        """
+        Check every 100 ms if there is something new in the queue.
+        """
+        while self.queue.qsize():
+            try:
+                func, args, kwargs = self.queue.get(0)
+                func(*args, **kwargs)
+            except Queue.Empty:
+                pass        
+
+        self.after(100, self.process_incoming)
+
+    def run(self, func, args=(), kwargs={}):
+        self.disable_computation()
+        thr = threading.Thread(target=func, args=args, kwargs={})
+        thr.start()
 
     def new(self):
         seqin = QuerySeqInput(self)
@@ -252,8 +287,6 @@ class MainGui(Tkinter.Frame):
             return
 
         # Initialise query sequence
-        # res['clusters_file'],res['index']  
-        self.FE = fragexpt.FullExpt()
         self.FE.set_params(res['sequence'],
                            res['description'],
                            res['range'],
@@ -263,22 +296,11 @@ class MainGui(Tkinter.Frame):
         self.saved = False
 
         self.enable_views()
+        self.enable_search()
 
-        try:
-            self.messageBar.message('state','Loading Index...')
-            self.messageBar.update_idletasks()
-            self.FE.load_index(res['index'])
-            self.enable_search()
-        except Exception, inst: 
-            showerror('Load Error',  inst.__str__(), parent=self)
+        self.load_descriptions(res['desc_file'])
+        self.load_keywords(res['keywords_file'])
 
-        try:
-            self.messageBar.message('state','Loading Descriptions...')
-            self.messageBar.update_idletasks()
-            self.FE.load_descriptions(res['clusters_file'])
-        except Exception, inst: 
-            showerror('Load Error',  inst.__str__(), parent=self)
-        
         self.messageBar.message('state','')
 
     def open(self):
@@ -291,49 +313,27 @@ class MainGui(Tkinter.Frame):
                         )
         if not len(self.save_fullname):
             return
-
-        try:
-            self.messageBar.message('state','Loading Experiment...') 
-            self.messageBar.update_idletasks()
-            self.FE = fragexpt.load_FE(self.save_fullname)
-            self.enable_views()
-            self.saved = True
-        except Exception, inst:
-            showerror('Open Error',  inst.__str__(), parent=self)
-            return
-
-        try:
-            if self.FE.index_filename != None:
-                self.messageBar.message('state','Loading Index...')
-                self.messageBar.update_idletasks()
-                self.FE.load_index(self.FE.index_filename)
-                self.enable_search()
-            elif self.FE.fasta_filename != None:
-                self.messageBar.message('state','Loading FASTA filename...')
-                self.messageBar.update_idletasks()
-                self.FE.load_fastadb(self.FE.fasta_filename)
-        except Exception, inst: 
-            showerror('Open Error',  inst.__str__(), parent=self)
-
-
-        try:
-            if self.FE.desc_filename != None:
-                self.messageBar.message('state','Loading Descriptions...')
-                self.messageBar.update_idletasks()
-                self.FE.load_descriptions(self.FE.desc_filename)
-        except Exception, inst: 
-            showerror('Open Error',  inst.__str__(), parent=self)
-            
-        self.messageBar.message('state','')
         
-    def save(self):
-        self.messageBar.message('state', 'Saving Experiment...')
+        self.run(self._open)
+
+    def _open(self):
+        self.queue.put((self.messageBar.message, ('state','Loading Experiment...'),{}))
+        self.queue.put((self.update_idletasks, (),{}))
+
         try:
-            self.FE.save(self.save_fullname)
-        except (RuntimeError, IOError), inst:
-            showerror('Save Error', inst.__str__(), parent=self)
-        self.messageBar.message('state','')
-        self.saved = True
+            try:
+                self.FE.load(self.save_fullname)
+                self.queue.put((self.enable_views, (),{}))
+                self.queue.put((self.enable_search, (),{}))
+                self.saved = True
+            finally:
+                self.queue.put((self.enable_computation, (),{}))
+                self.queue.put((self.messageBar.message, ('state',''),{}))
+        except Exception, inst:
+            self.queue.put((showerror, ('Open Error',  inst.__str__()), {'parent': self}))
+
+    def save(self):
+        self.run(self._save)
 
     def save_as(self):
         head, tail = os.path.split(self.save_fullname)
@@ -346,7 +346,21 @@ class MainGui(Tkinter.Frame):
         if not len(path):
             return
         self.save_fullname = path
-        self.save()
+        self.run(self._save)
+
+    def _save(self):
+        self.queue.put((self.messageBar.message, ('state','Saving Experiment...'),{}))
+        self.queue.put((self.update_idletasks, (),{}))
+
+        try:
+            try:
+                self.FE.save(self.save_fullname)
+                self.saved = True
+            finally:
+                self.queue.put((self.enable_computation, (),{}))
+                self.queue.put((self.messageBar.message, ('state',''),{}))
+        except Exception, inst:
+            self.queue.put((showerror, ('Save Error',  inst.__str__()), {'parent': self}))
 
     def close(self):
         msg = 'Do you want to save changes?'
@@ -365,6 +379,8 @@ class MainGui(Tkinter.Frame):
         # Cleanup all members and hide toolbox
         self.disable_search()
         self.disable_views()
+        if 'data' in self.FE.__dict__:
+            del(self.FE.data)
 
     def create_index(self):
         dg = CreateIndexDialog(self)
@@ -385,6 +401,100 @@ class MainGui(Tkinter.Frame):
                 break
             except Exception, inst:
                 showerror('Index Creation Error', inst.__str__(), parent=self)
+
+    def load_keywords(self, kw_filename=None):
+        if kw_filename == None:
+            kw_filename = askopenfilename(defaultextension='.txt',
+                                          filetypes=[('Keywords Text File','.txt')],
+                                          parent=self,
+                                          title='Load Keywords',
+                                          initialdir=os.getcwd()
+                                          )
+        if not len(kw_filename):
+            return
+
+        try:
+            self.messageBar.message('state','Loading Keywords...') 
+            self.messageBar.update_idletasks()
+            self.FE.Idata.load_keywords(kw_filename)
+        except Exception, inst:
+            showerror('Open Error',  inst.__str__(), parent=self)
+            return
+
+        self.messageBar.message('state','')
+        mb = self.menu_bar.component('View' + '-menu')
+        i = self.view_bar.index('Keywords')
+        self.view_bar.button(i).config(state='normal')
+        i = mb.index('Keywords')
+        mb.entryconfigure(i, state='normal')
+
+    def load_descriptions(self, desc_filename=None):
+        if desc_filename == None:
+            desc_filename = askopenfilename(defaultextension='.txt',
+                                            filetypes=[('Descriptions File','.txt')],
+                                            parent=self,
+                                            title='Load Descriptions',
+                                            initialdir=os.getcwd()
+                                            )
+        if not len(desc_filename):
+            return
+
+        try:
+            self.messageBar.message('state','Loading Keywords...') 
+            self.messageBar.update_idletasks()
+            self.FE.Idata.load_descriptions(desc_filename)
+        except Exception, inst:
+            showerror('Open Error',  inst.__str__(), parent=self)
+            return
+
+        self.messageBar.message('state','')
+
+    def attach_server(self):
+        serv = ServerDialog(self)
+        res = serv.activate(geometry = 'centerscreenalways')
+        if res == {}:
+            return
+        
+        if self.FE.search_client.attach(res['host'], res['port']):
+            mb = self.menu_bar.component('Options' + '-menu')
+            mb.entryconfigure(mb.index('Attach Server'), state='disabled')
+            mb.entryconfigure(mb.index('Detach Server'), state='normal')
+            if 'data' in self.FE.__dict__:
+                self.enable_search()
+        else:
+            showerror('Server Attach Error', 'Cound not attach to server', parent=self)
+
+    def detach_server(self):
+        self.FE.search_client.detach()
+        mb = self.menu_bar.component('Options' + '-menu')
+        mb.entryconfigure(mb.index('Attach Server'), state='normal')
+        mb.entryconfigure(mb.index('Detach Server'), state='disabled')
+        self.disable_search()
+
+    def run_jobs(self):
+        # Check for conflicts
+        for k,v in self.jobs.items():
+            iters = self.FE.data.get_frag(*k)
+            if len(iters) > v['iter']:
+                if askquestion('Conflicts', 'Overwrite previous searches?',
+                               parent=self) == 'no':
+                    return
+                else:
+                    break
+        self.run(self._search)
+                                
+    def _search(self):
+        self.queue.put((self.messageBar.message, ('state','Searching ...'),{}))
+        self.queue.put((self.update_idletasks, (),{}))
+
+        self.FE.search(self.jobs)
+
+        self.saved = False
+        self.queue.put((self.enable_computation, (),{}))
+        self.queue.put((self.messageBar.message, ('state',''),{}))
+
+        self.queue.put((self.IndxStatus.set_values, (self.state['coords']),{}))
+
 
 
     def quit(self):
@@ -468,7 +578,7 @@ class MainGui(Tkinter.Frame):
             else:
                 lengths = range(*self.FE.length_range)
 
-            fl = len(self.FE.rqseq)+ 1
+            fl = len(self.FE.data.rqseq)+ 1
 
             # Generate the list of conflicts and OK coords
             if not no_srch:
@@ -499,27 +609,9 @@ class MainGui(Tkinter.Frame):
             for key in conf + remn:
                 self.jobs[key] = val
 
-    def run_jobs(self):
-        # Check for conflicts
-        for k,v in self.jobs.items():
-            iters = self.FE.get_iters(*k)
-            if len(iters) > v['iter']:
-                if askquestion('Conflicts', 'Overwrite previous searches?',
-                               parent=self) == 'no':
-                    return
-                else:
-                    break
-
-        self.wProgressBar.updateProgress(0, len(self.jobs))
-        self.wProgressBar.pack()
-        self.messageBar.message('state', 'Searching...')
-        self.FE.serial_search(self.jobs, self.wProgressBar.updateProgress)
-        self.messageBar.message('state', '')
-        self.wProgressBar.pack_forget()
-        self.IndxStatus.set_values(*self.state['coords'])
-        self.saved = False
-                                
     def enable_views(self):
+        if 'data' not in self.FE.__dict__:
+            return
         self.toolbox_filler.pack_forget()
         self.statusPart.pack(side='top', fill='both')
         self.filterArgs.pack(anchor='n',fill='both', expand=1)
@@ -545,15 +637,15 @@ class MainGui(Tkinter.Frame):
         self.state['FE'] = self.FE
 
         # Update counters
-        self.IndxStatus.reset_params(self.FE.length_range,
-                                     len(self.FE.rqseq),
-                                     lambda l,f: len(self.FE.get_iters(l,f)),
+        self.IndxStatus.reset_params(self.FE.data.length_range,
+                                     len(self.FE.data.rqseq),
+                                     lambda l,f: len(self.FE.data.get_frag(l,f)),
                                      self.update_counters,
-                                     self.FE.rqseq)                
+                                     self.FE.data.rqseq)                
         self.update_counters()
         
     def enable_search(self):
-        if self.FE.index_filename == None:
+        if not self.FE.search_client.attached:
             return
 
         # Show toolbox
@@ -568,6 +660,7 @@ class MainGui(Tkinter.Frame):
             self.view_bar.button(i).config(state='normal')
             i = mb.index(text)
             mb.entryconfigure(i, state='normal')
+
             
     def disable_search(self):
         self.view_bar.invoke('Console')
@@ -580,6 +673,7 @@ class MainGui(Tkinter.Frame):
             i = mb.index(text)
             mb.entryconfigure(i, state='disabled')
 
+
     def disable_views(self):
         self.view_bar.invoke('Console')
 
@@ -587,8 +681,7 @@ class MainGui(Tkinter.Frame):
         self.state = {}
         self.jobs = {}
         self.saved = True
-        vars = ['FE',
-                'save_fullname',
+        vars = ['save_fullname',
                 ]
         for v in vars:
             if v in self.__dict__:
@@ -610,7 +703,7 @@ class MainGui(Tkinter.Frame):
             mb.entryconfigure(i, state='normal')
         # View menu
         mb = self.menu_bar.component('View' + '-menu')
-        for text in ['Hits', 'Full']: 
+        for text in ['Hits', 'Full', 'Keywords']: 
             i = self.view_bar.index(text)
             self.view_bar.button(i).config(state='disabled')
             i = mb.index(text)
@@ -618,3 +711,23 @@ class MainGui(Tkinter.Frame):
         
         # Clear views
         self.wFullView.clear()
+
+
+
+    def enable_computation(self):
+        self.Actions.enable()
+        self.IndxStatus.enable_length()        
+        mb = self.menu_bar.component('File' + '-menu')
+        for text in  ['Save', 'Save As...', 'Close', 'Create Index', 'Quit']: 
+            mb.entryconfigure(mb.index(text), state='normal')
+
+    def disable_computation(self):
+        self.Actions.disable()
+        self.IndxStatus.disable_length()        
+        mb = self.menu_bar.component('File' + '-menu')
+        for text in  ['Save', 'Save As...', 'Close', 'Create Index', 'Quit']: 
+            mb.entryconfigure(mb.index(text), state='disabled')
+
+
+
+    
