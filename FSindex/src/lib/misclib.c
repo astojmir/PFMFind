@@ -1,4 +1,3 @@
-#include "misclib.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,6 +7,16 @@
 #ifdef TOTAL_MEM
 static unsigned long int total_mem = 0; 
 #endif
+
+/* If the extern inline functions are not to be inlined, they must be
+   here */ 
+#ifndef MY_INLINE
+#define MY_INLINE
+#include "misclib.h"
+#undef MY_INLINE
+#endif
+
+
 
 void *callocec(long int number, long int size)
 {
@@ -137,68 +146,4 @@ int cat_base_dir(char **full_name, const char *basename,
     }
 
   return 1;
-}
-
-
-
-/********************************************************************/    
-/********************************************************************/    
-/***                                                              ***/
-/***               INLINE FUNCTION DEFINITIONS                    ***/ 
-/***                     (library copies)                         ***/
-/***                                                              ***/
-/********************************************************************/    
-/********************************************************************/    
-
-int max(int a, int b)
-{
-  return a > b ? a : b;
-}
-
-int min(int a, int b)
-{
-  return a < b ? a : b;
-}
-
-void printbar(FILE *outstream, ULINT cntr, ULINT dispc, 
-	      USINT dpr)  
-{
-  char dot = '.';
-
-  if((cntr % dispc) == 0)
-    {
-      /* print '*' as every 10th dot */ 
-      if ((cntr % (10*dispc)) == 0) dot = '*'; 
-      fputc(dot, outstream);
-      if ((cntr % (dpr*dispc)) == 0) 
-        fprintf(outstream, " %ld\n", cntr);
-      fflush(outstream);
-    }
-}         
-
-int compare_int(const void *M1, const void *M2)
-{
-  int *B1;
-  int *B2;
-
-  B1 = (int *)M1;
-  B2 = (int *)M2;
-
-  return *B1 - *B2;
-}
-
-int compare_dbl(const void *M1, const void *M2)
-{
-  double *B1;
-  double *B2;
-
-  B1 = (double *)M1;
-  B2 = (double *)M2;
-
-  if (*B1 > *B2)
-    return 1;
-  else if (*B1 < *B2)
-    return -1;
-  else
-    return 0;
 }
