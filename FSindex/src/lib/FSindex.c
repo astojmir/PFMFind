@@ -172,10 +172,13 @@ FSINDX *FS_INDEX_create(const char *database, ULINT flen,
     /* Allocating */
     printf("Allocating bins ...\n");
 
-    for (j=0; j < FSI->no_bins; j++)
-      FSI->bin[j] = mallocec(FSI->max_bin_size[j] 
-			     * sizeof(SEQ_index_t));
-    
+    for (j=0; j < FSI->no_bins; j++) {
+      if (FSI->max_bin_size[j] > 0)
+	FSI->bin[j] = mallocec(FSI->max_bin_size[j] 
+			       * sizeof(SEQ_index_t));
+      else
+	FSI->bin[j] = NULL;
+    }
     /* Commiting */
     printf("Collecting fragments ...\n");
 
@@ -218,7 +221,8 @@ FSINDX *FS_INDEX_create(const char *database, ULINT flen,
 
 	  FSI->no_useqs += FSI->u_size[j];
 	  /* Allocate unique fragments */
-	  FSI->u[j] = callocec(FSI->u_size[j], sizeof(int));
+	  if (FSI->u_size[j] > 0)
+	    FSI->u[j] = callocec(FSI->u_size[j], sizeof(int));
 	  
 	  /* Fill unique array */
 	  
@@ -768,12 +772,29 @@ int FSTRANSF_comp_decr(const void *tr1, const void *tr2)
 /********************************************************************/ 
 /*      Processing functions                                        */
 /********************************************************************/ 
+
+/* NOTE: 
+   Most of the time is spent in processing functions themselves,
+   derefrencing pointers. It is obvious that much can be saved by
+   just making everything possible a global variable. We would then
+   only have to dereference to get n, N, u and bin.
+
+*/
 static
 void process_bin(PFUNC_ARGS *args, FS_SEQ_t bin0)
 {
-  FSINDX *FSI = args->FSI;  
-  ULINT n = FSI->u_size[bin0];
-  ULINT N = FSI->bin_size[bin0];
+
+  FSINDX *FSI;  
+  ULINT n;
+  ULINT N;
+  int *u;
+  ULINT *bin;
+  SEQUENCE_DB *s_db;
+  ULINT m;
+  void *M;
+  BIOSEQ *query;
+  HIT_LIST_t *HL;
+  int *eps;
   
   int i;
   int j;
@@ -781,35 +802,46 @@ void process_bin(PFUNC_ARGS *args, FS_SEQ_t bin0)
   BIOSEQ subject;
   int D_value;
 
+  FSI = args->FSI;  
+  n = FSI->u_size[bin0];
+  if (!n) return;
+
+  N = FSI->bin_size[bin0];
+  u = FSI->u[bin0];
+  bin = FSI->bin[bin0];
+  s_db = FSI->s_db;
+  m = FSI->m;
+  M = args->M;
+  query = args->query;
+  HL = args->HL;
+  eps = args->eps;
+
   for (i = 0; i < n; i++)
     {
-      j = FSI->u[bin0][i];
-      frag_offset = FSI->bin[bin0][j];
-      fastadb_get_Ffrag(FSI->s_db, FSI->m, &subject, frag_offset);
+      j = u[i];
+      frag_offset = bin[j];
+      fastadb_get_Ffrag(s_db, m, &subject, frag_offset);
 
-      if (SCORE_MATRIX_evaluate_max(args->M, args->query, &subject, 
-				    *(args->eps), &D_value))
+      if (SCORE_MATRIX_evaluate_max(M, query, &subject, 
+				    *eps, &D_value))
 	{
-	  HIT_LIST_count_useq_hit(args->HL, 1);
-	  HIT_LIST_insert_seq_hit(args->HL, &subject, (float) D_value); 
-	  HIT_LIST_count_seq_hit(args->HL, 1);
+	  HIT_LIST_count_useq_hit(HL, 1);
+	  HIT_LIST_insert_seq_hit(HL, &subject, (float) D_value); 
+	  HIT_LIST_count_seq_hit(HL, 1);
 	  j++;
-	  while ((j < N && i == n-1) || j < FSI->u[bin0][i+1])
+	  while ((j < N && i == n-1) || j < u[i+1])
 	    {
-	      HIT_LIST_count_seq_hit(args->HL, 1);
-	      frag_offset = FSI->bin[bin0][j];
-	      fastadb_get_Ffrag(FSI->s_db, FSI->m, &subject, 
-				frag_offset);
-	      HIT_LIST_insert_seq_hit(args->HL, &subject, 
-				      (float) D_value); 
+	      HIT_LIST_count_seq_hit(HL, 1);
+	      frag_offset = bin[j];
+	      fastadb_get_Ffrag(s_db, m, &subject, frag_offset);
+	      HIT_LIST_insert_seq_hit(HL, &subject, (float) D_value); 
 	      j++;
 	    }
-
+	  // #endif
 	}
-      HIT_LIST_count_seq_visited(args->HL,
-	i == n-1 ? N - FSI->u[bin0][i] :
-                   FSI->u[bin0][i+1]- FSI->u[bin0][i]);
-      HIT_LIST_count_useq_visited(args->HL, 1);
+      HIT_LIST_count_seq_visited(HL,
+	i == n-1 ? N - u[i] : u[i+1]- u[i]);
+      HIT_LIST_count_useq_visited(HL, 1);
     }
 }
 
@@ -839,21 +871,9 @@ void kNN_process_bin(PFUNC_ARGS *args, FS_SEQ_t bin0)
 	  HIT_LIST_count_useq_hit(args->HL, 1);
 	  *(args->eps) = 
 	    HIT_LIST_insert_seq_hit_queue(args->HL, &subject, 
-					  (float) D_value); 	  
+					  (float) D_value,
+					  bin0, i); 	  
 	  HIT_LIST_count_seq_hit(args->HL, 1);
-	  j++;
-	  while ((j < N && i == n-1) || j < FSI->u[bin0][i+1])
-	    {
-	      HIT_LIST_count_seq_hit(args->HL, 1);
-	      frag_offset = FSI->bin[bin0][j];
-	      fastadb_get_Ffrag(FSI->s_db, FSI->m, &subject, 
-				frag_offset);
-	      *(args->eps) = 
-		HIT_LIST_insert_seq_hit_queue(args->HL, &subject, 
-					      (float) D_value); 	  
-	      j++;
-	    }
-
 	}
       HIT_LIST_count_seq_visited(args->HL,
 	i == n-1 ? N - FSI->u[bin0][i] :
@@ -940,21 +960,9 @@ void profile_kNN_process_bin(PFUNC_ARGS *args, FS_SEQ_t bin0)
 	  HIT_LIST_count_useq_hit(args->HL, 1);
 	  *(args->eps) = 
 	    HIT_LIST_insert_seq_hit_queue(args->HL, &subject, 
-					  (float) D_value); 	  
+					  (float) D_value,
+					  bin0, i); 	  
 	  HIT_LIST_count_seq_hit(args->HL, 1);
-	  j++;
-	  while ((j < N && i == n-1) || j < FSI->u[bin0][i+1])
-	    {
-	      HIT_LIST_count_seq_hit(args->HL, 1);
-	      frag_offset = FSI->bin[bin0][j];
-	      fastadb_get_Ffrag(FSI->s_db, FSI->m, &subject, 
-				frag_offset);
-	      *(args->eps) = 
-		HIT_LIST_insert_seq_hit_queue(args->HL, &subject, 
-					      (float) D_value); 	  
-	      j++;
-	    }
-
 	}
       HIT_LIST_count_seq_visited(args->HL,
 	i == n-1 ? N - FSI->u[bin0][i] :
@@ -1001,13 +1009,14 @@ FSSRCH *FSSRCH_init(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
     FSS->args = mallocec(sizeof(PFUNC_ARGS));
     FSS->args->M = (void *) D;
     FSS->args->query = query;
-
+    FSS->args->HL = HL;
     if (HL == NULL)  
       FSS->args->HL = HIT_LIST_create(query, FSI->s_db, 
 			 SCORE_MATRIX_filename(D), D, 
 			 smatrix_eval, d0);
     else
-      HIT_LIST_reset(HL, query, FSI->s_db, SCORE_MATRIX_filename(D),
+      HIT_LIST_reset(FSS->args->HL, query, FSI->s_db, 
+		     SCORE_MATRIX_filename(D),
 		     D, smatrix_eval, d0);
 		  
     FSS->args->FSI = FSI;
@@ -1096,13 +1105,14 @@ FSSRCH *FSSRCH_profile_init(FSINDX *FSI, POS_MATRIX *PD,
     FSS->args = mallocec(sizeof(PFUNC_ARGS));
     FSS->args->M = PD;
     FSS->args->query = PD->query;
+    FSS->args->HL = HL;
     if (HL == NULL)  
       FSS->args->HL = 
 	HIT_LIST_create(PD->query, FSI->s_db, 
 			POS_MATRIX_filename(PD), PD, 
 			profile_eval, d0);
     else
-      HIT_LIST_reset(HL, PD->query, FSI->s_db, 
+      HIT_LIST_reset(FSS->args->HL, PD->query, FSI->s_db, 
 		     POS_MATRIX_filename(PD), 
 		     PD, profile_eval, d0);
 
@@ -1211,6 +1221,44 @@ void check_bins(FSSRCH *FSS, int dist, FS_SEQ_t cbin, long long AT,
   return;
 } 
 
+static 
+void pull_duplicates(FSINDX *FSI, HIT_LIST_t *HL)
+{
+  ULINT n;
+  ULINT N;
+  ULINT frag_offset;
+  BIOSEQ subject;
+  ULINT i;
+  ULINT j;
+  ULINT k;
+  ULINT M = HL->actual_seqs_hits;
+  SEQ_HIT_t *h;
+  ULINT bin0;
+  float val;
+
+  for (k=0; k < M; k++)
+    {
+      h = HIT_LIST_get_hit(HL, k);
+      bin0 = h->bin;
+      i = h->pos;
+      val = h->value;
+      n = FSI->u_size[bin0];
+      N = FSI->bin_size[bin0];
+
+      j = FSI->u[bin0][i] + 1;
+      while ((j < N && i == n-1) || j < FSI->u[bin0][i+1])
+	{
+	  HIT_LIST_count_seq_hit(HL, 1);
+	  frag_offset = FSI->bin[bin0][j];
+	  fastadb_get_Ffrag(FSI->s_db, FSI->m, &subject, 
+			    frag_offset);
+	  
+	  HIT_LIST_insert_seq_hit(HL, &subject, val); 
+	  j++;
+	}
+    }
+}
+
 /********************************************************************/ 
 /*      Search functions                                            */
 /********************************************************************/ 
@@ -1220,7 +1268,7 @@ HIT_LIST_t *FSSRCH_search(FSSRCH *FSS)
 {
   long long AT = 0; /* Allowed transformations */
   int k;
-
+  HIT_LIST_t *HL;
   /* Set all relevant AT bits to 1 */
   for (k=0; k < FSS->Tn; k++)
     BITSET(AT, k);
@@ -1240,13 +1288,16 @@ HIT_LIST_t *FSSRCH_search(FSSRCH *FSS)
 
   /* Pull out kNN sequences */
   if (FSS->kNN > 0)
-    HIT_LIST_sort_kNN(FSS->args->HL);
-
+    {
+      HIT_LIST_sort_kNN(FSS->args->HL);
+      pull_duplicates(FSS->args->FSI, FSS->args->HL);
+    }
   /* Convert scores */
 
   /* Cleanup */
+  HL = FSS->args->HL;
   FSSRCH_clean(FSS);
-  return FSS->args->HL;
+  return HL;
 }
 
 

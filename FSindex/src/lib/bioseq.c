@@ -49,7 +49,7 @@ int bioseq_parse(BIOSEQ *seq, char *filename, yn_bool_t defline)
     return 0;
 
   if (defline)
-    fprintf(out_stream, "%s\n", seq->id.defline);
+    fprintf(out_stream, ">%s\n", seq->id.defline);
   else
     fprintf(out_stream, ">%ld\n", seq->id.id_num);
 

@@ -45,9 +45,12 @@ void WRD_CNTR_sort_score(WRD_CNTR *wc, int wc_size);
 
 typedef struct 
 {
-  BIOSEQ *subject;
+  BIOSEQ subject;
   ULINT sequence_id;
   ULINT sequence_from;
+  ULINT sequence_to;
+  ULINT bin;
+  ULINT pos;
   int rejected;
   float value;
   double pvalue;
@@ -64,6 +67,9 @@ typedef int SEQ_HIT_PRINT_OPT_t;
 void SEQ_HIT_print(SEQ_HIT_t *hit, FILE *stream, 
 		   SEQ_HIT_PRINT_OPT_t options);
 
+void 
+SEQ_HIT_xml(SEQ_HIT_t *hit, FILE *fp, int i,
+	    SEQ_HIT_PRINT_OPT_t options);
 
 /********************************************************************/    
 /*                                                                  */
@@ -71,25 +77,33 @@ void SEQ_HIT_print(SEQ_HIT_t *hit, FILE *stream,
 /*                                                                  */
 /********************************************************************/    
 
-
   
 typedef enum {SIMILARITY, QUASI_METRIC} SIMILARITY_MEASURE_t;
 typedef enum {RANGE, K_NN, NET, FS_RANGE} SEARCH_TYPE_t;
 
 typedef struct
 {
-  BIOSEQ *query;
-  ULINT frag_len;
-  SEQUENCE_DB *s_db;
   KW_INDEX *KWI;
+
+  /* <db_stats> */
+  SEQUENCE_DB *s_db;
+
+  /* <index_stats> */
+  const char *index_name;
+  const char *alphabet;
+
+  /* <FS_query> */
+  ULINT frag_len;
+  SEARCH_TYPE_t srch_type;
+  BIOSEQ query;
   const char *matrix;
   void *M;
   eval_func *efunc;
   int range;
   int converted_range;
-  ULINT kNN;
-  const char *index_name;
-  const char *alphabet;
+  int kNN;
+ 
+  /* <FS_search_stats> */
   ULINT FS_seqs_total;
   ULINT FS_seqs_visited;
   ULINT FS_seqs_hits;
@@ -102,10 +116,13 @@ typedef struct
   double end_time;
   double search_time;
 
+  /* <FS_hits> */
   ULINT max_hits;
   ULINT actual_seqs_hits;
   ULINT accepted;
   SEQ_HIT_t *hits;
+
+  /* Priority queue */
   struct pqueue *p_queue;
   ULINT max_tmp_hits;
   ULINT no_tmp_hits;
@@ -151,12 +168,14 @@ void HIT_LIST_count_useq_hit(HIT_LIST_t *HIT_list, ULINT count);
 void HIT_LIST_insert_seq_hit(HIT_LIST_t *HIT_list, BIOSEQ *subject, 
 			     float value); 
 int HIT_LIST_insert_seq_hit_queue(HIT_LIST_t *HL, BIOSEQ *subject, 
-				  float value); 
+				  float value, ULINT bin, ULINT pos); 
 void HIT_LIST_stop_timer(HIT_LIST_t *HIT_list); 
 
 /* Printing */
 void HIT_LIST_print(HIT_LIST_t *HIT_list, FILE *stream, 
 		    HIT_LIST_PRINT_OPT_t *options);
+void HIT_LIST_xml(HIT_LIST_t *HL, FILE *fp, 
+		  HIT_LIST_PRINT_OPT_t *options);
 
 /* Element Access */
 ULINT HIT_LIST_get_seqs_hits(HIT_LIST_t *HIT_list);

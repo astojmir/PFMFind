@@ -109,7 +109,7 @@ void compute_log_odds(POS_MATRIX *PS)
 	{
 	  score = lambda * log(count[PM_M(i, j)] / 
 			       (count[PM_M(i, 0)] * bkgrnd[j]));
-	  PS->M[PM_M(i, j)] = (SSINT) rint(score);
+	  PS->M[PM_M(i, j)] = (SSINT) (score+0.5);
 	}
 }
 

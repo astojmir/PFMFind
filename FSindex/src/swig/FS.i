@@ -468,7 +468,7 @@ typedef struct
     seqn *Fseq;
     
     Fseq = mallocec(sizeof(seqn));
-    Fseq->seq = bioseq_copy(self->subject);
+    Fseq->seq = bioseq_copy(&self->subject);
     Fseq->free_flag = 1;
     Fseq->defline_flag = 1;
     return Fseq;
@@ -515,6 +515,10 @@ typedef struct
   void print_list(FILE *stream=stdout) {
     HIT_LIST_print(self, stream, NULL);
   } 
+  void print_xml(FILE *stream=stdout) {
+    HIT_LIST_xml(self, stream, 0);
+  }
+
   hit *get_hit(ULINT i) {
     return HIT_LIST_get_hit(self, i);
   }
@@ -523,7 +527,7 @@ typedef struct
     seqn *Fseq;
     
     Fseq = mallocec(sizeof(seqn));
-    Fseq->seq = bioseq_copy(self->query);
+    Fseq->seq = bioseq_copy(&self->query);
     Fseq->free_flag = 1;
     Fseq->defline_flag = 1;
     return Fseq;

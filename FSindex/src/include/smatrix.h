@@ -31,7 +31,7 @@ typedef struct
   SSINT pM[A_SIZE][P_SIZE];
   SSINT pMclosest[A_SIZE];
   SSINT SS[A_SIZE];
-  const char *filename;
+  char *filename;
   int similarity_flag;
   FS_PARTITION_t *ptable;
   double mean;
@@ -103,15 +103,18 @@ int SCORE_MATRIX_Gaussian_cutoff(SCORE_MATRIX_t *S, BIOSEQ *query,
 
  /* Evaluation of similarities, distances */
 MY_INLINE
-int SCORE_MATRIX_evaluate(SCORE_MATRIX_t *S, BIOSEQ *query,
-			  BIOSEQ *subject);
+int SCORE_MATRIX_evaluate(SCORE_MATRIX_t *S, 
+			  const BIOSEQ *query,
+			  const BIOSEQ *subject);
 MY_INLINE
 int SCORE_MATRIX_evaluate_min(SCORE_MATRIX_t *S, 
-			      BIOSEQ *query, BIOSEQ *subject,
+			      const BIOSEQ *query, 
+			      const BIOSEQ *subject,
 				int Tmin, int *value);
 MY_INLINE
 int SCORE_MATRIX_evaluate_max(SCORE_MATRIX_t *S, 
-			      BIOSEQ *query, BIOSEQ *subject,
+			      const BIOSEQ *query, 
+			      const BIOSEQ *subject,
 			      int Tmax, int *value);
 MY_INLINE
 int SCORE_MATRIX_verify_pos(SCORE_MATRIX_t *D, BIOSEQ *query,
@@ -172,13 +175,14 @@ void SCORE_MATRIX_get_meanvar(SCORE_MATRIX_t *S, double *mean,
  /* Evaluation of similarities, distances */
 
 MY_INLINE
-int SCORE_MATRIX_evaluate(SCORE_MATRIX_t *S, BIOSEQ *query,
-			  BIOSEQ *subject)
+int SCORE_MATRIX_evaluate(SCORE_MATRIX_t *S, const BIOSEQ *query,
+			  const BIOSEQ *subject)
 {
   UINT_t i = query->len - 1;
   int H = 0;
   char *q = query->start;
   char *s = subject->start;
+
 #if 0
   for(; i--; )
 #endif
@@ -189,7 +193,8 @@ int SCORE_MATRIX_evaluate(SCORE_MATRIX_t *S, BIOSEQ *query,
 
 MY_INLINE
 int SCORE_MATRIX_evaluate_min(SCORE_MATRIX_t *S, 
-			      BIOSEQ *query, BIOSEQ *subject,
+			      const BIOSEQ *query, 
+			      const BIOSEQ *subject,
 			      int Tmin, int *value)
 {
   /* For now no particular optimisation */
@@ -202,7 +207,8 @@ int SCORE_MATRIX_evaluate_min(SCORE_MATRIX_t *S,
 
 MY_INLINE
 int SCORE_MATRIX_evaluate_max(SCORE_MATRIX_t *S, 
-			      BIOSEQ *query, BIOSEQ *subject,
+			      const BIOSEQ *query, 
+			      const BIOSEQ *subject,
 			      int Tmax, int *value)
 {
   /* For now no particular optimisation */

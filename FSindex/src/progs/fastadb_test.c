@@ -117,7 +117,7 @@ int main(int argc, char **argv)
     }
   if (type == 1)
     {
-      fastadb_argv[0].access_type = RANDOM;
+      fastadb_argv[0].access_type = RNDM;
       fastadb_argv[1].retrieve_deflines = NO;
       fastadb_test(db_name, fastadb_argt, fastadb_argv);
     }
@@ -134,7 +134,7 @@ int main(int argc, char **argv)
   if (type == 3)
     {
       fastadb_argv[0].retrieve_deflines = YES;
-      fastadb_argv[1].access_type = RANDOM;
+      fastadb_argv[1].access_type = RNDM;
       fastadb_test(db_name, fastadb_argt, fastadb_argv);
     }
   if (type == 4)

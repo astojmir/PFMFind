@@ -140,7 +140,7 @@ SCORE_MATRIX_t *SCORE_MATRIX_create(const char *filename,
   S = callocec(1, sizeof(SCORE_MATRIX_t));
   S->similarity_flag = 1;
   S->ptable = ptable;
-  S->filename = filename;
+  S->filename = strdup(filename);
 
   /* Load similarity matrix */
   j = 0;
@@ -186,6 +186,7 @@ SCORE_MATRIX_t *SCORE_MATRIX_create(const char *filename,
 /* Destructor */
 void SCORE_MATRIX_destroy(SCORE_MATRIX_t *Score_matrix)
 {
+  free(Score_matrix->filename);
   free(Score_matrix);
 }
 
@@ -395,7 +396,7 @@ SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dquasi(SCORE_MATRIX_t *S)
 
   D->similarity_flag = 0;
   D->ptable = S->ptable;
-  D->filename = S->filename;
+  D->filename = strdup(S->filename);
 
   for (i=0; i < A_SIZE; i++)
     {

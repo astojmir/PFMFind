@@ -15,20 +15,28 @@
 #define MAX_STORAGE_ROWS 2
 #define MAX_SEQUENCES 10000
 
-/* TO DO:
-
- - fragment functions
- - function descriptions here 
- - void fastadb_convert(SEQUENCE_DB *s_db, char ctable[256])
- - what can we do for non-char conversions ? - void * as start in
-                                               BIOSEQ + type field?
- - converting BIOSEQ itself to something is quite easy - maybe we
- should have another object which would contain such object: now we
- miss C++ and inheritance !! 
-*/
+/********************************************************************/    
+/********************************************************************/    
+/***                                                              ***/
+/***               fastadb                                        ***/ 
+/***                                                              ***/
+/********************************************************************/    
+/********************************************************************/    
 
 
-typedef enum {MEMORY, RANDOM, SEQUENTIAL} access_type_t;
+typedef struct
+{
+  const char *db_name;
+  const char *db_path;
+  ULINT length; 
+  ULINT no_seq; 
+  ULINT no_frags;
+  ULINT min_len; 
+  ULINT max_len; 
+} SEQDB_STATS;
+
+
+typedef enum {MEMORY, RNDM, SEQUENTIAL} access_type_t;
 
 typedef struct
 {
@@ -141,6 +149,68 @@ MY_INLINE
 int fastadb_get_Ffrag_seq(SEQUENCE_DB *s_db, BIOSEQ *frag, 
 			  ULINT seq_id, ULINT from, ULINT to);
 
+
+
+
+/********************************************************************/    
+/********************************************************************/    
+/***                                                              ***/
+/***               ufragdb                                        ***/ 
+/***                                                              ***/
+/********************************************************************/    
+/********************************************************************/    
+
+typedef struct 
+{
+  char *db_name;         /* Fasta database name                     */
+  int db_name_len;       /* Fasta db name length                    */
+  SEQUENCE_DB *sdb;      /* Fasta database                          */
+  char *abet;            /* Valid alphabet                          */  
+  int abet_len;          /* Alphabet string length                  */
+  ULINT frag_len;        /* Fragment length                         */
+  int skip;              /* How many fragments to skip (1=none)     */
+  FILE *fptr;            /* File handle                             */
+
+  ULINT *pts;            /* Offsets of unique sequences             */
+  ULINT pts_size;        /* Full Number of 'unique' points          */
+  ULINT upts_size;       /* Number of points without duplicates     */
+  ULINT dpts_size;       /* Number of points with duplicates        */
+  ULINT *dup_offset;     /* Offsets of duplicates in heap           */
+  ULINT *dup_heap;       /* Heap containing all the duplicates      */ 
+  ULINT dup_heap_size;			    
+  ULINT cur_pt;          /* Current point                           */
+
+  ULINT pts0;            /* Buffered read - starting index          */
+  ULINT pts1;            /* Buffered read - one past end index      */
+} UFRAG_DB;
+
+
+UFRAG_DB *ufragdb_init(void);
+
+void ufragdb_del(UFRAG_DB *udb);
+
+void ufragdb_create(UFRAG_DB *udb, const char *db_name, 
+		    ULINT frag_len, const char *abet, int skip);
+
+void ufragdb_load(UFRAG_DB *udb, const char *udb_name,
+		  int options);
+
+void ufragdb_save(UFRAG_DB *udb, const char *udb_name);
+
+ULINT ufragdb_get_nopts(UFRAG_DB *udb);
+
+int ufragdb_get_ufrag(UFRAG_DB *udb, ULINT i);
+
+void ufragdb_init_ufrags(UFRAG_DB *udb, ULINT i0);
+
+int ufragdb_get_next_ufrag(UFRAG_DB *udb);
+
+int ufragdb_get_dfrags(UFRAG_DB *udb, ULINT frag_offset, 
+		       ULINT **dfrags, ULINT *dsize);
+
+void ufragdb_print(UFRAG_DB *udb, FILE *stream);
+
+int cmp_ufrags(const void *S1, const void *S2);
 
 /********************************************************************/    
 /********************************************************************/    

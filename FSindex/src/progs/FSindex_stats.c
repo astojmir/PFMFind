@@ -4,6 +4,9 @@
 #include <stdlib.h>
 #include "FSindex.h"
 
+EXCEPTION FSexcept_array[1];
+EXCEPTION *except;
+struct exception_context the_exception_context[1];
 
 int FS_PARTITION_VERBOSE = 0;
 int SCORE_MATRIX_VERBOSE = 0;
@@ -25,9 +28,13 @@ int main(int argc, char **argv)
       exit(EXIT_FAILURE);
     }
   filename = argv[1];
-  fprintf(stdout, "Loading index... \n");
-  FSI = FS_INDEX_load(filename);
-  FS_INDEX_print_stats(FSI, stdout, 0, 0); 
-
+  Try {
+    FSI = FS_INDEX_load(filename);
+    FS_INDEX_print_stats(FSI, stdout, 2); 
+  }
+  Catch(except) {
+    fprintf(stderr, "Error %d: %s\n", except->code, except->msg);  
+    return EXIT_FAILURE;
+  }
  return EXIT_SUCCESS;
 }

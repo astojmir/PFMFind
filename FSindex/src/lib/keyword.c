@@ -22,7 +22,7 @@ KW_INDEX *KW_INDEX_load_txt(const char *basename)
   KW_INDEX *KWI = callocec(1, sizeof(KW_INDEX));
 
   char *linebuf = NULL;
-  int bufsize = 0;
+  size_t bufsize = 0;
   char *bptr;
   int len;
 

@@ -173,14 +173,17 @@ typedef struct
 #define DENORMAL 1
 
 /* Define to ask for infinity support, else undefine. */
-#define INFINITIES 1
+/* #define INFINITIES 1 */
+#undef INFINITIES
 
 /* Define to ask for support of numbers that are Not-a-Number,
    else undefine.  This may automatically define INFINITIES in some files. */
-#define NANS 1
+/* #define NANS 1 */
+#undef NANS
 
 /* Define to distinguish between -0.0 and +0.0.  */
-#define MINUSZERO 1
+/* #define MINUSZERO 1 */
+#undef MINUSZERO
 
 /* Define 1 for ANSI C atan2() function
    See atan.c and clog.c. */

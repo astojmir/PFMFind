@@ -32,7 +32,7 @@
 #define A_SIZE 32
 #define A_SIZE_MASK 31
 #define P_SIZE 256
-#define C_SIZE 8
+#define C_SIZE 32
 
 /* We store SEQ_index list in FS_BIN */
 typedef ULINT SEQ_index_t;

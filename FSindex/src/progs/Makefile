@@ -4,20 +4,23 @@ FSLIB=../lib/libFSindex.a
 
 all: $(FSLIB) \
      FSindex_create \
-     FSindex_stats \
-     FSindex_search \
-     FSindex_bin_size \
-     SS_search \
-     count_letters \
-     Sscan_eps_net \
-     print_matrices \
-     QD_ddist \
-     Zdist \
-     split_db \
-     check_db \
-     FSindex_show_bin \
-     fragdist \
-     KWindex_create
+     FSindex_rand_perf \
+     FSindex_rand_queries \
+     fastadb_sample \
+     FSindex_stats 
+#     FSindex_search \
+#     FSindex_bin_size \
+#     SS_search \
+#     count_letters \
+#     Sscan_eps_net \
+#     print_matrices \
+#     QD_ddist \
+#     Zdist \
+#     split_db \
+#     check_db \
+#     FSindex_show_bin \
+#     fragdist \
+#     KWindex_create
 #     print_doublets \
 #     FSindex_self_sim \
 #     FSindex_cluster \
@@ -43,6 +46,8 @@ cluster_test:
 
 FSindex_rand_perf:
 
+FSindex_rand_queries: 
+
 FSindex_search:
 
 FSindex_self_sim:  
@@ -67,7 +72,9 @@ Sscan_eps_net:
 
 count_letters:  
 
-fragdist:  
+fragdist:
+
+fastadb_sample: 
 
 clean:
 	for x in *; do [ -x $$x -a -f $$x.c ] && echo $$x; done\

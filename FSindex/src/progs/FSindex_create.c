@@ -7,6 +7,9 @@
 #include <unistd.h>
 #include "FSindex.h"
 
+EXCEPTION FSexcept_array[1];
+EXCEPTION *except;
+struct exception_context the_exception_context[1];
 
 int FS_PARTITION_VERBOSE = 0;
 int SCORE_MATRIX_VERBOSE = 0;
@@ -115,14 +118,19 @@ int main(int argc, char **argv)
 	}
     }
 
-  printf("Creating index...\n");
-  FSI = FS_INDEX_create(db_name, frag_len, alphabet, separator, skip); 
-
-  if (filename_flag)
-    {
-      printf("Saving index...\n");
-      FS_INDEX_save(FSI, filename);
-    }
-
+  Try {
+    printf("Creating index...\n");
+    FSI = FS_INDEX_create(db_name, frag_len, alphabet, separator, skip); 
+    FS_INDEX_print_stats(FSI, stdout, 0); 
+    if (filename_flag)
+      {
+	printf("Saving index...\n");
+	FS_INDEX_save(FSI, filename);
+      }
+  }
+  Catch(except) {
+    fprintf(stderr, "Error %d: %s\n", except->code, except->msg);  
+    return EXIT_FAILURE;
+  }
   return EXIT_SUCCESS;
 }

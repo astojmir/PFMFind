@@ -118,6 +118,9 @@ int split_base_dir(const char *full_name, char **basename,
 int cat_base_dir(char **full_name, const char *basename, 
 		 const char *dirname);
  
+/* XML tag prinitng */
+void xml_open_tag(FILE *stream, const char *tag, int indent,
+		  int eol);
 
 
 typedef struct
@@ -180,6 +183,16 @@ extern int getdelim(char **_lineptr, size_t *_n, int _delimiter, FILE *_stream);
       fflush((outstream));                         \
     }                                              \
   } while(0)        
+
+#define xml_open_tag(fp, tag, ind, eol) do {       \
+  fprintf((fp),"%*.*s<%s>",(ind),(ind),"",(tag));  \
+  if ((eol)) fprintf((fp), "\n");                  \
+  } while(0)                                       \
+
+#define xml_close_tag(fp, tag, ind) do {           \
+  fprintf((fp),"%*.*s</%s>\n",(ind),(ind),"",(tag));\
+  } while(0)                                       \
+
 
 
 #if 0

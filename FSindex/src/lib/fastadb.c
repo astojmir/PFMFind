@@ -5,7 +5,8 @@
 #include <time.h>
 #include <assert.h>
 #include "fastadb.h"
-
+#include "partition.h"
+#include "avl.h"
 
 /****************************************************************
  ****************************************************************/
@@ -388,7 +389,7 @@ int fastadb_count_next_seq(SEQUENCE_DB *s_db)
                  are:
 		 * MEMORY - store all sequences and comment lines in
 		            memory;
-		 * RANDOM - retrieve each sequence from the file as
+		 * RNDM - retrieve each sequence from the file as
 		            needed.
 		 * SEQUENTIAL - retrieve sequences one by one. Use
 		                single pass only. 
@@ -507,7 +508,7 @@ SEQUENCE_DB *fastadb_open(const char *db_name, fastadb_arg *argt,
       }
     if (s_db->access_type == MEMORY)
       s_db->keep_oldseqs = YES;
-    else if (s_db->access_type == RANDOM)
+    else if (s_db->access_type == RNDM)
       s_db->keep_oldseqs = NO;
     
     /* Allocate the storage heap */
@@ -535,7 +536,7 @@ SEQUENCE_DB *fastadb_open(const char *db_name, fastadb_arg *argt,
 	s_db->dbfile = NULL;
 	s_db->start_pts[s_db->no_seq] = s_db->length;
       }
-    else if (s_db->access_type == RANDOM)
+    else if (s_db->access_type == RNDM)
       {
 	while(1)
 	  {
@@ -581,6 +582,7 @@ SEQUENCE_DB *fastadb_open(const char *db_name, fastadb_arg *argt,
 */
 int fastadb_close(SEQUENCE_DB *s_db)
 {
+  if (s_db == NULL) return 1;
   /* Free heap storage */
   free(s_db->seq_data);
   free(s_db->deflines);
@@ -693,7 +695,7 @@ int fastadb_get_seq(SEQUENCE_DB *s_db, ULINT seq_no, BIOSEQ **seq)
     {
       s_db->current_seq++;
     }
-  else if (s_db->access_type == RANDOM)
+  else if (s_db->access_type == RNDM)
     {
       fseek(s_db->dbfile, s_db->offset[seq_no], SEEK_SET); 
       fastadb_load_next_seq(s_db);
@@ -742,7 +744,7 @@ int fastadb_get_next_seq(SEQUENCE_DB *s_db, BIOSEQ **seq)
 
       if (s_db->access_type == MEMORY)
 	s_db->current_seq++;
-      else if (s_db->access_type == RANDOM)
+      else if (s_db->access_type == RNDM)
 	fastadb_load_next_seq(s_db);
     }
   
@@ -884,4 +886,372 @@ int fastadb_get_frag(SEQUENCE_DB *s_db, BIOSEQ *frag, ULINT frag_no,
 
   bioseq_get_frag(s_db->seq+k, frag, r, l+s_db->min_len, frag_no);
   return 1;
+}
+
+
+
+/********************************************************************/    
+/********************************************************************/    
+/***                                                              ***/
+/***               ufragdb                                        ***/ 
+/***                                                              ***/
+/********************************************************************/    
+/********************************************************************/    
+
+
+int cmp_ufrags(const void *S1, const void *S2)
+{
+  ULINT *T1 = (ULINT *)S1;
+  ULINT *T2 = (ULINT *)S2;
+
+  if (*T1 > *T2)
+    return 1;
+  else if (*T1 < *T2)
+    return -1;
+  else
+    return 0;
+}
+
+
+UFRAG_DB *ufragdb_init(void)
+{
+  UFRAG_DB *udb = callocec(1, sizeof(UFRAG_DB));
+  return udb;
+}
+
+void ufragdb_del(UFRAG_DB *udb)
+{
+  if (udb == NULL) return;
+  free(udb->db_name);
+  if (udb->sdb != NULL)
+    fastadb_close(udb->sdb);
+  free(udb->abet);
+  if (udb->fptr != NULL)
+    fclose(udb->fptr);
+  free(udb->pts);
+  free(udb->dup_offset);
+  free(udb->dup_heap);
+  free(udb);
+  udb = NULL;
+}
+
+typedef struct
+{
+  ULINT id;
+  ULINT pt;
+} DUP_FRAG;
+
+static
+int compare_seqstr(const void *pa, const void *pb, void *param)
+{
+  ULINT len = *((ULINT *)param);
+  const char *a = pa;
+  const char *b = pb;
+
+  return memcmp(a, b, len);
+}
+
+static
+int cmp_dupfrag(const void *pa, const void *pb)
+{
+  const DUP_FRAG *a = pa;
+  const DUP_FRAG *b = pb;
+
+  if (a->pt > b->pt)
+    return 1;
+  else if (a->pt < b->pt)
+    return -1;
+  else
+    return 0;
+}
+
+#define DFRG_INCR 65536
+
+void ufragdb_create(UFRAG_DB *udb, const char *db_name, 
+		    ULINT frag_len, const char *abet, int skip)
+{
+  EXCEPTION *except;
+  FS_PARTITION_t *ptable = NULL;
+  fastadb_arg fastadb_argt[3];
+  fastadb_argv_t fastadb_argv[3];
+
+  BIOSEQ frag;
+  FS_SEQ_t FS_seq;
+  char *seqstr;
+  char **tree_item;
+  struct avl_table *AVLtree = NULL;
+
+  ULINT i, j, k;
+  ULINT no_frags;
+  ULINT one_percent_fragments;
+
+  DUP_FRAG *dfrg = NULL;
+  ULINT max_dfrg = DFRG_INCR;
+
+
+
+
+
+  /* We want to start in clean state in case something fails */
+  if (udb->frag_len > 0)
+    return;
+  
+  Try {
+    udb->db_name_len = strlen(db_name);
+    if (abet == NULL)
+      abet = "STAN#ILVM#KRDEQ#WFYH#GPC";
+    udb->abet_len = strlen(abet);
+    udb->db_name = strdup(db_name);
+    udb->abet = strdup(abet);
+    udb->frag_len = frag_len;
+    udb->skip = skip;
+    ptable = FS_PARTITION_create(abet, '#');
+ 
+    fastadb_argt[0] = ACCESS_TYPE;
+    fastadb_argt[1] = RETREIVE_DEFLINES;
+    fastadb_argt[2] = NONE;
+    fastadb_argv[0].access_type = MEMORY;
+    fastadb_argv[1].retrieve_deflines = YES;
+    udb->sdb = fastadb_open(udb->db_name, fastadb_argt, fastadb_argv); 
+
+    no_frags = fastadb_count_Ffrags(udb->sdb, frag_len);
+    one_percent_fragments = (ULINT) (((double) no_frags/skip) / 100);
+    fastadb_init_Ffrags(udb->sdb, frag_len);
+
+
+    /* Allocate to maximum possible number so we don't have to
+       grow the array later */
+    udb->pts = mallocec(no_frags * sizeof(ULINT));
+
+    dfrg = mallocec(max_dfrg * sizeof(DUP_FRAG));
+
+    AVLtree = avl_create(compare_seqstr, &frag_len, NULL);
+
+    j=0;
+    fprintf(stdout, "Sorting fragments.\n");
+    while (fastadb_get_next_Ffrag(udb->sdb, frag_len, &frag, &i, skip)) {
+      j++;
+      if (BIOSEQ_2_FS_SEQ(&frag, ptable, &FS_seq)) {
+	seqstr = frag.start;
+	tree_item = (char **)avl_probe(AVLtree, seqstr);	  
+
+	if ((*tree_item) == seqstr) {
+	  udb->pts[udb->pts_size++] = i;
+	}
+	else { 
+	  dfrg[udb->dup_heap_size].id = i;
+	  dfrg[udb->dup_heap_size++].pt = 
+	    (*tree_item) - udb->sdb->seq_data;
+	  if (udb->dup_heap_size >= max_dfrg) {
+	    max_dfrg += DFRG_INCR;
+	    dfrg = reallocec(dfrg, max_dfrg * sizeof(DUP_FRAG));
+	  }
+	}
+      }
+      // Progress bar
+      printbar(stdout, j+1, one_percent_fragments, 50);  
+    }  
+
+    avl_destroy (AVLtree, NULL);
+    AVLtree = NULL;
+
+    /* This algorithm works because the udb->pts array is already 
+       sorted. We sort dfrg first by pt (i.e. unique point the duplicate
+       is equal to). Then, we traverse it, swapping elements of udb->pts
+       as we go. Thus we get what we want, udb->pts whose first
+       udb->dpts_size elements represent fragments with duplicates, all
+       sorted by id.
+    */
+
+    qsort(dfrg, udb->dup_heap_size, sizeof(DUP_FRAG), cmp_dupfrag);
+
+    i=-1;
+    j=0;
+    
+    udb->dup_heap = mallocec(udb->dup_heap_size * sizeof(ULINT));
+
+    fprintf(stdout, "Copying duplicates.\n");
+    for (k=0; k < udb->dup_heap_size; k++) {
+      udb->dup_heap[k] = dfrg[k].id;
+      if (k==0 || dfrg[k].pt != dfrg[k-1].pt) {
+	i++;
+	while (udb->pts[j] != dfrg[k].pt)
+	  j++;
+	udb->pts[j++] = udb->pts[i];	
+	udb->pts[i] = dfrg[k].pt;
+      }
+    }
+    udb->dpts_size = i+1;
+    udb->upts_size = udb->pts_size - udb->dpts_size;
+
+    udb->dup_offset = mallocec(udb->dpts_size * sizeof(ULINT));
+    udb->dup_offset[0]=0;
+    for (i=0, k=1; k < udb->dup_heap_size; k++)
+      if (dfrg[k].pt != dfrg[k-1].pt) {
+	udb->dup_offset[++i] = k;
+      }
+
+    free(dfrg);
+    FS_PARTITION_destroy(ptable);
+  }
+  Catch(except) {
+    free(dfrg);
+    FS_PARTITION_destroy(ptable);
+    
+    free(udb->db_name);
+    if (udb->sdb != NULL)
+      fastadb_close(udb->sdb);
+    free(udb->abet);
+    if (udb->fptr != NULL)
+      fclose(udb->fptr);
+    free(udb->pts);
+    free(udb->dup_offset);
+    free(udb->dup_heap);
+    memset(udb, 0, sizeof(UFRAG_DB));
+
+    Throw except;
+  }
+
+  return;
+}
+
+void ufragdb_load(UFRAG_DB *udb, const char *udb_name,
+		  int options)
+{
+  fastadb_arg fastadb_argt[3];
+  fastadb_argv_t fastadb_argv[3];
+
+  fprintf(stdout, "Loading fragments.\n");
+  if (udb->fptr != NULL)
+    fclose(udb->fptr);
+  udb->fptr = fopen(udb_name, "rb");
+  if(udb->fptr == NULL)
+    Throw FSexcept(FOPEN_ERR, 
+		   "ufragdb_load(): Could not open the file %s.",
+		   udb_name);
+
+  fread(&udb->db_name_len, sizeof(int), 1, udb->fptr);
+  fread(&udb->abet_len, sizeof(int), 1, udb->fptr);
+  fread(&udb->frag_len, sizeof(ULINT), 1, udb->fptr);
+  fread(&udb->skip, sizeof(ULINT), 1, udb->fptr);
+  fread(&udb->pts_size, sizeof(ULINT), 1, udb->fptr);
+  fread(&udb->upts_size, sizeof(ULINT), 1, udb->fptr);
+  fread(&udb->dpts_size, sizeof(ULINT), 1, udb->fptr);
+  fread(&udb->dup_heap_size, sizeof(ULINT), 1, udb->fptr);
+  
+  udb->db_name = mallocec(udb->db_name_len+1);
+  udb->db_name[udb->db_name_len] = '\0';
+  udb->abet = mallocec(udb->abet_len+1);
+  udb->abet[udb->abet_len] = '\0';
+
+  fread(udb->db_name, 1, udb->db_name_len, udb->fptr);
+  fread(udb->abet, 1, udb->abet_len, udb->fptr);
+
+  fastadb_argt[0] = ACCESS_TYPE;
+  fastadb_argt[1] = RETREIVE_DEFLINES;
+  fastadb_argt[2] = NONE;
+  fastadb_argv[0].access_type = MEMORY;
+  fastadb_argv[1].retrieve_deflines = YES;
+    
+  udb->sdb = fastadb_open(udb->db_name, fastadb_argt, fastadb_argv); 
+
+  udb->pts = mallocec(udb->pts_size * sizeof(ULINT));
+  udb->dup_offset = mallocec(udb->dpts_size * sizeof(ULINT));
+  udb->dup_heap = mallocec(udb->dup_heap_size * sizeof(ULINT));
+
+  fread(udb->pts, sizeof(ULINT), udb->pts_size, udb->fptr);
+  fread(udb->dup_offset, sizeof(ULINT), udb->dpts_size, udb->fptr);
+  fread(udb->dup_heap, sizeof(ULINT), udb->dup_heap_size, udb->fptr);
+
+  fclose(udb->fptr);
+  udb->fptr = NULL;
+}
+
+void ufragdb_save(UFRAG_DB *udb, const char *udb_name)
+{
+  if (udb->fptr != NULL)
+    fclose(udb->fptr);
+  udb->fptr = fopen(udb_name, "wb");
+  if(udb->fptr == NULL)
+    Throw FSexcept(FOPEN_ERR, 
+		   "ufragdb_save(): Could not open the file %s.",
+		   udb_name);
+
+  fwrite(&udb->db_name_len, sizeof(int), 1, udb->fptr);
+  fwrite(&udb->abet_len, sizeof(int), 1, udb->fptr);
+  fwrite(&udb->frag_len, sizeof(ULINT), 1, udb->fptr);
+  fwrite(&udb->skip, sizeof(ULINT), 1, udb->fptr);
+  fwrite(&udb->pts_size, sizeof(ULINT), 1, udb->fptr);
+  fwrite(&udb->upts_size, sizeof(ULINT), 1, udb->fptr);
+  fwrite(&udb->dpts_size, sizeof(ULINT), 1, udb->fptr);
+  fwrite(&udb->dup_heap_size, sizeof(ULINT), 1, udb->fptr);
+  
+  fwrite(udb->db_name, 1, udb->db_name_len, udb->fptr);
+  fwrite(udb->abet, 1, udb->abet_len, udb->fptr);
+
+  fwrite(udb->pts, sizeof(ULINT), udb->pts_size, udb->fptr);
+  fwrite(udb->dup_offset, sizeof(ULINT), udb->dpts_size, udb->fptr);
+  fwrite(udb->dup_heap, sizeof(ULINT), udb->dup_heap_size, udb->fptr);
+
+  fclose(udb->fptr);
+  udb->fptr = NULL;
+}
+
+ULINT ufragdb_get_nopts(UFRAG_DB *udb)
+{
+  return udb->pts_size;
+}
+
+int ufragdb_get_ufrag(UFRAG_DB *udb, ULINT i)
+{
+  if (i >= udb->pts_size) 
+    return -1;
+  return udb->pts[i];
+}
+
+void ufragdb_init_ufrags(UFRAG_DB *udb, ULINT i0)
+{
+  if (i0 >= udb->pts_size)
+    udb->cur_pt = udb->pts_size;
+  else
+    udb->cur_pt = i0;
+}
+
+int ufragdb_get_next_ufrag(UFRAG_DB *udb)
+{
+  if (udb->cur_pt >= udb->pts_size) 
+    return -1;
+  return udb->pts[udb->cur_pt++];
+}
+
+int ufragdb_get_dfrags(UFRAG_DB *udb, ULINT frag_offset, 
+		       ULINT **dfrags, ULINT *dsize)
+{
+  ULINT *item;
+  ULINT i;
+
+  /* find if there is a duplicate with such offset */
+  item = bsearch(&frag_offset, udb->pts, udb->dpts_size,
+		 sizeof(ULINT), cmp_ufrags);
+
+  if (item == NULL) {
+    *dsize = 0;
+    *dfrags = NULL;
+    return 0;
+  }
+  i = item - udb->pts;  
+  *dsize = i==0 ? 0 : udb->dup_offset[i] - udb->dup_offset[i-1];
+  *dfrags = udb->dup_heap + udb->dup_offset[i];
+  return 1;
+}
+
+void ufragdb_print(UFRAG_DB *udb, FILE *stream)
+{
+  fprintf(stream, "\n*** UFRAG_DB Statistics ***\n");
+  fprintf(stream, "Database: %s\n", udb->db_name);
+  fprintf(stream, "Fragment length: %ld\n", udb->frag_len);
+  fprintf(stream, "Points: %ld\n", udb->pts_size);
+  fprintf(stream, "Unique points: %ld\n", udb->upts_size);
+  fprintf(stream, "Points with duplicates: %ld\n", udb->dpts_size);
+  fprintf(stream, "Total duplicates: %ld\n", udb->dup_heap_size);
 }

@@ -1,10 +1,10 @@
 # Double precision Cephes library
 # Makefile for unix or GCC
 
-CC = gcc
+override CC = gcc
 #CC = /a/gnu/linux/gcc/xgcc -B/a/gnu/linux/gcc/ -I/a/gnu/linux/gcc/include
 #CFLAGS = -g -O2 -Wall -fno-builtin # -ffloat-store
-CFLAGS = -g -O2 -Wall -fno-builtin
+override CFLAGS = -g -O2 -Wall -fno-builtin
 AR = ar
 RANLIB = ranlib
 INCS = mconf.h
@@ -44,7 +44,7 @@ mtst: mtst.o libmd.a
 #	coff2exe mtst
 
 mtst.o: mtst.c
-	$(CC) -O2 -Wall -c mtst.c
+	$(CC) -O2 -c mtst.c
 
 dtestvec: dtestvec.o libmd.a
 	$(CC) -o dtestvec dtestvec.o libmd.a

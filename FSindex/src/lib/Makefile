@@ -16,6 +16,9 @@ OBJECTS= misclib.o fastadb.o  bioseq.o partition.o FSindex.o hit_list.o \
 
 # blastlib.o quadtree.o clusters.o
 
+
+VPATH = cephes-double
+
 all: libFSindex.a libmd.a
 
 libFSindex.a: $(OBJECTS) $(INCLUDES)
@@ -24,13 +27,16 @@ libFSindex.a: $(OBJECTS) $(INCLUDES)
 
 libmd.a:
 	cd cephes-double; \
-	make -f makefile; \
-	cp libmd.a ..;\
+	make -f makefile libmd.a; \
+	mv libmd.a ..;\
 	cd ..; \
 
 clean:
 	rm -f *.o; \
 	rm -f *.a; 
+	cd cephes-double; \
+	make -f makefile clean; \
+	cd ..; \
 
 srcclean: clean
 	rm -f *~; 
