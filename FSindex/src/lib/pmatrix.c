@@ -39,8 +39,7 @@ void create_counts(POS_MATRIX *PS)
       }
 }
 
-#ifdef DEBUG
-static
+static inline
 void print_counts(POS_MATRIX *PS, FILE *stream)
 {
   int i, j;
@@ -70,7 +69,7 @@ void print_counts(POS_MATRIX *PS, FILE *stream)
 
 }
 
-static
+static inline
 void print_M(POS_MATRIX *PS, FILE *stream)
 {
   int i, j;
@@ -91,8 +90,6 @@ void print_M(POS_MATRIX *PS, FILE *stream)
       fprintf(stream, "\n");
     }
 }
-#endif /* DEBUG */
-
 
 static inline
 void compute_log_odds(POS_MATRIX *PS)
@@ -234,13 +231,19 @@ void POS_MATRIX_update(POS_MATRIX *PS)
 
   PS->pcnf(PS);
 
-#ifdef DEBUG
-  print_counts(PS, stdout);
-#endif
+  if (POS_MATRIX_VERBOSE)
+    {
+      fprintf(POS_MATRIX_STREAM, "\n*** COUNTS AND PSEUDOCOUNTS ***\n");
+      print_counts(PS, POS_MATRIX_STREAM);
+    }
+
   compute_log_odds(PS);
-#ifdef DEBUG
-  print_M(PS, stdout);
-#endif
+
+  if (POS_MATRIX_VERBOSE)
+    {
+      fprintf(POS_MATRIX_STREAM, "\n*** PROFILE SCORE MATRIX ***\n");
+      print_M(PS, POS_MATRIX_STREAM);
+    }
 
   /* Compute maximum similarities to pattern letters (subsets of
      alphabet partitions) */
@@ -374,9 +377,12 @@ void POS_MATRIX_equal_weights(POS_MATRIX *PS)
   for (i=0; i < PS->no_seqs; i++)
     PS->weight[i] = 1.0;
   create_counts(PS);
-#ifdef DEBUG
-  print_counts(PS, stdout);
-#endif
+
+  if (POS_MATRIX_VERBOSE)
+    {
+      fprintf(POS_MATRIX_STREAM, "\n*** RAW COUNTS ***\n");
+      print_counts(PS, POS_MATRIX_STREAM);
+    }
 }
 
 void POS_MATRIX_Henikoff_weights(POS_MATRIX *PS)
@@ -411,17 +417,19 @@ void POS_MATRIX_Henikoff_weights(POS_MATRIX *PS)
     PS->weight[k] *= w_sum;
 
   create_counts(PS);
-#ifdef DEBUG
-  /* Print Weights */
-  fprintf(stdout, "SEQUENCE WEIGHTS\n");
-  for (k=0; k < PS->no_seqs; k++)
+  if (POS_MATRIX_VERBOSE)
     {
-      fprintf(stdout, "%.*s %6.2f\n", (int) PS->len, PS->seq[k].start,
-	      PS->weight[k]);
-    }  
-  fprintf(stdout, "\n\n");
-  print_counts(PS, stdout);
-#endif
+      /* Print Weights */
+      fprintf(POS_MATRIX_STREAM, "\nSEQUENCE WEIGHTS\n");
+      for (k=0; k < PS->no_seqs; k++)
+	{
+	  fprintf(POS_MATRIX_STREAM, "%.*s %6.2f\n", (int) PS->len,
+		  PS->seq[k].start, PS->weight[k]);
+	}  
+      fprintf(POS_MATRIX_STREAM, "\n\n");
+      fprintf(POS_MATRIX_STREAM, "\n*** WEIGHTED COUNTS ***\n");
+      print_counts(PS, POS_MATRIX_STREAM);
+    }
 }
 
 /* Read, Write */

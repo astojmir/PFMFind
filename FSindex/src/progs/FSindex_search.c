@@ -12,6 +12,8 @@ int FS_PARTITION_VERBOSE = 0;
 int SCORE_MATRIX_VERBOSE = 0;
 int FS_INDEX_VERBOSE = 0;
 int FS_INDEX_PRINT_BAR = 1;
+int POS_MATRIX_VERBOSE = 0;
+FILE *POS_MATRIX_STREAM;
 
 static 
 void print_help(const char *progname)
@@ -45,6 +47,7 @@ void print_help(const char *progname)
 	  "\n"
 	  "Profile Pseudo-count Options (only if -p used):\n"
 	  "-A  x   Add x pseudo counted sequences (Default = 20.0)\n"
+	  "-v      Verbose output\n"
 	  "\n"
 	  ,progname);
 }
@@ -103,9 +106,9 @@ int main(int argc, char **argv)
 
 
 
-
+  POS_MATRIX_STREAM = stdout;
   while ((c = getopt(argc, argv, 
-		     "F:M:s:d:q:p:i:o:I:L:S:f:A:")) != EOF)
+		     "F:M:s:d:q:p:i:o:I:L:S:f:A:v")) != EOF)
     switch (c) 
       {
       case 'F':
@@ -148,6 +151,7 @@ int main(int argc, char **argv)
 		    "Could not open output file %s!\n", out_file);
 	    exit(EXIT_FAILURE);
 	  }
+	POS_MATRIX_STREAM = out_stream;
 	break;
       case 'L':
 	lambda = atof(optarg);
@@ -165,7 +169,9 @@ int main(int argc, char **argv)
 	cutoff2 = atoi(optarg);
 	cutoff2_flag++;
 	break;
-
+      case 'v':
+	POS_MATRIX_VERBOSE = 1;
+	break;
       case '?':
       default:
 	errflg++;
