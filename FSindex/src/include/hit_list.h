@@ -1,15 +1,12 @@
 #ifndef _HIT_LIST_H
 #define _HIT_LIST_H
 
-#include "misclib.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "expat.h"
 #include "fastadb.h"
-#ifdef USE_MPATROL
-#include <mpatrol.h>
-#endif
+#include "smatrix.h"
+#include "misclib.h"
 
 /********************************************************************/    
 /********************************************************************/    
@@ -33,7 +30,8 @@ typedef struct
   ULINT sequence_to;
   ULINT bin;
   ULINT pos;
-  float value;
+  int dist;
+  int sim;
 } SEQ_HIT_t;
 
 /* This type is presently not used */
@@ -52,10 +50,6 @@ SEQ_HIT_xml(SEQ_HIT_t *hit, FILE *fp, int i,
 /*                                                                  */
 /********************************************************************/    
 
-  
-typedef enum {SIMILARITY, QUASI_METRIC} SIMILARITY_MEASURE_t;
-typedef enum {RANGE, K_NN, NET, FS_RANGE} SEARCH_TYPE_t;
-
 typedef struct
 {
 
@@ -71,17 +65,15 @@ typedef struct
 
   /* index_stats */
   char *index_name;
-  char *alphabet;
+  char **sepn;
+  int len;
 
   /* FS_query */
-  ULINT frag_len;
-  SEARCH_TYPE_t srch_type;
   BIOSEQ query;
-  char *matrix;
-  void *M;
-  eval_func *efunc;
-  int range;
-  int converted_range;
+  SCORE_MATRIX *M;
+  int conv_type;
+  int sim_range;
+  int dist_range;
   int kNN;
  
   /* FS_search_stats */
@@ -101,16 +93,8 @@ typedef struct
   /* FS_hits */
   ULINT max_hits;
   ULINT actual_seqs_hits;
-  ULINT accepted;
   SEQ_HIT_t *hits;
 
-  /* Priority queue */
-  struct pqueue *p_queue;
-  ULINT max_tmp_hits;
-  ULINT no_tmp_hits;
-  SEQ_HIT_t *tmp_hits;
-
-  
   int alloc_seqs;
 } HIT_LIST_t;
 
@@ -118,35 +102,43 @@ typedef struct
 typedef int HIT_LIST_PRINT_OPT_t;
 
 /* Main constructor */
-HIT_LIST_t *HIT_LIST_create(BIOSEQ *query, SEQUENCE_DB *s_db, 
-			    const char *matrix, void *M,
-			    eval_func *efunc, int range);
+HIT_LIST_t *HIT_LIST_create(BIOSEQ *query, SEQUENCE_DB *s_db,
+			    SCORE_MATRIX *M, int range, int kNN,
+			    int conv_type);
+
 /* Reset list */
 void HIT_LIST_reset(HIT_LIST_t *HL, BIOSEQ *query, 
-		    SEQUENCE_DB *s_db, const char *matrix, 
-		    void *M, eval_func *efunc, int range);
+		    SEQUENCE_DB *s_db, SCORE_MATRIX *M, 
+		    int range, int kNN, int conv_type);
+
+void HIT_LIST_index_data(HIT_LIST_t *HL, char *index_name,
+			 char **sepn, int len,
+			 ULINT FS_seqs_total,
+			 ULINT index_seqs_total,
+			 ULINT useqs_total);
 
 /* Destructor */
-void HIT_LIST_destroy(HIT_LIST_t *HIT_list);
+void HIT_LIST_destroy(HIT_LIST_t *HL);
+void HIT_LIST_cleanup(HIT_LIST_t *HL);
+
+/* Counts */
+void HIT_LIST_count_FS_seq_visited(HIT_LIST_t *HL, ULINT count);
+void HIT_LIST_count_FS_seq_hit(HIT_LIST_t *HL, ULINT count);
+void HIT_LIST_count_seq_visited(HIT_LIST_t *HL, ULINT count);
+void HIT_LIST_count_seq_hit(HIT_LIST_t *HL, ULINT count);
+void HIT_LIST_count_useq_visited(HIT_LIST_t *HL, ULINT count);
+void HIT_LIST_count_useq_hit(HIT_LIST_t *HL, ULINT count);
 
 /* Insertion */
-void HIT_LIST_count_FS_seq_visited(HIT_LIST_t *HIT_list, ULINT count);
-void HIT_LIST_count_FS_seq_hit(HIT_LIST_t *HIT_list, ULINT count);
-void HIT_LIST_count_seq_visited(HIT_LIST_t *HIT_list, ULINT count);
-void HIT_LIST_count_seq_hit(HIT_LIST_t *HIT_list, ULINT count);
-void HIT_LIST_count_useq_visited(HIT_LIST_t *HIT_list, ULINT count);
-void HIT_LIST_count_useq_hit(HIT_LIST_t *HIT_list, ULINT count);
-
-void HIT_LIST_insert_seq_hit(HIT_LIST_t *HIT_list, BIOSEQ *subject, 
-			     float value); 
-int HIT_LIST_insert_seq_hit_queue(HIT_LIST_t *HL, BIOSEQ *subject, 
-				  float value, ULINT bin, ULINT pos); 
-void HIT_LIST_stop_timer(HIT_LIST_t *HIT_list); 
+void HIT_LIST_insert_hit(HIT_LIST_t *HL, BIOSEQ *subject, 
+			 int dist, int sim); 
+void HIT_LIST_stop_timer(HIT_LIST_t *HL); 
 
 /* Printing */
-void HIT_LIST_print(HIT_LIST_t *HIT_list, FILE *stream, 
+void HIT_LIST_print(HIT_LIST_t *HL, FILE *stream, 
 		    HIT_LIST_PRINT_OPT_t *options);
 
+#if 0
 /* XML routines */
 #define MAX_CHILDREN 15
 typedef enum {NOVAL, CHAR, SHORT, LONG, FLOAT, DOUBLE} val_type;
@@ -195,31 +187,38 @@ void HIT_LIST_XML_CharacterDataHandler(void *userData,
 				       int len);
 
 HIT_LIST_t *HIT_LIST_parse_xml(FILE *stream);
+#endif
 
 /* Element Access */
-ULINT HIT_LIST_get_seqs_hits(HIT_LIST_t *HIT_list);
-SEQ_HIT_t *HIT_LIST_get_hit(HIT_LIST_t *HIT_list, ULINT i);
-void HIT_LIST_set_kNN(HIT_LIST_t *HIT_list, ULINT kNN);
-void HIT_LIST_set_converted_range(HIT_LIST_t *HIT_list, int crange);
-void HIT_LIST_set_index_data(HIT_LIST_t *HIT_list, 
-			     const char *index_name,
-			     const char *alphabet,
-			     ULINT frag_len,
-			     ULINT FS_seqs_total,
-			     ULINT index_seqs_total,
-			     ULINT useqs_total);
-
-void HIT_LIST_get_hit_seqs(HIT_LIST_t *HIT_list, BIOSEQ **seqs,
-			   int cutoff, int *n, int *max_n);
+ULINT HIT_LIST_get_seqs_hits(HIT_LIST_t *HL);
+SEQ_HIT_t *HIT_LIST_get_hit(HIT_LIST_t *HL, ULINT i);
 
 /* Sorting */
-void HIT_LIST_sort_decr(HIT_LIST_t *HIT_list);
-void HIT_LIST_sort_incr(HIT_LIST_t *HIT_list);
-void HIT_LIST_sort_by_sequence(HIT_LIST_t *HIT_list);
-void HIT_LIST_sort_kNN(HIT_LIST_t *HL);
+void HIT_LIST_sort_decr(HIT_LIST_t *HL);
+void HIT_LIST_sort_incr(HIT_LIST_t *HL);
+void HIT_LIST_sort_by_sequence(HIT_LIST_t *HL);
 
-#if 0 /* Z-scores */
-void HIT_LIST_Zscores(HIT_LIST_t *HL);
-#endif
+
+/********************************************************************/    
+/*                    Counting Macros                               */ 
+/********************************************************************/    
+
+#define HIT_LIST_count_FS_seq_visited(HL, count) \
+  (HL)->FS_seqs_visited += (count)
+
+#define HIT_LIST_count_FS_seq_hit(HL, count)     \
+  (HL)->FS_seqs_hits += (count)
+
+#define HIT_LIST_count_seq_visited(HL, count)    \
+  (HL)->seqs_visited += (count)
+
+#define HIT_LIST_count_seq_hit(HL, count)        \
+  (HL)->seqs_hits += (count)
+
+#define HIT_LIST_count_useq_visited(HL, count)   \
+  (HL)->useqs_visited += (count);
+
+#define HIT_LIST_count_useq_hit(HL, count)       \
+  (HL)->useqs_hits += (count);
 
 #endif

@@ -1,12 +1,9 @@
-#include "misclib.h"
-#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <math.h>
-
-
+#include "misclib.h"
 
 EXCEPTION *FSexcept(int code, const char *fmt, ...)
 {
@@ -292,7 +289,96 @@ int seedhist_print(SEED_HIST *hist, FILE *stream)
 /* ************* End of seedhist module *********** */
 
 
+void fwrite_string(char *s, FILE *fp) 
+{
+  int len = strlen(s) + 1;    
+  fwrite(&len, sizeof(int), 1, fp);           
+  fwrite(s, sizeof(char), len, fp);           
+} 
 
+void fread_string(char **s, FILE *fp)
+{
+  int len;                                        
+  fread(&len, sizeof(int), 1, fp);            
+  *s = mallocec(len);                         
+  fread(*s, sizeof(char), len, fp);           
+}
+
+
+int compare_int(const void *M1, const void *M2)
+{
+  const int *i1 = M1;
+  const int *i2 = M2;
+  if (*i1 > *i2)
+    return 1;
+  else if (*i1 < *i2)
+    return -1;
+  else
+    return 0;
+}
+
+int compare_char(const void *M1, const void *M2)
+{
+  const char *i1 = M1;
+  const char *i2 = M2;
+  if (*i1 > *i2)
+    return 1;
+  else if (*i1 < *i2)
+    return -1;
+  else
+    return 0;
+}
+
+int compare_dbl(const void *M1, const void *M2)
+{
+  const double *i1 = M1;
+  const double *i2 = M2;
+  if (*i1 > *i2)
+    return 1;
+  else if (*i1 < *i2)
+    return -1;
+  else
+    return 0;
+}
+
+int check_word_alphabet(const char *word, int word_len,
+			const char *alphabet, int alphabet_len)
+{
+  /* Checks if all letters from word belong to alphabet.
+     alphabet must be sorted using compare_char */
+  int i;
+
+  for (i=0; i < word_len; i++, word++) 
+    if (bsearch(word, alphabet, alphabet_len, 1, 
+		compare_char) == NULL)
+      return 0;
+
+  return 1;
+}
+
+#define ABSPRINTF_BUF 256
+void absprintf(char **buf, int *size, int *len, const char *fmt, ...)
+{
+  va_list ap;
+  int r; 
+  int n;
+
+  if (*buf == NULL) {
+    *buf = mallocec(ABSPRINTF_BUF);
+    *size = ABSPRINTF_BUF;
+    *len = 0;
+  }
+  r = *size - *len;
+  va_start(ap, fmt);
+  n = vsnprintf(*buf+*len, r, fmt, ap);
+  if (n >= r) {
+    *size += max(ABSPRINTF_BUF, n+1-r);
+    *buf = reallocec(*buf, *size);
+    vsnprintf(*buf+*len, n+1, fmt, ap);
+  }
+  *len += n;
+  va_end(ap);
+} 
 
 
 
@@ -320,7 +406,7 @@ int seedhist_print(SEED_HIST *hist, FILE *stream)
 
 /* First implementation by Alain Magloire */
 
-ssize_t
+int
 getline (char **lineptr, size_t *n, FILE *stream)
 {
   return getdelim (lineptr, n, '\n', stream);
@@ -331,7 +417,7 @@ getline (char **lineptr, size_t *n, FILE *stream)
 /* Default value for line length.  */
 static const int line_size = 128;
 
-ssize_t
+int
 getdelim (char **lineptr, size_t *n, int delim, FILE *stream)
 {
   int indx = 0;

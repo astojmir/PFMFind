@@ -7,15 +7,73 @@
 #ifndef _SMATRIX_H
 #define _SMATRIX_H
 
-#include "misclib.h"
-#include <stdio.h>
-#include "fastadb.h"
 #include "partition.h"
-#include "hit_list.h"
-#ifdef USE_MPATROL
-#include <mpatrol.h>
-#endif
+#include <stdio.h>
+#include "misclib.h"
 
+
+/********************************************************************/    
+/*                                                                  */
+/* This module implements the scoring matrices, both the simple     */
+/* (alphabet) and positional (profiles). All functions (except      */
+/* constructors, destructors or similar) are implemented as member  */
+/* function pointers so that different functions can be assigned    */
+/* according to the type.                                           */
+/*                                                                  */
+/* Members:                                                         */
+/*                                                                  */
+/* - Mtype - matrix type {SCORE, POSITIONAL}                        */
+/* - Stype - score type  {SIMILARITY, DISTANCE}                     */
+/* - len   - length (set only if Mtype == POSITIONAL)               */
+/* - M     - actual values of the matrix (A_SIZE by A_SIZE if       */
+/*           Mtype == SCORE, len by A_SIZE if Mtype == POSITIONAL   */
+/* - qseq  - only if Mtype == POSITIONAL: a sequence with maximal   */
+/*           similarity or zero distance; may not be unique; length */
+/*           is len.                                                */
+/* - alphabet - alphabet used.                                      */
+/*                                                                  */
+/*                                                                  */
+/*                                                                  */
+/* Functions:                                                       */
+/*                                                                  */
+/* - eval_score(S, s1, s2, len2) - evaluates the score between      */
+/*     sequences s1 and s2, of length len2. If Mtype == POSITIONAL  */
+/*     s2 is ignored and the min(len, len2) is used for score       */
+/*     evaluation.                                                  */
+/* - set_conv_type(S, conv_type) - sets other conversion functions  */
+/*     according to the conv_type.                                  */
+/* - item_conv(S, c, i, j) - converts the item M[i][j] if Mtype ==  */
+/*     POSITIONAL or M[c & A_SIZE_MASK][j] if Mtype == SCORE.       */
+/* - range_conv(S, q, len1, r) - converts the range r. q : query    */
+/*     sequence, len1 its length - ignored if Mtype == POSITIONAL.  */
+/* - matrix_conv(S, q, len) - produces new matrix of desired type.  */
+/*                                                                  */
+/* Conversion type flag:                                            */
+/*                                                                  */
+/* Bitwise flag: first bit set (POSITIONAL) gives conversion to     */
+/*   positional matrix. Next two bits {QUASI, MAX, AVG} give ways   */
+/*   of conversion to distances. The parts that are inappropriate   */
+/*   are ignored.                                                   */
+/*                                                                  */
+/* Conversions and cases:                                           */
+/*                                                                  */
+/* 1. Mtype == POSITIONAL && Stype == DISTANCE                      */
+/*      No conversion performed for any conv_type.                  */
+/*                                                                  */
+/* 2. Mtype == SCORE && Stype == DISTANCE                           */
+/*      No conversion by default. Can convert to POSITIONAL matrix. */
+/*                                                                  */
+/* 3. Mtype == POSITIONAL && Stype == SIMILARITY                    */
+/*      By default, conv_flag is POS        + QUASI. This is the    */
+/*      only possible conversion.                                   */
+/*                                                                  */
+/* 4. Mtype == SCORE && Stype == SIMILARITY                         */
+/*      By default, conv_flag == QUASI. All other combinations are  */
+/*      allowed but range_conv is identity (no conversion possible) */
+/*      if MAX or AVG conversion is set. Thus, such radii are       */
+/*      interpreted as distance radii.                              */
+/*                                                                  */
+/********************************************************************/    
 
 /********************************************************************/    
 /********************************************************************/    
@@ -24,219 +82,48 @@
 /***                                                              ***/
 /********************************************************************/    
 /********************************************************************/    
+/* This is used so that '\0' maps to a very large distance and
+   so the sequences of shorter length get rejected */
+#define VERY_LARGE_DISTANCE 5000
 
-typedef struct 
+typedef enum {SCORE, POSITIONAL} MATRIX_TYPE;
+typedef enum {SIMILARITY, DISTANCE} SCORE_TYPE;
+
+#define POS 1
+#define QUASI 2
+#define MAX 4
+#define AVG 6
+
+typedef struct SM_s
 {
-  SSINT M[A_SIZE][A_SIZE];
-  SSINT pM[A_SIZE][P_SIZE];
-  SSINT pMclosest[A_SIZE];
-  SSINT SS[A_SIZE];
-  char *filename;
-  int similarity_flag;
-  FS_PARTITION_t *ptable;
-  double mean;
-  double var;
-} SCORE_MATRIX_t;
-
-/* Constructors */
-SCORE_MATRIX_t *SCORE_MATRIX_create(const char *filename,
-				    FS_PARTITION_t *ptable); 
-
-SCORE_MATRIX_t *SCORE_MATRIX_from_matrix(SSINT M[A_SIZE][A_SIZE],
-					 FS_PARTITION_t *ptable); 
-
-/* Destructor */
-void SCORE_MATRIX_destroy(SCORE_MATRIX_t *Score_matrix);
-
-/* Read, Write */
-int SCORE_MATRIX_write(SCORE_MATRIX_t *Score_matrix, FILE *stream); 
-SCORE_MATRIX_t *SCORE_MATRIX_read(FILE *stream);
-
-/* Set members */
-void SCORE_MATRIX_set_sim_flag(SCORE_MATRIX_t *Score_matrix, 
-			       char sim_flag);
-
-void SCORE_MATRIX_set_ptable(SCORE_MATRIX_t *Score_matrix, 
-			     FS_PARTITION_t *ptable);
-
-void SCORE_MATRIX_set_M(SCORE_MATRIX_t *S, char row, char col, 
-			SSINT val);
-void SCORE_MATRIX_set_SS(SCORE_MATRIX_t *S, char row, int val);
-
-/* Element Access + Properties */
-MY_INLINE
-void SCORE_MATRIX_get_meanvar(SCORE_MATRIX_t *S, double *mean, 
-			      double *var);
-
-int SCORE_MATRIX_max_entry(SCORE_MATRIX_t *Score_matrix);
-int SCORE_MATRIX_min_entry(SCORE_MATRIX_t *Score_matrix);
-int SCORE_MATRIX_max_entry_col(SCORE_MATRIX_t *Score_matrix, 
-			       int col);
-int SCORE_MATRIX_max_entry_row(SCORE_MATRIX_t *Score_matrix, 
-			       int row);
-int SCORE_MATRIX_min_entry_col(SCORE_MATRIX_t *Score_matrix, 
-			       int col);
-int SCORE_MATRIX_min_entry_row(SCORE_MATRIX_t *Score_matrix, 
-			       int row);
-
-int SCORE_MATRIX_entry(SCORE_MATRIX_t *Score_matrix,
-		       int row, int col); 
-
-int SCORE_MATRIX_p_entry(SCORE_MATRIX_t *Score_matrix,
-			 int row, int col);
+  MATRIX_TYPE Mtype;
+  SCORE_TYPE Stype;
+  int len;
+  int **M;
+  char *qseq;
+  char *alphabet;
+  int alen;
+  int conv_type;
+  int (*eval_score) (struct SM_s *, const char *, const char *, int);
+  int (*item_conv) (struct SM_s *, char, int, int);
+  int (*range_conv) (struct SM_s *, const char *, int, int);
+  void (*set_conv_type) (struct SM_s *, int);
+  struct SM_s * (*matrix_conv) (struct SM_s *, const char *, int);
+} SCORE_MATRIX;
 
 
-SSINT SCORE_MATRIX_get_M(SCORE_MATRIX_t *S, char row, char col);
-SSINT SCORE_MATRIX_get_pM(SCORE_MATRIX_t *S, char row, int group);
-SSINT SCORE_MATRIX_get_pMc(SCORE_MATRIX_t *S, char row);
-SSINT SCORE_MATRIX_get_SS(SCORE_MATRIX_t *S, char row);
+/* Constructors and destructor */
+SCORE_MATRIX *SCORE_MATRIX_init(int **M, int len, MATRIX_TYPE Mtype,
+				SCORE_TYPE Stype, char *alphabet);
 
- 
-/* Similarities to Distances, Quasi-metrics ... */
-SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dmax(SCORE_MATRIX_t *S);
-SCORE_MATRIX_t *SCORE_MATRIX_S_2_Davg(SCORE_MATRIX_t *S);
-SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dquasi(SCORE_MATRIX_t *S);
-void SCORE_MATRIX_convert(int s0, HIT_LIST_t *HL);
+SCORE_MATRIX *SCORE_MATRIX_copy(SCORE_MATRIX *S);
 
-int Davg_2_S(int Davg, int Sxx, int Syy);
-int Dquasi_2_S(int Dquasi, int Sxx);
+SCORE_MATRIX *SCORE_MATRIX_from_file(const char *filename);
 
-/* Scores and p-values */
-int SCORE_MATRIX_Gaussian_cutoff(SCORE_MATRIX_t *S, BIOSEQ *query,
-				 double *bkgrnd, double pcutoff);
+void SCORE_MATRIX_del(SCORE_MATRIX *S);
 
- /* Evaluation of similarities, distances */
-MY_INLINE
-int SCORE_MATRIX_evaluate(SCORE_MATRIX_t *S, 
-			  const BIOSEQ *query,
-			  const BIOSEQ *subject);
-MY_INLINE
-int SCORE_MATRIX_evaluate_min(SCORE_MATRIX_t *S, 
-			      const BIOSEQ *query, 
-			      const BIOSEQ *subject,
-				int Tmin, int *value);
-MY_INLINE
-int SCORE_MATRIX_evaluate_max(SCORE_MATRIX_t *S, 
-			      const BIOSEQ *query, 
-			      const BIOSEQ *subject,
-			      int Tmax, int *value);
-MY_INLINE
-int SCORE_MATRIX_verify_pos(SCORE_MATRIX_t *D, BIOSEQ *query,
-			    USINT *TT, int k, int cutoff);
+void SCORE_MATRIX_fprint(SCORE_MATRIX *S, FILE *fp);
 
-int smatrix_eval(void *M, BIOSEQ *query, BIOSEQ *subject);
-
-/* Printing */
-void SCORE_MATRIX_print(SCORE_MATRIX_t *S, FILE *stream, 
-			const char *title);
-
-/********************************************************************/    
-/********************************************************************/    
-/***                                                              ***/
-/***               INLINE FUNCTION DEFINITIONS                    ***/ 
-/***                                                              ***/
-/********************************************************************/    
-/********************************************************************/    
-
-/* Set members */
-
-#define SCORE_MATRIX_set_sim_flag(S, sim_flag) \
-        ((S)->similarity_flag = (sim_flag))
-
-#define SCORE_MATRIX_set_ptable(S, ptable) \
-        ((S)->ptable = (ptable))
-
-
-/* Get entries */ 
-
-#define SCORE_MATRIX_entry(S, row, col) \
-        ((S)->M[(row)][(col)])
-
-#define SCORE_MATRIX_p_entry(S, row, col) \
-        ((S)->pM[(row)][(col)])
-
-MY_INLINE
-void SCORE_MATRIX_get_meanvar(SCORE_MATRIX_t *S, double *mean, 
-			      double *var)
-{
-  *mean = S->mean;
-  *var = S->var;
-}
-
-#define SCORE_MATRIX_filename(S) \
-        ((S)->filename)
-
-
-/* Similarities to Distances, Quasi-metrics ... */
-
-#define Davg_2_S(Davg, Sxx, Syy) \
-        (((Sxx) + (Syy) - (Davg))/2)
-
-#define Dquasi_2_S(Dquasi, Sxx) \
-        ((Sxx) - (Dquasi))
-
-
- /* Evaluation of similarities, distances */
-
-MY_INLINE
-int SCORE_MATRIX_evaluate(SCORE_MATRIX_t *S, const BIOSEQ *query,
-			  const BIOSEQ *subject)
-{
-  UINT_t i = query->len - 1;
-  int H = 0;
-  char *q = query->start;
-  char *s = subject->start;
-
-#if 0
-  for(; i--; )
-#endif
-  for(i=0; i < query->len; i++)    
-    H += S->M[*(q+i) & A_SIZE_MASK][*(s+i) & A_SIZE_MASK]; 
-  return H;
-}
-
-MY_INLINE
-int SCORE_MATRIX_evaluate_min(SCORE_MATRIX_t *S, 
-			      const BIOSEQ *query, 
-			      const BIOSEQ *subject,
-			      int Tmin, int *value)
-{
-  /* For now no particular optimisation */
-  if ((*value = SCORE_MATRIX_evaluate(S, query, subject)) >= Tmin)
-    return 1;
-  else
-    return 0;
-}
-
-
-MY_INLINE
-int SCORE_MATRIX_evaluate_max(SCORE_MATRIX_t *S, 
-			      const BIOSEQ *query, 
-			      const BIOSEQ *subject,
-			      int Tmax, int *value)
-{
-  /* For now no particular optimisation */
-  if ((*value = SCORE_MATRIX_evaluate(S, query, subject)) <= Tmax)
-    return 1;
-  else
-    return 0;
-}
-
-MY_INLINE
-int SCORE_MATRIX_verify_pos(SCORE_MATRIX_t *D, BIOSEQ *query,
-			    USINT *TT, int k, int cutoff)
-{
-  int i;
-  int Sum = 0;
-
-  
-  for (i = 0; i < k; i++)
-    Sum += D->pMclosest[query->start[TT[i]] & A_SIZE_MASK];
-
-  if (Sum <= cutoff)
-    return 1;
-  else
-    return 0;
-}
+char *SCORE_MATRIX_sprint(SCORE_MATRIX *S);
 
 #endif /* #ifndef _SMATRIX_H */

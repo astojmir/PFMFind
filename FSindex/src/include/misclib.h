@@ -10,6 +10,10 @@
 #include <mpatrol.h>
 #endif
 
+#ifdef USE_DMALLOC
+#include <dmalloc.h>
+#endif
+
 #ifdef GCC_INLINE
 #define MY_INLINE extern inline
 #else
@@ -57,6 +61,7 @@ extern struct exception_context the_exception_context[1];
 
 
 
+void absprintf(char **buf, int *size, int *len, const char *fmt, ...);
 
 
 
@@ -106,12 +111,18 @@ void *reallocec(void *pt, long int size);
 int max(int a, int b);
 int min(int a, int b);
 
+void fwrite_string(char *s, FILE *fp);
+void fread_string(char **s, FILE *fp);
+
 void printbar(FILE *outstream, ULINT cntr, ULINT dispc, 
 	      USINT dpr);
 
 int compare_int(const void *M1, const void *M2);
+int compare_char(const void *M1, const void *M2);
 int compare_dbl(const void *M1, const void *M2);
 
+int check_word_alphabet(const char *word, int word_len,
+			const char *alphabet, int alphabet_len);
 
 /* Directory names */
 int split_base_dir(const char *full_name, char **basename, 
@@ -153,12 +164,11 @@ int seedhist_print(SEED_HIST *hist, FILE *stream);
         ((hist)->unattainable_pts++)
 
 
-
-
 /* Getline implementation  from mailutils */
 extern int getline(char **_lineptr, size_t *_n, FILE *_stream);
 
 extern int getdelim(char **_lineptr, size_t *_n, int _delimiter, FILE *_stream);
+
 
 /********************************************************************/    
 /********************************************************************/    
@@ -167,6 +177,7 @@ extern int getdelim(char **_lineptr, size_t *_n, int _delimiter, FILE *_stream);
 /***                                                              ***/
 /********************************************************************/    
 /********************************************************************/    
+
 
 #define max(a, b)  ((a) > (b) ? (a) : (b))
 #define min(a, b)  ((a) < (b) ? (a) : (b))

@@ -1,12 +1,11 @@
-#include "misclib.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <assert.h>
 #include "fastadb.h"
 #include "partition.h"
 #include "avl.h"
+#include "misclib.h"
 
 /****************************************************************
  ****************************************************************/
@@ -450,7 +449,7 @@ SEQUENCE_DB *fastadb_open(const char *db_name, fastadb_arg *argt,
 
   Try {
 
-    s_db->db_name = db_name;
+    s_db->db_name = strdup(db_name);
     s_db->length = 0;
     s_db->no_seq = 0;
 
@@ -554,10 +553,12 @@ SEQUENCE_DB *fastadb_open(const char *db_name, fastadb_arg *argt,
     
     if (s_db->access_type != SEQUENTIAL)
       {
-	/* Trim memory segments */
+	/* Trim memory segments - we add 30 chars more to seq_data
+	   so that we can have fast fragment comparison near the end
+	*/
 	fastadb_reduce_array_size(s_db);
-	s_db->seq_data = reallocec(s_db->seq_data, s_db->seq_data_len);
-	s_db->seq_data_max_len = s_db->seq_data_len;
+	s_db->seq_data = reallocec(s_db->seq_data, s_db->seq_data_len+30);
+	s_db->seq_data_max_len = s_db->seq_data_len+30;
 	s_db->deflines = reallocec(s_db->deflines, s_db->deflines_len);
 	s_db->deflines_max_len = s_db->deflines_len;
       }
@@ -583,6 +584,7 @@ SEQUENCE_DB *fastadb_open(const char *db_name, fastadb_arg *argt,
 int fastadb_close(SEQUENCE_DB *s_db)
 {
   if (s_db == NULL) return 1;
+  free((char *)s_db->db_name);
   /* Free heap storage */
   free(s_db->seq_data);
   free(s_db->deflines);
@@ -888,8 +890,7 @@ int fastadb_get_frag(SEQUENCE_DB *s_db, BIOSEQ *frag, ULINT frag_no,
   return 1;
 }
 
-
-
+#ifdef UFRAGDB
 /********************************************************************/    
 /********************************************************************/    
 /***                                                              ***/
@@ -1255,3 +1256,4 @@ void ufragdb_print(UFRAG_DB *udb, FILE *stream)
   fprintf(stream, "Points with duplicates: %ld\n", udb->dpts_size);
   fprintf(stream, "Total duplicates: %ld\n", udb->dup_heap_size);
 }
+#endif /* #ifdef UFRAGDB */

@@ -1,3 +1,6 @@
+#ifdef USE_DMALLOC
+#include <dmalloc.h>
+#endif
 
 /*
  *  Priority queue structure

@@ -1,10 +1,9 @@
-#include "misclib.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <assert.h>
 #include "bioseq.h"
+#include "misclib.h"
 
 int cmp_bioseq(const void *S1, const void *S2)
 {

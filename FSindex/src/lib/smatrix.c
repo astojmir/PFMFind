@@ -4,671 +4,449 @@
 /*                                                                  */
 /********************************************************************/    
 
-#include "misclib.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
-#include <math.h>
 #include "partition.h"
 #include "smatrix.h"
-#include "normsinv.h"
-#include "hit_list.h"
+#include "misclib.h"
 
-/* Routines for computing distances to pattern letters (i.e. subsets
-   of alphabet partitions. */
-
-static int SM_psize;          /* Current partition size */
-static int SM_poffset;        /* Current partition offset */
-static SCORE_MATRIX_t *SM_S;  /* Score matrix    */
-static int SM_i;              /* Current Alphabet letter */
-static int SM_j;              /* Current Partition */
-
+/* Evaluation functions */
 static
-void pattern_similarity(int Score, int P, int pos)
+int score_eval(SCORE_MATRIX *S, const char *s1, const char *s2, int len1)
 {
-  int letter;
-  if (pos == SM_psize)
-    {
-      P += SM_poffset;
-      SM_S->pM[SM_i][P] = Score;
-      return;
-    }
-  pos++;
-  pattern_similarity(Score, P, pos);
+  int **MM = S->M;
+  int i;
+  int H = 0;
 
-  P = P | (1 << (pos-1));
-  letter = FS_PARTITION_get_letter(SM_S->ptable, SM_j, pos-1); 
-  letter = letter & A_SIZE_MASK;
-  if (Score < SM_S->M[SM_i][letter])
-    Score = SM_S->M[SM_i][letter];
-  pattern_similarity(Score, P, pos);
-  return;
+  for(i=0; i < len1; s1++, s2++, i++)    
+    H += MM[*s1 & A_SIZE_MASK][*s2 & A_SIZE_MASK]; 
+  return H;
 }
 
 static
-void pattern_distance(int Score, int P, int pos)
+int profile_eval(SCORE_MATRIX *S, const char *s1, const char *s2, int len1)
 {
-  int letter;
-  if (pos == SM_psize)
-    {
-      P += SM_poffset;
-      SM_S->pM[SM_i][P] = Score;
-      return;
-    }
-  pos++;
-  pattern_distance(Score, P, pos);
+  int **MM = S->M;
+  int i;
+  int H = 0;
+  int l = min(S->len, len1);
 
-  P = P | (1 << (pos-1));
-  letter = FS_PARTITION_get_letter(SM_S->ptable, SM_j, pos-1); 
-  letter = letter & A_SIZE_MASK;
-  if (Score > SM_S->M[SM_i][letter])
-    Score = SM_S->M[SM_i][letter];
-  pattern_distance(Score, P, pos);
-  return;
+  for(i=0; i < l; s1++, MM++, i++)    
+    H += (*MM)[*s1 & A_SIZE_MASK];
+  return H;
 }
 
+/* Item conversion functions */
 static
-void update_pM(SCORE_MATRIX_t *S, int i)
+int PD_item_conv(SCORE_MATRIX *S, char c, int i, int j)
 {
-  int j;
-  int j_offset;
-
-  SM_i = i;
-  for (SM_j=0; SM_j < S->ptable->no_partitions; SM_j++)
-    {
-      SM_S = S;
-      SM_psize = FS_PARTITION_get_size(S->ptable, SM_j);
-      SM_poffset =  FS_PARTITION_get_poffset(S->ptable, SM_j);
-      
-      /* Now traverse the binary tree representing the subsets and
-	 compute maximum similarities */
-      if (S->similarity_flag)
-	pattern_similarity(SHRT_MIN, 0, 0);
-      else
-	pattern_distance(SHRT_MAX, 0, 0);
-
-      SM_S->pM[SM_i][SM_poffset] =
-	SM_S->pM[SM_i][SM_poffset + (1 << SM_psize) - 1];
-    }
-
-  /* Compute maximum similarities to any other cluster */
-  if (S->similarity_flag)
-    S->pMclosest[i] = SHRT_MIN;
+  char cj = 64+j;
+  if (!bsearch(&cj, S->alphabet, S->alen, 1, compare_char))
+    return VERY_LARGE_DISTANCE;
   else
-    S->pMclosest[i] = SHRT_MAX;
-    
-  for (j=0; j < S->ptable->no_partitions; j++)
-    {
-      if (S->ptable->partition_table[i] != j)
-	{
-	  j_offset = FS_PARTITION_get_poffset(S->ptable, j); 
-	  if (S->similarity_flag)
-	    S->pMclosest[i] = max(S->pMclosest[i], 
-				  S->pM[i][j_offset]);
-	  else
-	    S->pMclosest[i] = min(S->pMclosest[i], 
-				  S->pM[i][j_offset]);
-	}
-    }
+    return S->M[i][j];
 }
 
-
-/* Main constructor */
-SCORE_MATRIX_t *SCORE_MATRIX_create(const char *filename,
-				    FS_PARTITION_t *ptable)
+static 
+int SD_item_conv(SCORE_MATRIX *S, char c, int i, int j)
 {
-  /* Warning: as it is, this routine is only guranteed to work with
-     BLOSUM62 */
+  char cj = 64+j;
+  if (!bsearch(&cj, S->alphabet, S->alen, 1, compare_char))
+    return VERY_LARGE_DISTANCE;
+  else
+    return S->M[c & A_SIZE_MASK][j];
+}
+
+static 
+int PS_item_conv(SCORE_MATRIX *S, char c, int i, int j)
+{
+  char cj = 64+j;
+  if (!bsearch(&cj, S->alphabet, S->alen, 1, compare_char))
+    return VERY_LARGE_DISTANCE;
+  else 
+    return S->M[i][S->qseq[i] & A_SIZE_MASK] - S->M[i][j];
+}
+
+static 
+int SS_item_conv_quasi(SCORE_MATRIX *S, char c, int i, int j)
+{
+  int k = c & A_SIZE_MASK;
+  char cj = 64+j;
+  if (!bsearch(&cj, S->alphabet, S->alen, 1, compare_char) ||
+      !bsearch(&c, S->alphabet, S->alen, 1, compare_char))
+    return VERY_LARGE_DISTANCE;
+  else 
+    return S->M[k][k] - S->M[k][j];
+}
+
+static 
+int SS_item_conv_max(SCORE_MATRIX *S, char c, int i, int j)
+{
+  int k = c & A_SIZE_MASK;
+  char cj = 64+j;
+  if (!bsearch(&cj, S->alphabet, S->alen, 1, compare_char) ||
+      !bsearch(&c, S->alphabet, S->alen, 1, compare_char))
+    return VERY_LARGE_DISTANCE;
+  else 
+    return max(S->M[k][k] - S->M[k][j], S->M[j][j] - S->M[j][k]);
+}
+
+static 
+int SS_item_conv_avg(SCORE_MATRIX *S, char c, int i, int j)
+{
+  int k = c & A_SIZE_MASK;
+  char cj = 64+j;
+  if (!bsearch(&cj, S->alphabet, S->alen, 1, compare_char) ||
+      !bsearch(&c, S->alphabet, S->alen, 1, compare_char))
+    return VERY_LARGE_DISTANCE;
+  else 
+    return S->M[k][k] - S->M[k][j] + S->M[j][j] - S->M[j][k];
+}
+
+/* Range conversion functions */
+static
+int id_range_conv(SCORE_MATRIX *S, const char *s, int len1, int r)
+{
+  return r;
+}
+
+static
+int SS_range_conv(SCORE_MATRIX *S, const char *s, int len1, int r)
+{
+  return score_eval(S, s, s, len1) - r;
+}
+
+static
+int PS_range_conv(SCORE_MATRIX *S, const char *s, int len1, int r)
+{
+  return profile_eval(S, S->qseq, NULL, S->len) - r;
+}
+ 
+/* Matrix conversion functions */
+static
+SCORE_MATRIX *S_matrix_conv(SCORE_MATRIX *S, const char *s, int len1)
+{
+  int i, j;
+  int **NM;
+  if (S->conv_type & POS) {
+    NM = mallocec(len1 * sizeof(int *));
+    for (i=0; i < len1; i++) {
+      NM[i] = mallocec(A_SIZE * sizeof(int));
+      for (j=0; j < A_SIZE; j++) 
+	NM[i][j] = S->item_conv(S, s[i], i, j);
+    }
+    return SCORE_MATRIX_init(NM, len1, POSITIONAL, DISTANCE,
+			     strdup(S->alphabet));
+  }
+  else {
+    NM = mallocec(A_SIZE * sizeof(int *));
+    for (i=0; i < A_SIZE; i++) {
+      NM[i] = mallocec(A_SIZE * sizeof(int));
+      for (j=0; j < A_SIZE; j++) 
+	NM[i][j] = S->item_conv(S, i+64, i, j);
+    }
+    return SCORE_MATRIX_init(NM, len1, SCORE, DISTANCE,
+			     strdup(S->alphabet));
+  }
+}
+
+static
+SCORE_MATRIX *P_matrix_conv(SCORE_MATRIX *S, const char *s, int len1)
+{
+  int i, j;
+  int **NM;
+  NM = mallocec(S->len * sizeof(int *));
+  for (i=0; i < S->len; i++) {
+    NM[i] = mallocec(A_SIZE * sizeof(int));
+    for (j=0; j < A_SIZE; j++) 
+      NM[i][j] = S->item_conv(S, 0, i, j);
+  }
+  return SCORE_MATRIX_init(NM, S->len, POSITIONAL, DISTANCE,
+			   strdup(S->alphabet));
+}
+
+/* Set conversion type functions */
+static
+void id_set_conv_type(SCORE_MATRIX *S, int conv_type)
+{
+  return;
+}
+
+static
+void SS_set_conv_type(SCORE_MATRIX *S, int conv_type)
+{
+  switch (conv_type & 6) {
+  case QUASI:
+    S->item_conv = SS_item_conv_quasi;
+    S->range_conv = SS_range_conv;
+    break;
+  case MAX:
+    S->item_conv = SS_item_conv_max;
+    S->range_conv = id_range_conv;
+    break;
+  case AVG:
+    S->item_conv = SS_item_conv_avg;
+    S->range_conv = id_range_conv;
+    break;
+  default:
+    conv_type = (S->conv_type & 6) | (conv_type & 1);
+  }
+  S->conv_type = conv_type & 7;
+}
+
+/* Constructors and destructor */
+SCORE_MATRIX *SCORE_MATRIX_init(int **M, int len, MATRIX_TYPE Mtype,
+				SCORE_TYPE Stype, char *a)
+{
+  /* M and alphabet are NOT hard copied - their pointers are just
+     assigned */
+
+  int i,j;
+  int k;
+  int l = strlen(a);
+  char *c;
+  SCORE_MATRIX *S;
+  
+  /* Check that each letter in alphabet appears only once */
+  qsort(a, l, 1, compare_char);
+  for (j=1; j < l; j++) 
+    if (a[j] == a[j-1]) 
+      return NULL;
+  
+  S = callocec(1, sizeof(SCORE_MATRIX));
+  S->M = M;
+  S->Mtype = Mtype;
+  S->Stype = Stype;
+  S->alphabet = a;
+  S->alen = l;
+  if (Mtype == SCORE) {
+    S->matrix_conv = S_matrix_conv;
+    S->eval_score = score_eval;
+    if (Stype == DISTANCE) {
+      S->conv_type = POS;
+      S->item_conv = SD_item_conv;
+      S->range_conv = id_range_conv;
+      S->set_conv_type = id_set_conv_type;
+    }
+    else { /* Stype == SIMILARITY */
+      S->conv_type = QUASI;
+      S->item_conv = SS_item_conv_quasi;
+      S->range_conv = SS_range_conv;
+      S->set_conv_type = SS_set_conv_type;
+    }
+  }
+  else { /* Mtype == POSITIONAL */
+    S->len = len;
+    S->eval_score = profile_eval;
+    S->qseq = mallocec(len+1);
+    S->qseq[len] = '\0';
+    if (Stype == DISTANCE) {
+      S->matrix_conv = NULL;
+      S->conv_type = 0;
+      S->item_conv = PD_item_conv;
+      S->range_conv = id_range_conv;
+      S->set_conv_type = id_set_conv_type;
+      /* Calculate qseq - should have letters with minimal dist (0)*/
+      for (i=0; i < len; i++) {
+	for (c=a, k=INT_MAX; *c; c++) {
+	  if (M[i][*c & A_SIZE_MASK] < k) {
+	    k = M[i][*c & A_SIZE_MASK];
+	    S->qseq[i] = *c;
+	  }
+	}
+      }
+    }
+    else { /* Stype == SIMILARITY */
+      S->matrix_conv = P_matrix_conv;
+      S->conv_type = QUASI;
+      S->item_conv = PS_item_conv;
+      S->range_conv = PS_range_conv;
+      S->set_conv_type = id_set_conv_type;
+      /* Calculate qseq */
+      for (i=0; i < len; i++) {
+	for (c=a, k=INT_MIN; *c; c++) {
+	  if (M[i][*c & A_SIZE_MASK] > k) {
+	    k = M[i][*c & A_SIZE_MASK];
+	    S->qseq[i] = *c;
+	  }
+	}
+      }
+    }
+  }
+  return S;
+}
+
+SCORE_MATRIX *SCORE_MATRIX_copy(SCORE_MATRIX *S)
+{
+  int i;
+  SCORE_MATRIX *T = callocec(1, sizeof(SCORE_MATRIX));
+  int ldim;
+
+  T->Mtype = S->Mtype;
+  T->Stype = S->Stype;
+  T->len = S->len;
+  T->alen = S->alen;
+  T->conv_type = S->conv_type;
+  T->eval_score = S->eval_score;
+  T->item_conv = S->item_conv;
+  T->range_conv = S->range_conv;
+  T->set_conv_type = S->set_conv_type;
+  T->matrix_conv = S->matrix_conv;
+
+  if (S->len == 0) {
+    ldim = A_SIZE;
+    T->qseq = NULL;
+  }
+  else {
+    ldim = S->len;
+    T->qseq = mallocec(ldim);
+    memcpy(T->qseq, S->qseq, ldim);
+  }
+
+  T->M = mallocec(ldim * sizeof(int *));
+  for (i=0; i < ldim; i++) {
+    T->M[i] = mallocec(A_SIZE * sizeof(int));
+    memcpy(T->M[i], S->M[i], A_SIZE * sizeof(int));
+  }
+
+  T->alphabet = strdup(S->alphabet);
+
+  return T;
+}
+
+SCORE_MATRIX *SCORE_MATRIX_from_file(const char *filename)
+{
+  /* Warning: as it is, this routine is only guaranteed to work with
+     BLOSUM62 - it can possibly be generalised */
 
 
   char linebuf[512]; /* line buffer - hopefully 512 bytes should be
 		       enough for now */
   FILE *stream = fopen(filename, "r");
-  int A[A_SIZE]; /* Alphabet table */
   int header_read = 0;
-  UINT_t i, j;
-  UINT_t row, col;
+  int i, j;
+  int row, col;
   int value;
   int field_width = 0;
-  SCORE_MATRIX_t *S;
+  int **M;
+  char *a;
 
   if (stream == NULL)
     Throw FSexcept(FOPEN_ERR,
-		   "SCORE_MATRIX_create():"
+		   "SCORE_MATRIX_from_file():"
 		   "Could not open file %s", filename);
 
-  S = callocec(1, sizeof(SCORE_MATRIX_t));
-  S->similarity_flag = 1;
-  S->ptable = ptable;
-  S->filename = strdup(filename);
+  M = mallocec(A_SIZE * sizeof(int *));
+  for (i=0; i < A_SIZE; i++)
+    M[i] = callocec(A_SIZE, sizeof(int));
+  a = mallocec(A_SIZE + 1);
 
   /* Load similarity matrix */
   j = 0;
-  while (fgets(linebuf,512,stream) != NULL)
-    {
-      if (linebuf[0] == '#') continue;
-      if (linebuf[0] == ' ' && !header_read)
-	{
-	  /* Determine field width */
-	  for(; linebuf[field_width] == ' '; field_width++);
-
-	  /* Load header */
-	  for (i=0; i < 23; i++)
-	    A[i] = linebuf[field_width+field_width*i]; 
-	  header_read = 1;
-	}
-      else
-	{
-	  /* Load data */
-	  row = A[j] & A_SIZE_MASK;
-	  for (i=0; i < 23; i++)
-	    {
-	      col = A[i] & A_SIZE_MASK;
-	      sscanf(linebuf+2+field_width*i, "%d", &value); 
-	      S->M[row][col] = value;
-	    }
-	  j++;
-	  if (j >= 23) break;
-	}
+  while (fgets(linebuf,512,stream) != NULL) {
+    if (linebuf[0] == '#') continue;
+    if (linebuf[0] == ' ' && !header_read) {
+      /* Determine field width */
+      for(; linebuf[field_width] == ' '; field_width++);
+      /* Load header */
+      for (i=0; i < 23; i++)
+	a[i] = linebuf[field_width+field_width*i]; 
+      header_read = 1;
     }
-  fclose(stream);
-
-  for (i=0; i < A_SIZE; i++)
-    {      
-      if (ptable->partition_table[i] == -1)
-	continue;     
-      S->SS[i] = S->M[i][i];
-      update_pM(S, i);
+    else {
+      /* Load data */
+      row = a[j] & A_SIZE_MASK;
+      for (i=0; i < 23; i++) {
+	col = a[i] & A_SIZE_MASK;
+	sscanf(linebuf+2+field_width*i, "%d", &value); 
+	M[row][col] = value;
+      }
+      j++;
+      if (j >= 23) break;
     }
-
-  return S;
-}
-
-SCORE_MATRIX_t *SCORE_MATRIX_from_matrix(SSINT M[A_SIZE][A_SIZE],
-					 FS_PARTITION_t *ptable)
-{
-  SCORE_MATRIX_t *S;
-  int i, j;
-  S = callocec(1, sizeof(SCORE_MATRIX_t));
-  S->similarity_flag = 1;
-  S->ptable = ptable;
-  S->filename = strdup("");
-
-  for (i=0; i < A_SIZE; i++) {
-    if (ptable->partition_table[i] == -1)
-      continue;     
-    for (j=0; j < A_SIZE; j++) {
-      S->M[i][j] = M[i][j];
-    }
-    S->SS[i] = S->M[i][i];
-    update_pM(S, i);
   }
-
-  return S;
+  fclose(stream);
+  a[23] = '\0';
+  return SCORE_MATRIX_init(M, 0, SCORE, SIMILARITY, a);
 }
 
-
-/* Destructor */
-void SCORE_MATRIX_destroy(SCORE_MATRIX_t *Score_matrix)
+void SCORE_MATRIX_del(SCORE_MATRIX *S)
 {
-  free(Score_matrix->filename);
-  free(Score_matrix);
+  int i;
+  int m = S->Mtype == SCORE ? A_SIZE : S->len;
+  for (i = 0; i < m; i++)
+    free(S->M[i]);
+  free(S->M);
+  if (S->qseq != NULL)
+    free(S->qseq);
+  free(S->alphabet);
+  free(S);
 }
-
-/* Read, Write */
-int SCORE_MATRIX_write(SCORE_MATRIX_t *Score_matrix, FILE *stream)
-{
-  fwrite(&(Score_matrix->M[0]), sizeof(SSINT), 
-	 A_SIZE * A_SIZE, stream);   
-  fwrite(&(Score_matrix->pM[0]), sizeof(SSINT), 
-	 A_SIZE * P_SIZE, stream);
-  fwrite(&(Score_matrix->pMclosest[0]), sizeof(SSINT), 
-	 A_SIZE, stream);
-  fwrite(&(Score_matrix->similarity_flag), sizeof(char), 1, stream);   
-  return 1;
-} 
-
-SCORE_MATRIX_t *SCORE_MATRIX_read(FILE *stream)
-{
-  SCORE_MATRIX_t *S = mallocec(sizeof(SCORE_MATRIX_t));
-  fread(&(S->M[0]), sizeof(SSINT), 
-	 A_SIZE * A_SIZE, stream);   
-  fread(&(S->pM[0]), sizeof(SSINT), 
-	 A_SIZE * P_SIZE, stream);
-  fread(&(S->pMclosest[0]), sizeof(SSINT), 
-	 A_SIZE, stream);
-  fread(&(S->similarity_flag), sizeof(char), 1, stream);   
-
-  return S;
-} 
-
-/* Element Access + Properties */
-int SCORE_MATRIX_max_entry(SCORE_MATRIX_t *S)
-{
-  int M = INT_MIN;
-  UINT_t i, j;
-  for (i=0; i < A_SIZE; i++)
-    {
-      if (S->ptable->partition_table[i] == -1)
-	continue;
-      for (j=0; j < A_SIZE; j++)
-	{
-	  if (S->ptable->partition_table[j] == -1)
-	    continue;
-	  M = max(M, S->M[i][j]);
-	}
-    }
-  return M;
-}
-
-int SCORE_MATRIX_min_entry(SCORE_MATRIX_t *S)
-{
-  int m = INT_MAX;
-  UINT_t i, j;
-  for (i=0; i < A_SIZE; i++)
-    {
-      if (S->ptable->partition_table[i] == -1)
-	continue;
-      for (j=0; j < A_SIZE; j++)
-	{
-	  if (S->ptable->partition_table[j] == -1)
-	    continue;
-	  m = min(m, S->M[i][j]);
-	}
-    }
-  return m;
-}
-
-int SCORE_MATRIX_max_entry_col(SCORE_MATRIX_t *S, int col)
-{
-  int M = INT_MIN;
-  UINT_t i;
-  for (i=0; i < A_SIZE; i++)
-    {
-      if (S->ptable->partition_table[i] == -1)
-	continue;
-      M = max(M, S->M[i][col]);
-    }
-  return M;
-}
-
-int SCORE_MATRIX_max_entry_row(SCORE_MATRIX_t *S, int row)
-{
-  int M = INT_MIN;
-  UINT_t i;
-  for (i=0; i < A_SIZE; i++)
-    {
-      if (S->ptable->partition_table[i] == -1)
-	continue;
-      M = max(M, S->M[row][i]);
-    }
-  return M;
-}
-
-int SCORE_MATRIX_min_entry_col(SCORE_MATRIX_t *S, int col)
-{
-  int m = INT_MAX;
-  ULINT i;
-  for (i=0; i < A_SIZE; i++)
-    {
-      if (S->ptable->partition_table[i] == -1)
-	continue;
-      m = min(m, S->M[i][col]);
-    }
-  return m;
-}
-
-int SCORE_MATRIX_min_entry_row(SCORE_MATRIX_t *S, int row)
-{
-  int m = INT_MAX;
-  UINT_t i;
-  for (i=0; i < A_SIZE; i++)
-    {
-      if (S->ptable->partition_table[i] == -1)
-	continue;
-      m = min(m, S->M[row][i]);
-    }
-  return m;
-}
-
-/* Element set/get functions */
-
-void SCORE_MATRIX_set_M(SCORE_MATRIX_t *S, char row, char col, 
-			SSINT val)
-{
-  int i = row & A_SIZE_MASK;
-  int j = col & A_SIZE_MASK;
-
-  if (i >= A_SIZE || j >= A_SIZE || 
-      S->ptable->partition_table[i] == -1 ||
-      S->ptable->partition_table[j] == -1)
-    Throw FSexcept(INDEX_OUT_OF_RANGE,
-		   "SCORE_MATRIX_set_M(): Index out of range.");
-
-  S->M[i][j] = val;
-  
-  update_pM(S, i);      
-} 
-
-void SCORE_MATRIX_set_SS(SCORE_MATRIX_t *S, char row, int val)
-{
-  int i = row & A_SIZE_MASK;
-  if (i >= A_SIZE ||
-      S->ptable->partition_table[i] == -1)
-    Throw FSexcept(INDEX_OUT_OF_RANGE,
-		   "SCORE_MATRIX_set_SS(): Index out of range.");
-
-  S->SS[i] = val;
-  if (S->similarity_flag)
-    {
-      S->M[i][i] = val;
-      update_pM(S, i);      
-    }
-}
-
-SSINT SCORE_MATRIX_get_M(SCORE_MATRIX_t *S, char row, char col)
-{
-  int i = row & A_SIZE_MASK;
-  int j = col & A_SIZE_MASK;
-  if (i >= A_SIZE || j >= A_SIZE ||
-      S->ptable->partition_table[i] == -1 ||
-      S->ptable->partition_table[j] == -1)
-    Throw FSexcept(INDEX_OUT_OF_RANGE,
-		   "SCORE_MATRIX_get_M(): Index out of range.");
-  return S->M[i][j];
-}
-
-SSINT SCORE_MATRIX_get_pM(SCORE_MATRIX_t *S, char row, int group)
-{
-  int i = row & A_SIZE_MASK;
-
-  if (i >= A_SIZE || group >= S->ptable->no_partitions ||
-      S->ptable->partition_table[i] == -1)
-    Throw FSexcept(INDEX_OUT_OF_RANGE,
-		   "SCORE_MATRIX_get_pM(): Index out of range.");
-  return S->pM[i][group];
-}
-
-SSINT SCORE_MATRIX_get_pMc(SCORE_MATRIX_t *S, char row)
-{
-  int i = row & A_SIZE_MASK;
-  if (i >= A_SIZE ||
-      S->ptable->partition_table[i] == -1)
-    Throw FSexcept(INDEX_OUT_OF_RANGE,
-		   "SCORE_MATRIX_get_pMc(): Index out of range.");
-  
-  return S->pMclosest[i];
-}
-
-
-SSINT SCORE_MATRIX_get_SS(SCORE_MATRIX_t *S, char row)
-{
-  int i = row & A_SIZE_MASK;
-  if (i >= A_SIZE ||
-      S->ptable->partition_table[i] == -1)
-    Throw FSexcept(INDEX_OUT_OF_RANGE,
-		   "SCORE_MATRIX_get_SS(): Index out of range.");
-  return S->SS[i];
-}
-
-
-
-/* Similarities to Distances, Quasi-metrics ... */
-SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dquasi(SCORE_MATRIX_t *S)
-{
-  UINT_t i, j;
-  SCORE_MATRIX_t *D = callocec(1, sizeof(SCORE_MATRIX_t));
-
-  D->similarity_flag = 0;
-  D->ptable = S->ptable;
-  D->filename = strdup(S->filename);
-
-  for (i=0; i < A_SIZE; i++)
-    {
-      if (D->ptable->partition_table[i] == -1)
-	continue;
-      D->SS[i] = S->SS[i];
-      for (j=0; j < A_SIZE; j++)
-	{
-	  if (D->ptable->partition_table[j] == -1)
-	    continue;
-	  D->M[i][j] = S->M[i][i] - S->M[i][j];
-	}
-    }
-
-  /* TO DO: */
-  /* Here use some of the graph shortest path algorithms */
-
-  /* Compute maximum distances to pattern letters (subsets of
-     alphabet partitions) */
-  for (i=0; i < A_SIZE; i++)
-    {      
-      if (D->ptable->partition_table[i] == -1)
-	continue;
-      update_pM(D, i);
-    }
-
-  return D;
-}
-
-SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dmax(SCORE_MATRIX_t *S)
-{
-  SCORE_MATRIX_t *D = SCORE_MATRIX_S_2_Dquasi(S);
-  UINT_t i, j;
-
-  /* Symmetrise */
-  for (i=0; i < A_SIZE-1; i++)
-    {
-      if (D->ptable->partition_table[i] == -1)
-	continue;
-      for (j=i+1; j < A_SIZE; j++)
-	{
-	  if (D->ptable->partition_table[j] == -1)
-	    continue;
-	  D->M[i][j] = max(D->M[i][j], D->M[j][i]);
-	  D->M[j][i] = D->M[i][j];
-	}
-    }
-
-
-  for (i=0; i < A_SIZE; i++)
-    {      
-      if (D->ptable->partition_table[i] == -1)
-	continue;
-      update_pM(D, i);
-    }
-
-  return D;
-}
-
-SCORE_MATRIX_t *SCORE_MATRIX_S_2_Davg(SCORE_MATRIX_t *S)
-{
-  SCORE_MATRIX_t *D = SCORE_MATRIX_S_2_Dquasi(S);
-  UINT_t i, j;
-
-  /* Symmetrise */
-  for (i=0; i < A_SIZE-1; i++)
-    {
-      if (D->ptable->partition_table[i] == -1)
-	continue;
-      for (j=i+1; j < A_SIZE; j++)
-	{
-	  if (D->ptable->partition_table[j] == -1)
-	    continue;
-	  D->M[i][j] = D->M[i][j] + D->M[j][i];
-	  D->M[j][i] = D->M[i][j];
-	}
-    }
-
-  for (i=0; i < A_SIZE; i++)
-    {      
-      if (D->ptable->partition_table[i] == -1)
-	continue;
-      update_pM(D, i);
-    }
-
-  return D;
-}
-
-/* Scores and p-values */
-int SCORE_MATRIX_Gaussian_cutoff(SCORE_MATRIX_t *S, BIOSEQ *query,
-				 double *bkgrnd, double pcutoff)
-{
-  int j;
-  double Tmean = 0.0;
-  double Tvar = 0.0;
-  double sd;
-  SSINT *value = NULL;
-  S->mean = 0.0;
-  S->var = 0.0;
-
-
-  /* Calculate mean and variance */
-  for (j=0; j < query->len; j++)
-    {
-      value = &(S->M[j][0]);
-      discrete_meanvar(A_SIZE, value, bkgrnd, &Tmean, &Tvar);      
-      S->mean += Tmean;
-      S->var +=Tvar;
-    }
-  sd = sqrt(S->var);
-  if (S->similarity_flag)
-    return (int) (normsinv(1.0-pcutoff)*sd + S->mean + 0.5);
-  else
-    return (int) (normsinv(1.0-pcutoff)*sd + S->mean);
-}
-
 
 
 /* Printing */
-void SCORE_MATRIX_print(SCORE_MATRIX_t *S, FILE *stream, 
-			const char *title)
+char *SCORE_MATRIX_sprint(SCORE_MATRIX *S)
 {
-  UINT_t i, j;
-  int p=0;
-  int lptl;
-  int lp;
-  char s[C_SIZE+1];
-
-  fprintf(stream, "%s\n\n", title);
-
-  /* Print M */
-  fprintf(stream, "%s\n", "Scoring matrix");
-  fprintf(stream, "    ");
-  for (i=0; i < A_SIZE; i++)
-    {
-      if (S->ptable->partition_table[i] == -1)
-	continue;
-      fprintf(stream, " %c  ", i+64);
-    }
-  fprintf(stream, "\n");
-
-  for (i=0; i < A_SIZE; i++)
-    {
-      if (S->ptable->partition_table[i] == -1)
-	continue;
-      fprintf(stream, " %c ", i+64);
-      for (j=0; j < A_SIZE; j++)
-	{
-	  if (S->ptable->partition_table[j] == -1)
-	    continue;
-	  fprintf(stream, "%3d ", S->M[i][j]);
-	}
-      fprintf(stream, "\n");
-    }
-
-  /* Print pM - transposed for easier viewing */
-
-  fprintf(stream, "\n\n");
-  fprintf(stream, "%s\n", "Scores w.r.t. partitions");
-
-  lp = FS_PARTITION_get_no_partitions(S->ptable) -1;
-  lptl =  FS_PARTITION_get_poffset(S->ptable, lp)
-    + (1 << FS_PARTITION_get_size(S->ptable, lp)); 
-  for (j=0; j < lptl; j++)
-    {
-      if (j == FS_PARTITION_get_poffset(S->ptable, p))
-	{
-	  p++;
-	  fprintf(stream, "\n");
-	  fprintf(stream, "%*s  ", C_SIZE, "");
-	  for (i=0; i < A_SIZE; i++)
-	    {
-	      if (S->ptable->partition_table[i] == -1)
-		continue;
-	      fprintf(stream, " %c  ", i+64);
-	    }
-	  fprintf(stream, "\n");
-	  fprintf(stream, "\n");
-#ifdef DEBUG
-	  fprintf(stream, "CLSTR #%1d ", p);
-	  for (i=0; i < A_SIZE; i++)
-	    {
-	      if (S->ptable->partition_table[i] == -1)
-		continue;
-	      fprintf(stream, "%3d ", S->pM[i][j]);
-	    }
-	  fprintf(stream, "\n");
-#endif /* #ifdef DEBUG */
-	  continue;
-	}
-      FS_PARTITION_pletter_2_string(S->ptable, j, &s[0]);
-      fprintf(stream, "%-*s ", C_SIZE, s);
-      for (i=0; i < A_SIZE; i++)
-	{
-	  if (S->ptable->partition_table[i] == -1)
-	    continue;
-	  fprintf(stream, "%3d ", S->pM[i][j]);
-	}
-      fprintf(stream, "\n");
-    }
-
-  /* Print pMclosest - transposed for easier viewing */
-  fprintf(stream, "\n\n");
-  fprintf(stream, "%s\n", "Best scores w.r.t. other partitions");
-  fprintf(stream, "   ");
-
-  for (i=0; i < A_SIZE; i++)
-    {
-      if (S->ptable->partition_table[i] == -1)
-	continue;
-      fprintf(stream, " %2c ", i+64);
-    }
-  fprintf(stream, "\n");
-
-  fprintf(stream, "%2s ", "");
-  for (i=0; i < A_SIZE; i++)
-    {
-      if (S->ptable->partition_table[i] == -1)
-	continue;
-      fprintf(stream, "%3d ", S->pMclosest[i]);
-    }
-  fprintf(stream, "\n");
-  fprintf(stream, "\n");
-}
-
-
-/********************************************************************/ 
-/*                 Conversion function                              */
-/********************************************************************/ 
-void SCORE_MATRIX_convert(int s0, HIT_LIST_t *HL)
-{
-  int hits = HIT_LIST_get_seqs_hits(HL);
+  char *buf = NULL;
+  int size = 0;
+  int len = 0;
   int i;
-  SEQ_HIT_t *hit;
+  char *a;
+  char *b;
   
-  for (i=0; i < hits; i++)
-    {
-      hit = HIT_LIST_get_hit(HL, i);
-      hit->value = s0 - hit->value;
+  if (S->Stype == DISTANCE)
+    absprintf(&buf, &size, &len, "DISTANCE MATRIX\n");
+  else
+    absprintf(&buf, &size, &len, "SIMILARITY MATRIX\n");
+
+  if (S->Mtype == POSITIONAL) {
+    absprintf(&buf, &size, &len, "%2.2s ", "");
+    for (i=0; i < S->len; i++) 
+      absprintf(&buf, &size, &len, "%4d ", i);
+    absprintf(&buf, &size, &len, "\n");
+    absprintf(&buf, &size, &len, "%2.2s ", "");
+    for (i=0; i < S->len; i++) 
+      absprintf(&buf, &size, &len, "   %c ", S->qseq[i]);
+    absprintf(&buf, &size, &len, "\n");
+    for (a=S->alphabet; *a; a++) {
+      absprintf(&buf, &size, &len, " %c ", *a);
+      for (i=0; i < S->len; i++) 
+	absprintf(&buf, &size, &len, "%4d ", S->M[i][*a & A_SIZE_MASK]);
+      absprintf(&buf, &size, &len, "\n");
     }
+#if 0
+    absprintf(&buf, &size, &len, "%3.3s ", "");
+    for (a=S->alphabet; *a; a++) 
+      absprintf(&buf, &size, &len, "  %c ", *a);
+    absprintf(&buf, &size, &len, "\n");
+    for (i=0; i < S->len; i++) {
+      absprintf(&buf, &size, &len, "%3d ", i);
+      for (a=S->alphabet; *a; a++)
+	absprintf(&buf, &size, &len, "%3d ", S->M[i][*a & A_SIZE_MASK]);
+      absprintf(&buf, &size, &len, "\n");
+    }
+#endif
+  }
+  else {
+    absprintf(&buf, &size, &len, "%3.3s ", "");
+    for (a=S->alphabet; *a; a++) 
+      absprintf(&buf, &size, &len, "  %c ", *a);
+    absprintf(&buf, &size, &len, "\n");
+    for (b=S->alphabet; *b; b++) {
+      absprintf(&buf, &size, &len, "  %c ", *b);
+      for (a=S->alphabet; *a; a++)
+	absprintf(&buf, &size, &len, "%3d ", S->M[*b & A_SIZE_MASK][*a & A_SIZE_MASK]);
+      absprintf(&buf, &size, &len, "\n");
+    }
+  }
+  absprintf(&buf, &size, &len, "\n");
+  return buf;
 }
 
-/********************************************************************/ 
-/*                 Evaluation function                              */
-/********************************************************************/ 
-
-int smatrix_eval(void *M, BIOSEQ *query, BIOSEQ *subject)
+void SCORE_MATRIX_fprint(SCORE_MATRIX *S, FILE *fp)
 {
-  return SCORE_MATRIX_evaluate(M, query, subject);
+  char *buf = SCORE_MATRIX_sprint(S);
+  fprintf(fp, "%s", buf);
+  free(buf);
 }

@@ -1,15 +1,12 @@
 #ifndef _FASTADB_H
 #define _FASTADB_H
 
-#include "misclib.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include "bioseq.h"
-#ifdef USE_MPATROL
-#include <mpatrol.h>
-#endif
 
+#include "misclib.h"
 
 
 #define MAX_STORAGE_ROWS 2
@@ -120,6 +117,10 @@ int fastadb_get_noseqs(SEQUENCE_DB *s_db, ULINT *no_seqs);
 int fastadb_get_seq(SEQUENCE_DB *s_db, ULINT seq_no, BIOSEQ **seq);
 int fastadb_get_next_seq(SEQUENCE_DB *s_db, BIOSEQ **seq);
 
+/* Offset <--> char pter conversion functions (as macros) */
+char *fastadb_data_pter(SEQUENCE_DB *s_db, ULINT offset);
+ULINT fastadb_data_offset(SEQUENCE_DB *s_db, char *s);
+
 /* Fragment functions */
 int fastadb_init_frags(SEQUENCE_DB *s_db, ULINT min_len, 
 		       ULINT max_len);
@@ -149,9 +150,40 @@ MY_INLINE
 int fastadb_get_Ffrag_seq(SEQUENCE_DB *s_db, BIOSEQ *frag, 
 			  ULINT seq_id, ULINT from, ULINT to);
 
+/********************************************************************/    
+/********************************************************************/    
+/***                                                              ***/
+/***               MIXED_ITER                                     ***/ 
+/***                                                              ***/
+/********************************************************************/    
+/********************************************************************/    
+
+/* Fragment iterator for FS_INDEX */
+
+typedef struct
+{
+  int l;
+  int m;
+  int skip;
+  BIOSEQ *first_seq;
+  BIOSEQ *last_seq;
+  BIOSEQ *seq;
+  char *c;
+  int c_len;
+} MIXED_ITER;
 
 
+MY_INLINE
+MIXED_ITER *MIXED_ITER_init(SEQUENCE_DB *s_db, int min_len,
+			    int len, int skip);
+MY_INLINE
+void MIXED_ITER_del(MIXED_ITER *iterator);
+MY_INLINE
+char *MIXED_ITER_next(MIXED_ITER *iterator, ULINT *len);
+MY_INLINE
+void MIXED_ITER_reset(MIXED_ITER *iterator);
 
+#ifdef UFRAGDB
 /********************************************************************/    
 /********************************************************************/    
 /***                                                              ***/
@@ -211,6 +243,7 @@ int ufragdb_get_dfrags(UFRAG_DB *udb, ULINT frag_offset,
 void ufragdb_print(UFRAG_DB *udb, FILE *stream);
 
 int cmp_ufrags(const void *S1, const void *S2);
+#endif /* #ifdef UFRAGDB */
 
 /********************************************************************/    
 /********************************************************************/    
@@ -219,6 +252,12 @@ int cmp_ufrags(const void *S1, const void *S2);
 /***                                                              ***/
 /********************************************************************/    
 /********************************************************************/    
+
+#define fastadb_data_pter(db, i) ((db)->seq_data + (i))
+#define fastadb_data_offset(db, s) ((s) - (db)->seq_data)
+#define fastadb_end_heap(db) ((db)->seq[(db)->no_seq-1].start        \
+        + (db)->seq[(db)->no_seq-1].len)
+
 
 /********************************************************************/    
 /*                                                                  */
@@ -339,6 +378,65 @@ int fastadb_get_Ffrag_seq(SEQUENCE_DB *s_db, BIOSEQ *frag,
   frag->len = to - from + 1;
   frag->start = s_db->seq[seq_id].start + from;
   return 1;
+}
+
+/********************************************************************/    
+/********************************************************************/    
+/***                                                              ***/
+/***               MIXED_ITER functions                           ***/ 
+/***                                                              ***/
+/********************************************************************/    
+/********************************************************************/    
+
+MY_INLINE
+MIXED_ITER *MIXED_ITER_init(SEQUENCE_DB *s_db, int min_len,
+			    int len, int skip)
+{
+  MIXED_ITER *I = mallocec(sizeof(MIXED_ITER));
+  I->l = len;
+  I->m = min_len > len ? len : min_len;
+  I->skip = skip;
+  I->first_seq = s_db->seq;
+  I->last_seq = s_db->seq + s_db->no_seq - 1;
+  I->seq = I->first_seq;
+  I->c = I->first_seq->start;
+  I->c_len = I->first_seq->len;
+  return I;
+}
+
+MY_INLINE
+void MIXED_ITER_del(MIXED_ITER *I)
+{
+  free(I);
+}
+
+MY_INLINE
+char *MIXED_ITER_next(MIXED_ITER *I, ULINT *len)
+{
+  char *s;
+  if (I->c_len < I->m) {
+    do {
+      I->seq++;
+      if (I->seq > I->last_seq)
+	return NULL;
+    }  
+    while (I->seq->len < I->m);
+    I->c = I->seq->start;
+    I->c_len = I->seq->len;
+  }
+  s = I->c;
+  *len = I->c_len > I->l ? I->l : I->c_len;
+  I->c += I->skip;
+  I->c_len -= I->skip;
+  return s;
+}
+
+MY_INLINE
+void MIXED_ITER_reset(MIXED_ITER *I)
+{
+  I->seq = I->first_seq;
+  I->c = I->first_seq->start;
+  I->c_len = I->first_seq->len;
 }
 
 #endif /* #ifndef _FASTADB_H */ 

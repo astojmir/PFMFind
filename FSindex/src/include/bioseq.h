@@ -1,18 +1,16 @@
 #ifndef _BIOSEQ_H
 #define _BIOSEQ_H
 
-#include "misclib.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#ifdef USE_MPATROL
-#include <mpatrol.h>
-#endif
+
+#include "misclib.h"
 
 typedef union 
 {
   ULINT id_num;
-  char *defline;
+  const char *defline;
 } seq_id_t;
 
 typedef enum {NO, YES} yn_bool_t; 

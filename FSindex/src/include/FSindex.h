@@ -1,19 +1,16 @@
 #ifndef _FS_INDEX_H
 #define _FS_INDEX_H
 
-#include "misclib.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <inttypes.h>
 #include "fastadb.h"
 #include "partition.h"
+
 #include "smatrix.h"
-#include "pmatrix.h"
 #include "hit_list.h"
-#include "keyword.h"
-#ifdef USE_MPATROL
-#include <mpatrol.h>
-#endif
+#include "misclib.h"
 
 
 /********************************************************************/    
@@ -42,130 +39,149 @@ typedef struct
   FRAG_HNDL frag; 
 } UFRAG;
 
-/********************************************************************/    
-/*                                                                  */
-/*                     Filtering parameters                         */ 
-/*                                                                  */
-/********************************************************************/    
-
-typedef struct
+typedef struct 
 {
-  double ZE0;
-  double ZE1;
-  double CR0;
-  double CR1;
-  double KW0;
-} FPARAMS;
+  ULINT offset;
+  int dist;
+} HIT;
 
+struct FSINDX_s;
 
+typedef struct FSSRCH_s
+{
+  struct FSINDX_s *FSI;    /* Index                                 */
+  char *base;              /* Start of sequence heap                */
+  int eps;                 /* Cutoff value                          */
+  int kNN;                 /* Number of nearest neighbours          */
+  HIT_LIST_t *HL;          /* Search results                        */
+
+  void (*ifunc) (struct FSSRCH_s *, uint32_t, int);
+                           /* Hit insertion function                */
+  void (*pfunc) (struct FSSRCH_s *, FS_SEQ_t); 
+                           /* Bin scan function pter                */
+
+  int qlen;                /* Length of query sequence              */
+  int len;                 /* len = min(qlen, FSI->m)               */
+  FS_SEQ_t qbin;           /* Query bin                             */
+  int Mlen;                /* Number of coordinates                 */
+  int **M;                 /* Scoring matrix, profile               */
+  int *cdist;              /* Cumulative distances                  */
+  int *nbpt;               /* Number of different partitions        */
+  int *nbpt_closest;       /* Distance to the closest partition     */
+  long **nbpt_diff;        /* FS sequence difference                */
+  int **nbpt_dist;         /* Distances to different clusters       */
+  int bincr;               /* Number of bins to search              */
+
+  int *sa;                 /* Points to 'suffix array'              */
+  uint8_t *lcpx;           /* Points to lcp array                   */
+
+  HIT *hits;               /* Temporary hits                        */
+  int hits_size;           /* Size of hits_size                     */
+  int hits_len;            /* Number of hits stored in hits         */
+  int no_hits;             /* True number of hits stored            */
+  struct pqueue *p_queue;  /* Priority queue                        */
+} FSSRCH; 
 
 /********************************************************************/    
 /*                                                                  */
 /*                     FS_INDEX module                              */ 
 /*                                                                  */
 /********************************************************************/    
-
-#if 0
-extern int FS_INDEX_VERBOSE;
-extern int FS_INDEX_PRINT_BAR;
+#if ! defined (__unix__) 
+#undef THREADS
 #endif
 
+#ifndef THREADS
+#define THREADS 1
+#endif
+
+typedef enum {FS_BINS, SUFFIX_ARRAY, SEQ_SCAN} SFUNC_TYPE;
+typedef enum {SARRAY, DUPS_ONLY, FULL_SCAN} PFUNC_TYPE;
+
+typedef struct FSINDX_s
+{
 /* FSindex variables - essentially constant throughout all searches
    with the same index .*/ 
-
-typedef struct
-{
   char *db_name;           /* Name of the database                  */
   char *index_name;        /* Name of the index                     */
   SEQUENCE_DB *s_db;       /* Pointer to the fasta database         */
+  FS_TABLE *ptable;        /* Partition table                       */
+
+  uint32_t m;              /* Maximum length of indexed fragments   */
   double dtime;            /* Creation time                         */
-  char *alphabet;          /* Amino acid alphabet - partitioned     */
-  char separator;          /* Partitioning character                */
-  int K;                   /* Number of letters in reduced alphabet */
-  FS_PARTITION_t *ptable;  /* Partition table                       */
-  ULINT *KK;               /* KK[i] = K ^ i, i = 0, 1 ... frag_len  */
-  int *K_modtable;         /* K_modtable[i] = i % K for i < 2*K     */
+  uint32_t db_no_frags;    /* Number of fragments in full database  */
+  uint32_t no_bins;        /* Number of bins                        */
 
-  int m;                   /* Length of indexed fragments           */
-  ULINT db_no_frags;       /* Number of fragments in full database  */
-  ULINT no_bins;           /* Number of bins = K^frag_len           */
-  ULINT no_seqs;           /* Number of indexed fragments           */
-  ULINT no_useqs;          /* Number of indexed unique fragments    */
+  uint32_t no_seqs;        /* Number of indexed fragments           */
+  uint32_t no_useqs;       /* Number of indexed unique fragments    */
+  uint32_t shist_len;      /* Length of shist                       */
+  uint32_t *shist;         /* Histogram of bin sizes                */
+  uint32_t *uhist;         /* Histogram of bin sizes - unique seqs  */
+  uint32_t uhist_len;      /* Length of uhist                       */
 
-  ULINT shist_len;         /* Length of shist                       */
-  ULINT *shist;            /* Histogram of bin sizes                */
-  ULINT uhist_len;         /* Length of uhist                       */
-  ULINT *uhist;            /* Histogram of bin sizes - unique seqs  */
+  uint32_t binL;           /* Largest bin                           */
+  uint32_t uL;             /* Largest bin - unique seqs             */
 
-  ULINT *bin_size;
+  /* FSSRCH - search specific variables (one per thread) */
+  FSSRCH FSS[THREADS];
 
+  /* Suffix and lcp array */ 
+  int *sa;               /* Suffix array of the sequence database */
+  uint8_t *lcpx;   /* Longest common prefix                 */
+  uint32_t sa_size;           /* Size of sa                            */
+  int use_sa;
 
-  ULINT *max_bin_size;
-  SEQ_index_t **bin;
-  SEQ_index_t binL;        /* Largest bin                           */
-  SEQ_index_t *heap;
-  ULINT *u_size;
-  int **u;
-  int *u_heap;
-  SEQ_index_t uL;          /* Largest bin - unique seqs             */
+  /* Bins and its lcp */
+  int *oa;               /* Offset array - bin order              */
+  uint32_t *bins;        /* Bin start offset                      */
+  uint8_t *lcpb;         /* Longest common prefix aray for oa     */
 
 } FSINDX;
 
-
-
-FSINDX *FS_INDEX_create(const char *database, ULINT flen,
-			const char *abet, const char sepchar, 
-			int skip);
+FSINDX *FS_INDEX_create(const char *database, uint32_t len, const char **sepn, 
+			int use_sa, int print_flag);
 void FS_INDEX_destroy(FSINDX *FSI);
 
 int FS_INDEX_save(FSINDX *FSI, const char *filename);
 FSINDX *FS_INDEX_load(const char *filename);
 
-void FS_INDEX_print_stats(FSINDX *FSI, FILE *stream, int options); 
 
-void FS_INDEX_print_bin(FSINDX *FSI, BIOSEQ *query, FILE *stream,
-			int options);
+/* Printing Functions */
+
+char *FS_INDEX_sprint_stats(FSINDX *FSI, int options);
+void FS_INDEX_fprint_stats(FSINDX *FSI, FILE *fp, int options);
+char *FS_INDEX_sprint_bin(FSINDX *FSI, FS_SEQ_t bin, int options);
+void FS_INDEX_fprint_bin(FSINDX *FSI, FS_SEQ_t bin, FILE *fp,
+			 int options);
 
 /* Search functions */
 
-HIT_LIST_t *FSINDX_rng_srch(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
-			    int d0, HIT_LIST_t *HL);
+HIT_LIST_t *FSINDX_rng_srch(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX *M,
+			    int range, int conv_type, HIT_LIST_t *HL,
+			    SFUNC_TYPE stype, PFUNC_TYPE ptype);
 
-HIT_LIST_t *FSINDX_kNN_srch(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
-			    int kNN, HIT_LIST_t *HL);
+HIT_LIST_t *FSINDX_kNN_srch(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX *M,
+			    int kNN, HIT_LIST_t *HL, SFUNC_TYPE stype, 
+			    PFUNC_TYPE ptype);
 
-HIT_LIST_t *FSINDX_prof_rng_srch(FSINDX *FSI, BIOSEQ *query, 
-				 SCORE_MATRIX_t *D, int s0, 
-				 double lambda, double A,
-				 const char *freq_filename,
-				 int iters, int s1,
-				 HIT_LIST_t *HL);
+/* Threaded search */
 
-HIT_LIST_t *FSINDX_prof_kNN_srch(FSINDX *FSI, BIOSEQ *query, 
-				 SCORE_MATRIX_t *D, int kNN, 
-				 double A,
-				 const char *freq_filename,
-				 int iters, 
-				 HIT_LIST_t *HL);
+typedef struct
+{
+  BIOSEQ query;
+  SCORE_MATRIX *M;
+  int range;
+  int kNN;
+  SFUNC_TYPE stype; 
+  PFUNC_TYPE ptype;  
+} SRCH_ARGS;
 
-
-/* Experiments */
-HIT_LIST_t *SSCAN_QD_search(SEQUENCE_DB *s_db, const char *matrix, 
-			    BIOSEQ *query, ULINT D_cutoff);
-#if 0
-int FS_INDEX_has_neighbour(BIOSEQ *query, SCORE_MATRIX_t *D0, 
-			   int cutoff);
-#endif
-int SSCAN_has_neighbour(SEQUENCE_DB *s_db,  SCORE_MATRIX_t *D, 
-			FS_PARTITION_t *ptable,
-			BIOSEQ *query, ULINT D_cutoff);
-
-
+HIT_LIST_t *FSINDX_threaded_srch(FSINDX *FSI, SRCH_ARGS *args, int n);
 
 
 /* Access functions */
-ULINT FS_INDEX_get_bin_size(FSINDX *FSI, ULINT bin);
-ULINT FS_INDEX_get_unique_bin_size(FSINDX *FSI, ULINT bin);
+uint32_t FS_INDEX_get_bin_size(FSINDX *FSI, FS_SEQ_t bin);
+uint32_t FS_INDEX_get_unique_bin_size(FSINDX *FSI, FS_SEQ_t bin);
 BIOSEQ *FS_INDEX_get_seq(FSINDX *FSI, ULINT bin, ULINT seq);
 
 #define FS_INDEX_get_ptable(FSI) \
