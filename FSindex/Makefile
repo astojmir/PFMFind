@@ -12,7 +12,7 @@ INCLUDEDIR = src/include/
 DEBUG=-g -D DEBUG=2
 MPATROL = -D USE_MPATROL
 MPATROLLIBS = -lmpatrol -lbfd -liberty
-MAXOPT=-O4
+MAXOPT=-O3 -fomit-frame-pointer -finline-functions -funroll-loops 
 GPROF = -pg
 WARNINGS = -pipe -Wall -Wshadow -Wpointer-arith \
           -Wwrite-strings -Wstrict-prototypes \
