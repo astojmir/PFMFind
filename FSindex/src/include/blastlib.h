@@ -20,34 +20,6 @@ SMATRIX smatrix2dist(SMATRIX S);
 inline
 int Hamming_dist(BIOSEQ *seq1, BIOSEQ *seq2, SMATRIX D);
 
-typedef struct
-  {
-    SLINT no_bins;
-    SLINT min_bin;
-    ULINT *freq;
-    ULINT attainable_pts;
-    ULINT unattainable_pts;
-} SEED_HIST;
-
-SEED_HIST *seedhist_init(SLINT min_bin, SLINT max_bin);
-void seedhist_init1(SEED_HIST *hist, SLINT min_bin, SLINT max_bin);
-int seedhist_clear(SEED_HIST *hist);
-int seedhist_clear1(SEED_HIST *hist);
-void seedhist_add_acount(SEED_HIST *hist, SLINT bin);
-void seedhist_add_ucount(SEED_HIST *hist);
-int seedhist_merge(SEED_HIST *hist1, SEED_HIST *hist2);
-int seedhist_read(SEED_HIST *hist, FILE *stream);
-int seedhist_write(SEED_HIST *hist, FILE *stream);
-int seedhist_print(SEED_HIST *hist, FILE *stream);
-
-        
-/*#define seedhist_add_acount(hist, bin) \
-        ((hist)->freq[(bin)]++), \
-        ((hist)->attainable_pts++)*/
-
-#define seedhist_add_ucount(hist) \
-        ((hist)->unattainable_pts++)
-
 typedef struct blast_params
   {
     char *program_name;
