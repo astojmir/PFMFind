@@ -16,7 +16,6 @@ int FS_INDEX_PRINT_BAR = 1;
 int main(int argc, char **argv)
 {
   BIOSEQ query;
-  FS_INDEX_t *FS_index;
   const char *index_file;
   const char *count_file;
   SEQ_GENERATOR_t *seq_generator;

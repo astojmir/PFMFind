@@ -28,7 +28,6 @@ int main(int argc, char **argv)
   int no_runs;
   HIT_LIST_t *hit_list;
   BIOSEQ query;
-  FS_INDEX_t *FS_index;
   SEQ_GENERATOR_t *seq_generator;
   FS_PARTITION_t *ptable;
   SCORE_MATRIX_t *S;
@@ -53,18 +52,17 @@ int main(int argc, char **argv)
   no_runs = atoi(argv[4]);
   cutoff = atoi(argv[5]);
 
-  FS_index = FS_INDEX_load(filename);
+  FS_INDEX_load(filename);
 
-  len = FS_index->frag_len;
+  len =  FS_INDEX_get_frag_len();
   seq_heap = mallocec(len+1);
-  ptable = FS_INDEX_get_ptable(FS_index);
+  ptable = FS_INDEX_get_ptable();
   S = SCORE_MATRIX_create(matrix_full, ptable); 
   D = SCORE_MATRIX_S_2_Dquasi(S);
   split_base_dir(matrix_full, &matrix_base, &matrix_dir);  
-  FS_INDEX_set_matrix(FS_index, matrix_base, S, D);
   seq_generator = SEQ_GENERATOR_create(count_file, ptable);
 
-  hit_list = HIT_LIST_create(&query, FS_INDEX_get_database(FS_index), 
+  hit_list = HIT_LIST_create(&query, FS_INDEX_get_database(), 
 			     matrix_base, 0);
 
   fprintf(stdout, "Similarity cutoff: %d\n\n", cutoff);
@@ -79,9 +77,9 @@ int main(int argc, char **argv)
 			     seq_heap);
       self_sim = SCORE_MATRIX_evaluate(S, &query, &query);
       /* Run search */
-      HIT_LIST_reset(hit_list, &query, FS_index->s_db,
+      HIT_LIST_reset(hit_list, &query, FS_INDEX_get_database(),
 		     matrix_base, cutoff);
-      FS_INDEX_search(FS_index, hit_list, &query, cutoff,
+      FS_INDEX_search(hit_list, &query, S, D, cutoff,
 		      FS_INDEX_S_process_bin,
 		      FS_INDEX_S2QD_convert);
 

@@ -3,14 +3,12 @@
 #include <time.h>
 #include <stdlib.h>
 #include <string.h>
-#include "FSindex.h"
 #include "hit_list.h"
-
+#include "partition.h"
+#include "smatrix.h"
 
 int FS_PARTITION_VERBOSE = 1;
 int SCORE_MATRIX_VERBOSE = 1;
-int FS_INDEX_VERBOSE = 1;
-int FS_INDEX_PRINT_BAR = 1;
 
 int main(int argc, char **argv)
 {

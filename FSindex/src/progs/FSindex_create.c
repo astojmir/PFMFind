@@ -14,7 +14,6 @@ int FS_INDEX_PRINT_BAR = 0;
 
 int main(int argc, char **argv)
 {
-  FS_INDEX_t *FS_index;
   const char separator = '#';
   ULINT frag_len;
   const char *db_name = NULL;
@@ -78,19 +77,19 @@ int main(int argc, char **argv)
   if (strcmp(db_dir, index_dir) != 0)
     {
       fprintf(stderr, "Warning! The directories of database file "
-	      "and index file must match.\n Setting the index directory"
-	      "to the database directory.\n");
+	      "and index file must match.\nSetting the index directory"
+	      " to the database directory.\n");
       cat_base_dir(&filename, index_base, db_dir);
       fprintf(stderr, "The new path is %s\n", filename);      
     }
 
-  FS_index = FS_INDEX_create(db_name, frag_len, alphabet, 
-			    separator); 
+  printf("Creating index...\n");
+  FS_INDEX_create(db_name, frag_len, alphabet, separator); 
 
   if (filename_flag)
     {
-      printf("Saving database\n");
-      FS_INDEX_save(FS_index, filename);
+      printf("Saving index...\n");
+      FS_INDEX_save(filename);
     }
 
   /* This part is removed as it was used for testing only */

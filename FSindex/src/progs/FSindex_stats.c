@@ -12,7 +12,6 @@ int FS_INDEX_PRINT_BAR = 1;
 
 int main(int argc, char **argv)
 {
-  FS_INDEX_t *FS_index;
   const char *filename;
 
   if (argc < 2)
@@ -23,9 +22,9 @@ int main(int argc, char **argv)
       exit(EXIT_FAILURE);
     }
   filename = argv[1];
-  FS_index = FS_INDEX_load(filename);
-  FS_PARTITION_print(FS_index->ptable, stdout);
-  FS_INDEX_print_stats(FS_index, stdout, 0, 0); 
+  fprintf(stdout, "Loading index... \n");
+  FS_INDEX_load(filename);
+  FS_INDEX_print_stats(stdout, 0, 0); 
 
  return EXIT_SUCCESS;
 }

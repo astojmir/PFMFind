@@ -5,14 +5,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include "randseq.h"
-#include "FSindex.h"
 #include "hit_list.h"
-
+#include "partition.h"
+#include "smatrix.h"
 
 int FS_PARTITION_VERBOSE = 0;
 int SCORE_MATRIX_VERBOSE = 0;
-int FS_INDEX_VERBOSE = 0;
-int FS_INDEX_PRINT_BAR = 1;
 
 int main(int argc, char **argv)
 {

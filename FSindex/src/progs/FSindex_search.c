@@ -18,7 +18,6 @@ int main(int argc, char **argv)
   int cutoff;
   HIT_LIST_t *hit_list;
   BIOSEQ query;
-  FS_INDEX_t *FS_index;
   const char *filename;
   char *matrix_full;
   char *matrix_base;
@@ -34,7 +33,7 @@ int main(int argc, char **argv)
     {
       fprintf(stderr,"Insufficient arguments \n");
       fprintf(stderr,"Usage: %s index_file matrix query_seq"
-	      " cutoff [-s | -d | -q];\n", argv[0]);  
+	      " cutoff [-s | -m | -q];\n", argv[0]);  
       exit(EXIT_FAILURE);
     }
   filename = argv[1];
@@ -61,31 +60,31 @@ int main(int argc, char **argv)
 	    break;
 	  }
     }
+  fprintf(stdout,"Loading database and index ... \n");
   query.len = strlen(query_seq);
   query.start = strdup(query_seq);
 
-  FS_index = FS_INDEX_load(filename);
-  ptable = FS_INDEX_get_ptable(FS_index);
+  FS_INDEX_load(filename);
+  ptable = FS_INDEX_get_ptable();
   split_base_dir(matrix_full, &matrix_base, &matrix_dir);  
   S = SCORE_MATRIX_create(matrix_full, ptable); 
-  hit_list = HIT_LIST_create(&query, FS_INDEX_get_database(FS_index), 
+  hit_list = HIT_LIST_create(&query, FS_INDEX_get_database(), 
 			     matrix_base, cutoff);
 
+  fprintf(stdout,"Searching ... \n");
   switch (search_type)
     {
     case T_SIMILARITY:
       D = SCORE_MATRIX_S_2_Dquasi(S);
-      FS_INDEX_set_matrix(FS_index, matrix_base, S, D);
-      FS_INDEX_search(FS_index, hit_list, &query, cutoff,
+      FS_INDEX_search(hit_list, &query, S, D, cutoff,
 		      FS_INDEX_S_process_bin,
 		      FS_INDEX_S2QD_convert);
       HIT_LIST_sort_by_sequence(hit_list);
       HIT_LIST_sort_decr(hit_list);
-       break;
+      break;
     case T_QUASI_METRIC:
       D = SCORE_MATRIX_S_2_Dquasi(S);
-      FS_INDEX_set_matrix(FS_index, matrix_base, S, D);
-      FS_INDEX_search(FS_index, hit_list, &query, cutoff,
+      FS_INDEX_search(hit_list, &query, S, D, cutoff,
 		      FS_INDEX_QD_process_bin, 
 		      FS_INDEX_identity_convert);
       HIT_LIST_sort_by_sequence(hit_list);
@@ -93,8 +92,7 @@ int main(int argc, char **argv)
      break;
     case T_METRIC:
       D = SCORE_MATRIX_S_2_Dmax(S);
-      FS_INDEX_set_matrix(FS_index, matrix_base, S, D);
-      FS_INDEX_search(FS_index, hit_list, &query, cutoff,
+      FS_INDEX_search(hit_list, &query, S, D, cutoff,
 		      FS_INDEX_QD_process_bin, 
 		      FS_INDEX_identity_convert);
       HIT_LIST_sort_by_sequence(hit_list);
