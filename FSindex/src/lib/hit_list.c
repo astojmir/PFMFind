@@ -330,6 +330,34 @@ void HIT_LIST_set_index_data(HIT_LIST_t *HIT_list,
   HIT_list->index_seqs_total = index_seqs_total; 
 }
 
+void HIT_LIST_get_hit_seqs(HIT_LIST_t *HIT_list, BIOSEQ **seqs,
+			   int cutoff, int *n, int *max_n)
+{
+  int i;
+  SEQ_HIT_t *hit;
+
+  if (*max_n < HIT_list->actual_seqs_hits)
+    {
+      *max_n = HIT_list->actual_seqs_hits;
+      *seqs = reallocec(*seqs, *max_n * sizeof(BIOSEQ));
+    }
+
+  for (i=0, *n=0, hit=HIT_list->hits; i < HIT_list->actual_seqs_hits; 
+       i++, hit++)
+    {
+      if (hit->value >= cutoff)
+	{
+	  *seqs[*n] = *(hit->subject);
+	  (*n)++;
+	}
+      /* Some garbage collection */
+      free(hit->subject);
+      hit->subject = NULL;
+    }
+}
+
+
+
 
 /* Sorting */
 
