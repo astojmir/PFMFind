@@ -9,7 +9,11 @@ wrap: 	FS.i
 
 clean:
 	rm -f *.o; \
-	rm -f *.a; 
+	rm -f *.a; \
+	rm -f *.so;\
+	rm -f *.pyc;\
+	rm -f *.py;\
+	rm -f *_wrap.c;
 
 srcclean: clean
 	rm -f *~; 

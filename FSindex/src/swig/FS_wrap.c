@@ -924,6 +924,14 @@ seqn *fgen_rand_seq(fgen *self,ULINT len){
 			   self->heap);
     return self->Fseq;
   }
+double fgen_freq(fgen *self,char c){
+    int i = c & A_SIZE_MASK;
+    if (i==0)
+      return ((double) self->sgen->cum_freq[i])/ self->sgen->total_residues;  
+    else
+      return ((double) (self->sgen->cum_freq[i] - self->sgen->cum_freq[i-1])) /
+	self->sgen->total_residues;
+  }
 smatrix *new_smatrix(char const *filename,ptable *ptable){
     return SCORE_MATRIX_create(filename, ptable);
   }
@@ -3102,6 +3110,63 @@ static PyObject *_wrap_fgen_rand_seq(PyObject *self, PyObject *args) {
         }
     }
     resultobj = SWIG_NewPointerObj((void *) result, SWIGTYPE_p_seqn, 0);
+    return resultobj;
+    fail:
+    return NULL;
+}
+
+
+static PyObject *_wrap_fgen_freq(PyObject *self, PyObject *args) {
+    PyObject *resultobj;
+    fgen *arg1 = (fgen *) 0 ;
+    char arg2 ;
+    double result;
+    PyObject * obj0 = 0 ;
+    
+    if(!PyArg_ParseTuple(args,(char *)"Oc:fgen_freq",&obj0,&arg2)) goto fail;
+    if ((SWIG_ConvertPtr(obj0,(void **) &arg1, SWIGTYPE_p_fgen,SWIG_POINTER_EXCEPTION | 0 )) == -1) SWIG_fail;
+    {
+        Try {
+            result = (double)fgen_freq(arg1,arg2);
+            
+        }
+        Catch(except) {
+            switch (except->code)
+            {
+                case NO_ERR:
+                break;
+                case NO_MEM:
+                PyErr_SetString(PyExc_MemoryError, except->msg);
+                break;
+                case NEG_MEM_REQ:
+                PyErr_SetString(PyExc_RuntimeError, except->msg);
+                break;
+                case FOPEN_ERR:
+                PyErr_SetString(PyExc_IOError, except->msg);
+                break;
+                case FCLOSE_ERR:
+                PyErr_SetString(PyExc_IOError, except->msg);
+                break;
+                case BAD_ARGS:
+                PyErr_SetString(PyExc_RuntimeError, except->msg);
+                break;
+                case EOF_REACHED:
+                PyErr_SetString(PyExc_IOError, except->msg);
+                break;
+                case GETLINE_ERR:
+                PyErr_SetString(PyExc_IOError, except->msg);
+                break;
+                case INDEX_OUT_OF_RANGE:
+                PyErr_SetString(PyExc_IndexError, except->msg);
+                break;
+                default:
+                PyErr_SetString(PyExc_RuntimeError, except->msg);
+                break;
+            }
+            return NULL;
+        }
+    }
+    resultobj = PyFloat_FromDouble(result);
     return resultobj;
     fail:
     return NULL;
@@ -6242,6 +6307,7 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"new_fgen", _wrap_new_fgen, METH_VARARGS },
 	 { (char *)"delete_fgen", _wrap_delete_fgen, METH_VARARGS },
 	 { (char *)"fgen_rand_seq", _wrap_fgen_rand_seq, METH_VARARGS },
+	 { (char *)"fgen_freq", _wrap_fgen_freq, METH_VARARGS },
 	 { (char *)"fgen_swigregister", fgen_swigregister, METH_VARARGS },
 	 { (char *)"smatrix_filename_get", _wrap_smatrix_filename_get, METH_VARARGS },
 	 { (char *)"smatrix_similarity_flag_get", _wrap_smatrix_similarity_flag_get, METH_VARARGS },

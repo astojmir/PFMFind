@@ -142,6 +142,7 @@ class fgen(_object):
             if self.thisown: destroy(self)
         except: pass
     def rand_seq(*args): return apply(_FS.fgen_rand_seq,args)
+    def freq(*args): return apply(_FS.fgen_freq,args)
     def __repr__(self):
         return "<C fgen instance at %s>" % (self.this,)
 

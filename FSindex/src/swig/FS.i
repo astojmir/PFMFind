@@ -378,6 +378,16 @@ typedef struct {
 			   self->heap);
     return self->Fseq;
   }
+  double freq(char c) {
+    int i = c & A_SIZE_MASK;
+    if (i==0)
+      return ((double) self->sgen->cum_freq[i])/ self->sgen->total_residues;  
+    else
+      return ((double) (self->sgen->cum_freq[i] - self->sgen->cum_freq[i-1])) /
+	self->sgen->total_residues;
+  }
+
+
 }
 
 /********************************************************************/ 
