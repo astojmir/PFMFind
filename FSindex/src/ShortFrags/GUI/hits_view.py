@@ -11,9 +11,6 @@ class HitsView(Tkinter.Frame, View):
         self.grid_propagate(0)
         self.ffont = Pmw.logicalfont('Fixed')
         self.wMenu = Tkinter.Frame(self)
-        self.wScFrame = Pmw.ScrolledFrame(self)
-        bdf = self.wScFrame.component('borderframe')
-        bdf.configure(relief='flat')
 
         self.HL = None
         self.sorts = {'Distance': HitList.sort_by_distance,
@@ -41,130 +38,62 @@ class HitsView(Tkinter.Frame, View):
         self.wButtonBar = Pmw.ButtonBox(self.wMenu)
         self.wButtonBar.pack(side='left', expand=1, fill='x')
 
-        #self.wMenu.grid(row=0, sticky='ew')
-        
-        self.wScFrame.grid(row=1, sticky='ew')
-        self.wFrame = self.wScFrame.interior()
-        self.wHeader = Tkinter.Label(self.wFrame,
-                                     font=self.ffont,
-                                     anchor='w',
-                                     justify='left')
-        stxt = "***** Summary *****\n" + \
-               '  %4.4s  %-*.*s %4.4s %4.4s' % ('Rank', 57, 57,
-                                               'Description', 'Dist', 'Sim')
-        self.wSummaryTitle = Tkinter.Label(self.wFrame,
-                                           font=self.ffont,
-                                           anchor='w',
-                                           justify='left',
-                                           text=stxt)
-        self.wSummaryButtons = []
-        self.wFullTitle = Tkinter.Label(self.wFrame,
-                                        font=self.ffont,
-                                        anchor='w',
-                                        justify='left',
-                                        text='\n\n***** Full Details *****')
-        self.wFullLines = []
-        self.wPerf = Tkinter.Label(self.wFrame,
-                                   font=self.ffont,
-                                   anchor='w',
-                                   justify='left')
-        
-        for i in range(size):
-            self.wSummaryButtons.append(Tkinter.Button(
-                self.wFrame,
-                command = lambda i=i:self._scroll_to_details(i),
-                font=self.ffont,
-                anchor='w',
-                justify='left',
-                relief='groove'))
-            self.wFullLines.append(Tkinter.Label(self.wFrame,
-                                                 font=self.ffont,
-                                                 anchor='w',
-                                                 justify='left',
-                                                 relief='ridge'))
-            self.glist = []
 
-        self.sections = {'Header': self.wHeader,
-                         'Summary': self.wSummaryTitle,
-                         'Details': self.wFullTitle,
-                         'Performance': self.wPerf,
-                         }
-                         
+        self.wScText = Pmw.ScrolledText(self,
+                                        vscrollmode='static',
+                                        hscrollmode='static',
+                                        usehullsize = 1,
+                                        text_wrap='none',
+                                        text_font = self.ffont,
+                                        text_padx = 4,
+                                        text_pady = 4,
+                                        text_state = 'disabled',
+                                        text_cursor = 'left_ptr',
+                                        )
+        self.wScText.grid(row=1, sticky='ew')
+
         for text in ['Header', 'Summary', 'Details', 'Performance']:
-            self.wButtonBar.add(text,
-                                command = lambda w=self.sections[text]:
-                                self._scroll_to(w))
+            self.wButtonBar.add(text)
 
     def set_size(self, height=400, width=300):
         self.configure(height=height, width=width)
-        clp = self.wScFrame.component('clipper')
-        clp.configure(height=height-40, width=width-40)
-        
+        self.update_idletasks()
+        hght = self.winfo_height() - self.wMenu.winfo_height()
+        self.wScText.configure(hull_height=hght, hull_width=width-40)
+
     def reset(self, state={}):
         self.FE = state['FE']
         l, f = state['coords']
         i = state['iter']
         iters = self.FE.get_iters(l,f)
 
-        for w in self.glist:
-            w.grid_forget()
+        self.wMenu.grid_forget()
               
         if i < len(iters):
             self.HL = iters[i]
         else:
             self.HL = None
-            self.wHeader.configure(text='No search hits.')
-            self.glist = [self.wHeader]
-            self.wHeader.grid(row=0, column=0)
+            self.wScText.configure(text_state = 'normal')
+            self.wScText.setvalue("No search hits.")
+            self.wScText.configure(text_state = 'disabled')
             return
 
         self._show_hits()
 
     def _show_hits(self):
-        HL = self.HL
+         HL = self.HL
+         self.wMenu.grid(row=0, sticky='ew')
 
-        # Sort list
-        self.sorts[self.vSortVar.get()](HL, self.vSortIncr.get())
+         # Sort list
+         self.sorts[self.vSortVar.get()](HL, self.vSortIncr.get())
 
-        if len(HL) > self.size:
-            old_size = size
-            self.size = len(HL)
-            for j in range(old_size, self.size):
-                self.wSummaryButtons.append(Tkinter.Button(self.wFrame,
-                                                           font=self.ffont,
-                                                           anchor='w',
-                                                           justify='left',
-                                                           relief='groove'))
-                self.wFullLines.append(Tkinter.Label(self.wFrame,
-                                                     font=self.ffont,
-                                                     anchor='w',
-                                                     justify='left',
-                                                     relief='ridge'))
-
-        
-        self.wHeader.configure(text=HL.header_str())
-        self.glist = [self.wMenu, self.wHeader, self.wSummaryTitle]
-
-        for j, ht in enumerate(HL):
-            self.wSummaryButtons[j].configure(text=summary([ht], 1,
-                                                           rank_offset=j)) 
-            self.glist.append(self.wSummaryButtons[j])
-
-        self.glist.append(self.wFullTitle)
-        for j, ht in enumerate(HL):
-            self.wFullLines[j].configure(text=description([ht], HL.query_seq)) 
-            self.glist.append(self.wFullLines[j])
-
-        self.wPerf.configure(text='\n\n'+HL.perf_str(self.FE.Idata))
-        self.glist.append(self.wPerf)
-
-        for j, w in enumerate(self.glist):
-            w.grid(row=j, sticky='ew')
+         self.wScText.configure(text_state = 'normal')
+         self.wScText.setvalue(HL.print_str(self.FE.Idata))
+         self.wScText.configure(text_state = 'disabled')
+         
         
     def _scroll_to(self, widget):
-        y = float(widget.winfo_y()) / self.wFrame.winfo_height()
-        self.wScFrame.yview('moveto', y)
+        pass
 
     def _scroll_to_details(self, i):
-        widget = self.wFullLines[i]
-        self._scroll_to(widget)
+        pass
