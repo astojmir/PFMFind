@@ -2,8 +2,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include <time.h>
 #include <limits.h>
+#include <assert.h>
 #include "hit_list.h"
 #include "partition.h"
 #include "smatrix.h"
@@ -15,354 +17,16 @@
 
 #define MERGE_DUPLICATES
 
-/********************************************************************/    
-/********************************************************************/    
-/***                                                              ***/
-/***               LIBRARY FUNCTIONS                              ***/ 
-/***                                                              ***/
-/********************************************************************/    
-/********************************************************************/    
-
-
-
-/********************************************************************/    
+/********************************************************************/ 
 /*                                                                  */
-/*                     FS_HASH_TABLE module                         */ 
+/*                     FSINDX object                                */ 
 /*                                                                  */
-/********************************************************************/    
-
-
-/* Main constructor */
-FS_HASH_TABLE_t *FS_HASH_TABLE_create(ULINT no_bins, ULINT def_size) 
-{
-  FS_HASH_TABLE_t *HT = mallocec(sizeof(FS_HASH_TABLE_t));
- 
-  HT->no_bins = no_bins;
-  HT->no_seqs = 0;
-  HT->no_useqs = 0;
-
-  HT->shist_len = 5 * def_size;
-  HT->shist = callocec(HT->shist_len, sizeof(ULINT)); 
-  HT->uhist_len = 5 * def_size;
-  HT->uhist = callocec(HT->uhist_len, sizeof(ULINT)); 
-  HT->bin_size = callocec(no_bins, sizeof(ULINT));
-  HT->max_bin_size = callocec(no_bins, sizeof(ULINT)); 
-  HT->bin = mallocec(no_bins * sizeof(SEQ_index_t *));
-  HT->binL = 0;
-  HT->heap = NULL;
-
-  HT->u_size = callocec(no_bins, sizeof(ULINT));
-  HT->u = mallocec(no_bins * sizeof(int));
-  HT->u_heap = NULL;
-  HT->uL = 0;
-
-  return HT;  
-}
-
-/* Destructor */
-void FS_HASH_TABLE_destroy(FS_HASH_TABLE_t *HT)
-{
-  ULINT i;
-
-  if (HT->heap == NULL)
-    for (i=0; i < HT->no_bins; i++)
-      free(HT->bin[i]);
-  else
-    free(HT->heap);
-
-  /* TO DO: Free unique sequneces */
-
-  free(HT->bin);
-  free(HT->bin_size);
-  free(HT->shist);
-  if (HT->max_bin_size != NULL)
-    free(HT->max_bin_size);
-  free(HT);
-}
-
-/* Insertion */
-void FS_HASH_TABLE_count_seq(FS_HASH_TABLE_t *HT, ULINT i,
-			      SEQ_index_t seq_i)
-{
-  /* Count the sequence */
-  HT->max_bin_size[seq_i]++;
-  HT->no_seqs++;
-}
-
-void FS_HASH_TABLE_allocate_bins(FS_HASH_TABLE_t *HT)
-{
-  ULINT i;
-  for (i=0; i < HT->no_bins; i++)
-    HT->bin[i] = mallocec(HT->max_bin_size[i] 
-			     * sizeof(SEQ_index_t));
-}
-
-void FS_HASH_TABLE_insert_seq(FS_HASH_TABLE_t *HT, ULINT i,
-			      SEQ_index_t seq_i)
-{
-  /* Insert the sequence */
-  HT->bin[seq_i][HT->bin_size[seq_i]] = i;
-  HT->bin_size[seq_i]++;
-}
-
-void FS_HASH_TABLE_add_bin_stats(FS_HASH_TABLE_t *HT,
-				 SEQ_index_t seq_i)
-{
-  ULINT s0; /* Old length of frequency vector */
-
-  if (HT->bin_size[seq_i] > HT->bin_size[HT->binL])
-    HT->binL = seq_i;
-    
-  if (HT->bin_size[seq_i] >= HT->shist_len)
-    {
-      s0 = HT->shist_len;
-      HT->shist_len = HT->bin_size[seq_i]+1;
-      HT->shist = reallocec(HT->shist, HT->shist_len * sizeof(ULINT)); 
-      memset(HT->shist + s0, 0, (HT->shist_len - s0) * sizeof(ULINT));
-    }
-  HT->shist[HT->bin_size[seq_i]]++;
+/********************************************************************/ 
 
 #ifdef MERGE_DUPLICATES
-  if (HT->u_size[seq_i] > HT->u_size[HT->uL])
-    HT->uL = seq_i;
+static SEQUENCE_DB *s_db1;
+static int m1; 
 
-  if (HT->u_size[seq_i] >= HT->uhist_len)
-    {
-      s0 = HT->uhist_len;
-      HT->uhist_len = HT->u_size[seq_i]+1;
-      HT->uhist = reallocec(HT->uhist, HT->uhist_len * sizeof(ULINT));  
-      memset(HT->uhist + s0, 0, (HT->uhist_len - s0) * sizeof(ULINT));
-    }
-  HT->uhist[HT->u_size[seq_i]]++;
-#endif
-}
-
-/* Trimming */
-void FS_HASH_TABLE_resize(FS_HASH_TABLE_t *HT)
-{
-  ULINT i;
-  for (i=0; i < HT->no_bins; i++)
-    {
-      if (HT->bin_size[i] > 0)
-	{
-	  HT->bin[i] = reallocec(HT->bin[i], 
-	  		HT->bin_size[i] * sizeof(SEQ_index_t)); 
-	  HT->max_bin_size[i] = HT->bin_size[i];
-	}      
-    }
-}
-
-
-/* Reading, writing to file */
-int FS_HASH_TABLE_write(FS_HASH_TABLE_t *HT, FILE *stream)
-{
-  ULINT i;
-
-  fwrite(&(HT->no_bins), sizeof(ULINT), 1, stream);
-
-  fwrite(&(HT->no_seqs), sizeof(ULINT), 1, stream);
-  fwrite(&(HT->shist_len), sizeof(ULINT), 1, stream);
-  fwrite(&(HT->binL), sizeof(SEQ_index_t), 1, stream);
-  fwrite(HT->shist, sizeof(ULINT), HT->shist_len, stream); 
-  fwrite(HT->bin_size, sizeof(ULINT), HT->no_bins, stream);  
-
-  for (i=0; i < HT->no_bins; i++)
-    fwrite(HT->bin[i], sizeof(SEQ_index_t), HT->bin_size[i], stream);
-
-  fwrite(&(HT->no_useqs), sizeof(ULINT), 1, stream);
-  fwrite(&(HT->uhist_len), sizeof(ULINT), 1, stream);
-  fwrite(&(HT->uL), sizeof(SEQ_index_t), 1, stream);
-  fwrite(HT->uhist, sizeof(ULINT), HT->uhist_len, stream); 
-  fwrite(HT->u_size, sizeof(ULINT), HT->no_bins, stream);  
-  
-  for (i=0; i < HT->no_bins; i++)
-    fwrite(HT->u[i], sizeof(int), HT->u_size[i], stream);
-
-  return 1;
-}
-
-FS_HASH_TABLE_t *FS_HASH_TABLE_read(FILE *stream)
-{
-  FS_HASH_TABLE_t *HT = mallocec(sizeof(FS_HASH_TABLE_t));
-  ULINT i;
-  SEQ_index_t *current;
-  int *t2;
-
-  fread(&(HT->no_bins), sizeof(ULINT), 1, stream);
-  HT->bin_size = mallocec(HT->no_bins * sizeof(ULINT));
-  HT->u_size = mallocec(HT->no_bins * sizeof(ULINT));
-  HT->bin = mallocec(HT->no_bins * sizeof(SEQ_index_t *));
-  HT->u = mallocec(HT->no_bins * sizeof(int *));
-
-  fread(&(HT->no_seqs), sizeof(ULINT), 1, stream);
-  HT->heap = mallocec(HT->no_seqs * sizeof(SEQ_index_t)); 
-
-  fread(&(HT->shist_len), sizeof(ULINT), 1, stream);
-  HT->shist = mallocec(HT->shist_len * sizeof(ULINT));
-
-  fread(&(HT->binL), sizeof(SEQ_index_t), 1, stream);
-
-  HT->max_bin_size = NULL;
-
-  fread(HT->shist, sizeof(ULINT), HT->shist_len, stream); 
-  fread(HT->bin_size, sizeof(ULINT), HT->no_bins, stream);  
-
-  current =  HT->heap;
-  for (i=0; i < HT->no_bins; i++)
-    {
-      HT->bin[i] = current;
-      fread(HT->bin[i], sizeof(SEQ_index_t), HT->bin_size[i],
-	    stream);
-      current += HT->bin_size[i];
-    }
-
-  fread(&(HT->no_useqs), sizeof(ULINT), 1, stream);
-  HT->u_heap = mallocec(HT->no_useqs * sizeof(int)); 
-
-  fread(&(HT->uhist_len), sizeof(ULINT), 1, stream);
-  HT->uhist = mallocec(HT->uhist_len * sizeof(ULINT)); 
-
-  fread(&(HT->uL), sizeof(SEQ_index_t), 1, stream);
-
-  fread(HT->uhist, sizeof(ULINT), HT->uhist_len, stream); 
-  fread(HT->u_size, sizeof(ULINT), HT->no_bins, stream);  
-  
-  t2 = HT->u_heap;
-  for (i=0; i < HT->no_bins; i++)
-    {
-      HT->u[i] = t2;
-      fread(HT->u[i], sizeof(int), HT->u_size[i], stream);
-      t2 += HT->u_size[i];
-    }
-   
-  return HT;  
-}
-
-/* Statistics */
-void FS_HASH_TABLE_print_stats(FS_HASH_TABLE_t *HT, FILE *stream,
-			       FS_PARTITION_t *FS_partition, 
-			       ULINT frag_len)
-{
-  ULINT i;
-  ULINT CF;
-  ULINT CS;
-  
-  fprintf(stream, "Total number of fragments in index: %ld\n", 
-	  HT->no_seqs);
-  fprintf(stream, "Total number of index entries: %ld\n", 
-	  HT->no_bins);
-  fprintf(stream, "Average size of index entry: %.2f\n", 
-	  (float) HT->no_seqs / (float) HT->no_bins);
-  fprintf(stream, "Largest index entry: %s\n",
-	  FS_seq_print(HT->binL, FS_partition, frag_len));
-  fprintf(stream, "Size of largest index entry: %ld\n",
-       	  HT->bin_size[HT->binL]);
-  fprintf(stream, "Total number of distinct fragments in index: %ld\n", 
-	  HT->no_useqs);
-  fprintf(stream, "Average 'distinct' size of index entry: %.2f\n", 
-	  (float) HT->no_useqs / (float) HT->no_bins);
-  fprintf(stream, "Largest 'distinct' index entry: %s\n",
-	  FS_seq_print(HT->uL, FS_partition, frag_len));
-  fprintf(stream, "Size of largest 'distinct' index entry: %ld\n",
-	  HT->u_size[HT->uL]);
-
-  fprintf(stream, "\n* Distribution of numbers of fragments per"
-	  " index entry *\n");
-  fprintf(stream, "%17s %10s\n","Index entry size", "Frequency");
-  CF = 0;
-  CS = 0;
-  for (i = 0; i < HT->shist_len; i++)
-    {
-      CF += HT->shist[i];
-      CS += HT->shist[i] * i;    
-      if (HT->shist[i] > 0)
-	fprintf(stream, "%17ld %10ld %10ld %10ld\n", i, HT->shist[i], 
-		CF, CS);
-    }
-  fprintf(stream, "\n");
-
-  fprintf(stream, "\n* Distribution of numbers of distinct fragments per"
-	  " index entry *\n");
-  fprintf(stream, "%17s %10s\n","Index entry size", "Frequency");
-  CF = 0;
-  CS = 0;
-  for (i = 0; i < HT->uhist_len; i++)
-    {
-      CF += HT->uhist[i];
-      CS += HT->uhist[i] * i;
-      if (HT->uhist[i] > 0)
-	fprintf(stream, "%17ld %10ld %10ld %10ld\n", i, HT->uhist[i], 
-		CF, CS);
-    }
-  fprintf(stream, "\n");
-}
-
-ULINT FS_HASH_TABLE_get_total_seqs(FS_HASH_TABLE_t *HT)
-{
-  return HT->no_seqs;
-}
-
-
-
-
-/********************************************************************/ 
-/*                                                                  */
-/*                     FS_INDEX module                              */ 
-/*                                                                  */
-/********************************************************************/ 
-
-/********************************************************************/ 
-/*      Static variables and functions                              */
-/********************************************************************/ 
-
-/* FSindex variables - essentially constant throughout all searches
-   with the same index, Can be a problem if running searches with
-   other indexes in parallel with shared memory, but this is very
-   unlikely. */ 
-
-/* These were members of FS_INDEX_t structures before but it seems
-   better this way as we will probably not do searhces with
-   different databases at the same time. 
-*/  
-
-static char *db_name;
-/* static char *matrix; */
-static char *alphabet; 
-static char *index_name;
-static char separator;
-static int frag_len; 
-static ULINT db_no_frags;
-static SEQUENCE_DB *s_db;
-static FS_PARTITION_t *ptable;
-static FS_HASH_TABLE_t *HT;
-static int K; /* Number of letters in FS alphabet */
-static ULINT *FS_KK; /* FS_KK[i] = FS_K ^ i */
-static int *K_modtable; /* K_modtable[i] = i % K for i < 2*K */
-
-/* Scoring matrices and thresholds - search instance specific */
-static SCORE_MATRIX_t *S;
-static SCORE_MATRIX_t *D;
-static int S_cutoff;
-static int D_cutoff;
-static int kNN;
-static FS_INDEX_process_func *pfunc; 
-
-static POS_MATRIX *PS;
-static POS_MATRIX *PD;
-static FS_INDEX_profile_process_func *ppfunc; 
-ULINT Pfrom;
-ULINT Pto;
-
-/* Query specific variables - can be shared for the same query */ 
-static HIT_LIST_t *hit_list;
-static BIOSEQ *query;
-static int *FS_Q; /* partition numbers */
-static ULINT *FS_DC;
-static ULINT *FS_REM;
-static int *qind; /* sequence converted to indices */
-
-
-#ifdef MERGE_DUPLICATES
 /* Fragment comparison routine */
 static 
 int comp_frags(const void *fg1, const void *fg2)
@@ -372,19 +36,21 @@ int comp_frags(const void *fg1, const void *fg2)
   BIOSEQ s1;
   BIOSEQ s2;
 
-  fastadb_get_Ffrag(s_db, frag_len, &s1, *f1);
-  fastadb_get_Ffrag(s_db, frag_len, &s2, *f2);
-  return memcmp(s1.start, s2.start, frag_len);
+  fastadb_get_Ffrag(s_db1, m1, &s1, *f1);
+  fastadb_get_Ffrag(s_db1, m1, &s2, *f2);
+  return memcmp(s1.start, s2.start, m1);
 }
 #endif
 
 
 /* Main constructor */
-void FS_INDEX_create(const char *database, ULINT flen,
-		     const char *abet, 
-		     const char sepchar, int skip)
+FSINDX *FS_INDEX_create(const char *database, ULINT flen,
+			const char *abet, 
+			const char sepchar, int skip)
  
 {
+  FSINDX *FSI = mallocec(sizeof(FSINDX));
+
   time_t time0 = time(NULL);
   time_t time1;
   double dt;
@@ -393,7 +59,6 @@ void FS_INDEX_create(const char *database, ULINT flen,
   char *db_base;
 
   ULINT i, j;
-  ULINT no_FS;
   ULINT no_frags;
   BIOSEQ *frag = mallocec(sizeof(BIOSEQ));
   FS_SEQ_t FS_seq;
@@ -401,7 +66,7 @@ void FS_INDEX_create(const char *database, ULINT flen,
 
   fastadb_arg fastadb_argt[3];
   fastadb_argv_t fastadb_argv[3];
-  ULINT bin_size;
+  ULINT bs;
 
 #ifdef MERGE_DUPLICATES
   int k;
@@ -410,16 +75,11 @@ void FS_INDEX_create(const char *database, ULINT flen,
 
   /* Initialise FS_index */
   split_base_dir(database, &db_base, &db_dir);
-  db_name = strdup(db_base);
-  alphabet = strdup(abet);
-  separator = sepchar;
-  frag_len = flen;
-
-  FS_KK = mallocec(frag_len * sizeof(ULINT));
-  FS_Q = mallocec(frag_len * sizeof(int));
-  FS_DC = mallocec(frag_len * sizeof(ULINT));
-  FS_REM = mallocec(frag_len * sizeof(ULINT));
-  qind = mallocec(frag_len * sizeof(int));
+  FSI->db_name = strdup(db_base);
+  FSI->alphabet = strdup(abet);
+  FSI->separator = sepchar;
+  FSI->m = flen;
+  FSI->KK = mallocec(FSI->m * sizeof(ULINT));
   
   /* Load database */
   fastadb_argt[0] = ACCESS_TYPE;
@@ -427,145 +87,199 @@ void FS_INDEX_create(const char *database, ULINT flen,
   fastadb_argt[2] = NONE;
   fastadb_argv[0].access_type = MEMORY;
   fastadb_argv[1].retrieve_deflines = NO;
-
-  s_db = fastadb_open(database, fastadb_argt, fastadb_argv); 
+  FSI->s_db = fastadb_open(database, fastadb_argt, fastadb_argv); 
  
   /* Make fragment database */
-  no_frags = fastadb_count_Ffrags(s_db, frag_len);
+  no_frags = fastadb_count_Ffrags(FSI->s_db, FSI->m);
   one_percent_fragments = (ULINT) (((double) no_frags/skip) / 100);
-  fastadb_init_Ffrags(s_db, frag_len);
+  fastadb_init_Ffrags(FSI->s_db, FSI->m);
 
   /* Create partition table */
-  ptable = FS_PARTITION_create(alphabet, separator); 
+  FSI->ptable = FS_PARTITION_create(FSI->alphabet, FSI->separator); 
 
   /* Error if the sequence is too long for the partitioning*/
-  K = FS_PARTITION_get_no_partitions(ptable);
-  K_modtable = mallocec(2*K*sizeof(int));
-  for (i = 0; i < K; i++)
+  FSI->K = FS_PARTITION_get_no_partitions(FSI->ptable);
+  FSI->K_modtable = mallocec(2*FSI->K*sizeof(int));
+  for (i = 0; i < FSI->K; i++)
     {
-      K_modtable[i] = i;
-      K_modtable[i+K] = i;
+      FSI->K_modtable[i] = i;
+      FSI->K_modtable[i + FSI->K] = i;
     }
-  if ((K-1) >> ((sizeof(ULINT)*8)/frag_len))
+  if ((FSI->K-1) >> ((sizeof(ULINT)*8)/FSI->m))
     {
       fprintf(stderr, 
 	      "FS_INDEX_create(): Fragment length too large for"
 	      " the given\n partitions and 32 bit words!\n"
-	      "Partitions: %s\n", alphabet);
+	      "Partitions: %s\n", FSI->alphabet);
       /* This is a fatal error so just exit. */
       exit(EXIT_FAILURE);
     }
 
   /* Number of bins to allocate in hash table */
-  no_FS = 1;
-  for (i=0; i < frag_len; i++)
+  FSI->no_bins = 1;
+  for (i=0; i < FSI->m; i++)
     {
-      FS_KK[i] = no_FS;
-      no_FS *= K;
+      FSI->KK[i] = FSI->no_bins;
+      FSI->no_bins *= FSI->K;
     }
 
   /* Make initial bin size half as large as mean size */
-  bin_size = (int)((float) no_frags / no_FS) + 1;
+  bs = (int)((float) no_frags / FSI->no_bins) + 1;
 
   /* Initialise hash table */
-  HT = FS_HASH_TABLE_create(no_FS, bin_size);
+ 
+  FSI->no_seqs = 0;
+  FSI->no_useqs = 0;
+  FSI->shist_len = 5 * bs;
+  FSI->shist = callocec(FSI->shist_len, sizeof(ULINT)); 
+  FSI->uhist_len = 5 * bs;
+  FSI->uhist = callocec(FSI->uhist_len, sizeof(ULINT)); 
+  FSI->bin_size = callocec(FSI->no_bins, sizeof(ULINT));
+  FSI->max_bin_size = callocec(FSI->no_bins, sizeof(ULINT)); 
+  FSI->bin = mallocec(FSI->no_bins * sizeof(SEQ_index_t *));
+  FSI->binL = 0;
+  FSI->heap = NULL;
 
-  /* We do it in two passes - first we count the fragments, then put
-     them */
+  FSI->u_size = callocec(FSI->no_bins, sizeof(ULINT));
+  FSI->u = mallocec(FSI->no_bins * sizeof(int));
+  FSI->u_heap = NULL;
+  FSI->uL = 0;
+
+  /* Two passes - first count fragments, then put them */
+
   if (FS_INDEX_VERBOSE || FS_INDEX_PRINT_BAR)
     printf("Counting fragments ...\n");
+
   /* Counting */ 
   j = 0;
-  while (fastadb_get_next_Ffrag(s_db, frag_len, frag, &i, skip))  
+  while (fastadb_get_next_Ffrag(FSI->s_db, FSI->m, frag, &i, skip))  
     {
       j++;
       /* Calculate its FS_seq */
-      if (BIOSEQ_2_FS_SEQ(frag, ptable, &FS_seq))
-	FS_HASH_TABLE_count_seq(HT, i, FS_seq);
+      if (BIOSEQ_2_FS_SEQ(frag, FSI->ptable, &FS_seq))
+	{
+	  /* Count the sequence */
+	  FSI->max_bin_size[FS_seq]++;
+	  FSI->no_seqs++;
+	}
 	
       /* Print progress bar */
       if (FS_INDEX_PRINT_BAR > 0)
 	printbar(stdout, j+1, one_percent_fragments, 50);  
     }  
+
   /* Allocating */
   if (FS_INDEX_VERBOSE || FS_INDEX_PRINT_BAR)
     printf("Allocating bins ...\n");
-  FS_HASH_TABLE_allocate_bins(HT);
+
+  for (j=0; j < FSI->no_bins; j++)
+    FSI->bin[j] = mallocec(FSI->max_bin_size[j] 
+			     * sizeof(SEQ_index_t));
 
   /* Commiting */
   if (FS_INDEX_VERBOSE || FS_INDEX_PRINT_BAR)
     printf("Collecting fragments ...\n");
+
   j = 0;
-  fastadb_init_Ffrags(s_db, frag_len);
-  while (fastadb_get_next_Ffrag(s_db, frag_len, frag, &i, skip))  
+  fastadb_init_Ffrags(FSI->s_db, FSI->m);
+  while (fastadb_get_next_Ffrag(FSI->s_db, FSI->m, frag, &i, skip))  
     {
       j++;
       /* Calculate its FS_seq */
-      if (BIOSEQ_2_FS_SEQ(frag, ptable, &FS_seq))
+      if (BIOSEQ_2_FS_SEQ(frag, FSI->ptable, &FS_seq))
 	{
 	  /* Add to appropriate FS_bin */
 	  added_frags++;
-	  FS_HASH_TABLE_insert_seq(HT, i, FS_seq);
+	  FSI->bin[FS_seq][FSI->bin_size[FS_seq]] = i;
+	  FSI->bin_size[FS_seq]++;
 	}
 
       /* Print progress bar */
       if (FS_INDEX_PRINT_BAR > 0)
 	printbar(stdout, j+1, one_percent_fragments, 50);  
     }  
+
+#ifdef MERGE_DUPLICATES
   if (FS_INDEX_VERBOSE || FS_INDEX_PRINT_BAR)
     printf("Collecting duplicate fragments ...\n");
 
-  for (j=0; j < HT->no_bins; j++)
+  for (j=0; j < FSI->no_bins; j++)
     {
 
-#ifdef MERGE_DUPLICATES
-      if (HT->bin_size[j] != 0) {
+      m1 = FSI->m;
+      s_db1 = FSI->s_db;
+      if (FSI->bin_size[j] != 0) {
 
       /* Sort fragments */
-      qsort(HT->bin[j], HT->bin_size[j], sizeof(SEQ_index_t),
+      qsort(FSI->bin[j], FSI->bin_size[j], sizeof(SEQ_index_t),
 	    comp_frags);
       /* Count unique fragments */
-      HT->u_size[j] = 1;
-      for (i=1; i < HT->bin_size[j]; i++)
-	if (comp_frags(HT->bin[j]+i, HT->bin[j]+i-1) != 0)
-	  HT->u_size[j]++;
+      FSI->u_size[j] = 1;
+      for (i=1; i < FSI->bin_size[j]; i++)
+	if (comp_frags(FSI->bin[j]+i, FSI->bin[j]+i-1) != 0)
+	  FSI->u_size[j]++;
 
-      HT->no_useqs += HT->u_size[j];
+      FSI->no_useqs += FSI->u_size[j];
       /* Allocate unique fragments */
-      HT->u[j] = callocec(HT->u_size[j], sizeof(int));
+      FSI->u[j] = callocec(FSI->u_size[j], sizeof(int));
 
       /* Fill unique array */
  
-      HT->u[j][0] = 0;
+      FSI->u[j][0] = 0;
       k = 0;
-      for (i=1; i < HT->bin_size[j]; i++)
-	if (comp_frags(HT->bin[j]+i, HT->bin[j]+i-1) != 0)
+      for (i=1; i < FSI->bin_size[j]; i++)
+	if (comp_frags(FSI->bin[j]+i, FSI->bin[j]+i-1) != 0)
 	  {
 	    k++;
-	    HT->u[j][k] = i; 
+	    FSI->u[j][k] = i; 
 	  }
       }
       if (FS_INDEX_PRINT_BAR > 0)
-	printbar(stdout, j+1, HT->no_bins/100, 50);  
+	printbar(stdout, j+1, FSI->no_bins/100, 50);  
       
 #endif
+
       /* Add statistics */
-      FS_HASH_TABLE_add_bin_stats(HT, j);     
+      {
+	ULINT s0; /* Old length of frequency vector */
+
+	if (FSI->bin_size[j] > FSI->bin_size[FSI->binL])
+	  FSI->binL = j;
+    
+	if (FSI->bin_size[j] >= FSI->shist_len)
+	  {
+	    s0 = FSI->shist_len;
+	    FSI->shist_len = FSI->bin_size[j]+1;
+	    FSI->shist = reallocec(FSI->shist, FSI->shist_len * sizeof(ULINT)); 
+	    memset(FSI->shist + s0, 0, (FSI->shist_len - s0) * sizeof(ULINT));
+	  }
+	FSI->shist[FSI->bin_size[j]]++;
+
+#ifdef MERGE_DUPLICATES
+	if (FSI->u_size[j] > FSI->u_size[FSI->uL])
+	  FSI->uL = j;
+	
+	if (FSI->u_size[j] >= FSI->uhist_len)
+	  {
+	    s0 = FSI->uhist_len;
+	    FSI->uhist_len = FSI->u_size[j]+1;
+	    FSI->uhist = reallocec(FSI->uhist, FSI->uhist_len * sizeof(ULINT));  
+	    memset(FSI->uhist + s0, 0, (FSI->uhist_len - s0) * sizeof(ULINT));
+	  }
+	FSI->uhist[FSI->u_size[j]]++;
+#endif
+      }
     }
 
-#if 0
-  /* Resize bins */
-  FS_HASH_TABLE_resize(HT); 
-#endif
 
   /* Take time */
   time1 = time(NULL);
   dt = difftime(time1, time0)/60.0;
-  db_no_frags = no_frags;
+  FSI->db_no_frags = no_frags;
 
   /* Print statistics */
   if (FS_INDEX_VERBOSE > 0)
-    FS_INDEX_print_stats(stdout, j, dt); 
+    FS_INDEX_print_stats(FSI, stdout, j, dt); 
 
   /* Clean up */
   free(frag);
@@ -573,34 +287,50 @@ void FS_INDEX_create(const char *database, ULINT flen,
   free(db_base);
 
   /* We have an index ready for search */
-  index_name = strdup("New Index");
-  return; 
+  FSI->index_name = strdup("New Index");
+  return FSI; 
 }
 
 
 /* Destructor */
-void FS_INDEX_destroy(void)
+void FS_INDEX_destroy(FSINDX *FSI)
 {
   /* Free all bins */
-  if (HT != NULL)
-    FS_HASH_TABLE_destroy(HT); 
+  ULINT i;
+
+  if (FSI->heap == NULL)
+    for (i=0; i < FSI->no_bins; i++)
+      free(FSI->bin[i]);
+  else
+    free(FSI->heap);
+
+  /* TO DO: Free unique sequneces */
+
+  free(FSI->bin);
+  free(FSI->bin_size);
+  free(FSI->shist);
+  if (FSI->max_bin_size != NULL)
+    free(FSI->max_bin_size);
+  free(FSI);
+
 
   /* Free partition table */
-  FS_PARTITION_destroy(ptable);  
+  FS_PARTITION_destroy(FSI->ptable);  
 
   /* Free sequence database */
-  fastadb_close(s_db);
+  fastadb_close(FSI->s_db);
 
   /* Free names */
-  free(db_name);
-  free(alphabet);
+  free(FSI->db_name);
+  free(FSI->alphabet);
 }
 
 /* Load, Save */
-int FS_INDEX_save(const char *filename)
+int FS_INDEX_save(FSINDX *FSI, const char *filename)
 { 
   FILE *stream = fopen(filename, "wb");
   int len;
+  ULINT i;
  
   /* Open file */
   if(stream == NULL)
@@ -612,27 +342,46 @@ int FS_INDEX_save(const char *filename)
       exit(EXIT_FAILURE);
     }
 
-  len = strlen(db_name) + 1;
+  len = strlen(FSI->db_name) + 1;
   fwrite(&len, sizeof(int), 1, stream);
-  fwrite(db_name, sizeof(char), len, stream);
+  fwrite(FSI->db_name, sizeof(char), len, stream);
 
-  len = strlen(alphabet) + 1;
+  len = strlen(FSI->alphabet) + 1;
   fwrite(&len, sizeof(int), 1, stream);
-  fwrite(alphabet, sizeof(char), len, stream);
+  fwrite(FSI->alphabet, sizeof(char), len, stream);
 
-  fwrite(&(separator), sizeof(char), 1, stream);
-  fwrite(&(frag_len), sizeof(int), 1, stream);
-  fwrite(&( db_no_frags), sizeof(ULINT), 1, stream);
+  fwrite(&(FSI->separator), sizeof(char), 1, stream);
+  fwrite(&(FSI->m), sizeof(int), 1, stream);
+  fwrite(&(FSI->db_no_frags), sizeof(ULINT), 1, stream);
 
-  FS_PARTITION_write(ptable, stream); 
-  FS_HASH_TABLE_write(HT, stream);
+  FS_PARTITION_write(FSI->ptable, stream); 
+
+  fwrite(&(FSI->no_bins), sizeof(ULINT), 1, stream);
+  fwrite(&(FSI->no_seqs), sizeof(ULINT), 1, stream);
+  fwrite(&(FSI->shist_len), sizeof(ULINT), 1, stream);
+  fwrite(&(FSI->binL), sizeof(SEQ_index_t), 1, stream);
+  fwrite(FSI->shist, sizeof(ULINT), FSI->shist_len, stream); 
+  fwrite(FSI->bin_size, sizeof(ULINT), FSI->no_bins, stream);  
+
+  for (i=0; i < FSI->no_bins; i++)
+    fwrite(FSI->bin[i], sizeof(SEQ_index_t), FSI->bin_size[i], stream);
+
+  fwrite(&(FSI->no_useqs), sizeof(ULINT), 1, stream);
+  fwrite(&(FSI->uhist_len), sizeof(ULINT), 1, stream);
+  fwrite(&(FSI->uL), sizeof(SEQ_index_t), 1, stream);
+  fwrite(FSI->uhist, sizeof(ULINT), FSI->uhist_len, stream); 
+  fwrite(FSI->u_size, sizeof(ULINT), FSI->no_bins, stream);  
+  
+  for (i=0; i < FSI->no_bins; i++)
+    fwrite(FSI->u[i], sizeof(int), FSI->u_size[i], stream);
 
   fclose(stream);
   return 1;
 }
 
-int FS_INDEX_load(const char *filename)
+FSINDX *FS_INDEX_load(const char *filename)
 {
+  FSINDX *FSI = mallocec(sizeof(FSINDX));
   FILE *stream = fopen(filename, "rb");
   int len;
   fastadb_arg fastadb_argt[3];
@@ -641,6 +390,8 @@ int FS_INDEX_load(const char *filename)
   char *dirname;
   char *full_dbname;
   int i;
+  SEQ_index_t *current;
+  int *t2;
  
   /* Open file */
   if(stream == NULL)
@@ -650,22 +401,22 @@ int FS_INDEX_load(const char *filename)
 	      filename);
       exit(EXIT_FAILURE);
     }
-  index_name = strdup(filename);
+  FSI->index_name = strdup(filename);
 
   fread(&len, sizeof(int), 1, stream);
-  db_name = mallocec(len);
-  fread(db_name, sizeof(char), len, stream);
+  FSI->db_name = mallocec(len);
+  fread(FSI->db_name, sizeof(char), len, stream);
 
   split_base_dir(filename, &basename, &dirname);
-  cat_base_dir(&full_dbname, db_name, dirname);
+  cat_base_dir(&full_dbname, FSI->db_name, dirname);
 
   fread(&len, sizeof(int), 1, stream);
-  alphabet = mallocec(len);
-  fread(alphabet, sizeof(char), len, stream);
+  FSI->alphabet = mallocec(len);
+  fread(FSI->alphabet, sizeof(char), len, stream);
 
-  fread(&separator, sizeof(char), 1, stream);
-  fread(&frag_len, sizeof(int), 1, stream);
-  fread(&db_no_frags, sizeof(ULINT), 1, stream);
+  fread(&FSI->separator, sizeof(char), 1, stream);
+  fread(&FSI->m, sizeof(int), 1, stream);
+  fread(&FSI->db_no_frags, sizeof(ULINT), 1, stream);
 
   /* Load database */
   fastadb_argt[0] = ACCESS_TYPE;
@@ -674,8 +425,8 @@ int FS_INDEX_load(const char *filename)
   fastadb_argv[0].access_type = MEMORY;
   fastadb_argv[1].retrieve_deflines = YES;
 
-  s_db = fastadb_open(full_dbname, fastadb_argt, fastadb_argv); 
-  if (s_db == NULL)
+  FSI->s_db = fastadb_open(full_dbname, fastadb_argt, fastadb_argv); 
+  if (FSI->s_db == NULL)
     {
       fprintf(stderr, 
 	      "FS_INDEX_load(): Could not open fasta database %s!\n", 
@@ -683,138 +434,275 @@ int FS_INDEX_load(const char *filename)
       exit(EXIT_FAILURE);
     }
       
-  ptable = FS_PARTITION_read(stream); 
-  HT = FS_HASH_TABLE_read(stream);
+  FSI->ptable = FS_PARTITION_read(stream); 
 
-  /* Allocate arrays and calculate FS_KK */
-  FS_KK = mallocec(frag_len * sizeof(ULINT));
-  FS_Q = mallocec(frag_len * sizeof(int));
-  FS_DC = mallocec(frag_len * sizeof(ULINT));
-  FS_REM = mallocec(frag_len * sizeof(ULINT));
-  qind = mallocec(frag_len * sizeof(int));
+  fread(&(FSI->no_bins), sizeof(ULINT), 1, stream);
+  FSI->bin_size = mallocec(FSI->no_bins * sizeof(ULINT));
+  FSI->u_size = mallocec(FSI->no_bins * sizeof(ULINT));
+  FSI->bin = mallocec(FSI->no_bins * sizeof(SEQ_index_t *));
+  FSI->u = mallocec(FSI->no_bins * sizeof(int *));
 
-  K = FS_PARTITION_get_no_partitions(ptable);
-  K_modtable = mallocec(2*K*sizeof(int));
-  for (i = 0; i < K; i++)
+  fread(&(FSI->no_seqs), sizeof(ULINT), 1, stream);
+  FSI->heap = mallocec(FSI->no_seqs * sizeof(SEQ_index_t)); 
+
+  fread(&(FSI->shist_len), sizeof(ULINT), 1, stream);
+  FSI->shist = mallocec(FSI->shist_len * sizeof(ULINT));
+
+  fread(&(FSI->binL), sizeof(SEQ_index_t), 1, stream);
+
+  FSI->max_bin_size = NULL;
+
+  fread(FSI->shist, sizeof(ULINT), FSI->shist_len, stream); 
+  fread(FSI->bin_size, sizeof(ULINT), FSI->no_bins, stream);  
+
+  current =  FSI->heap;
+  for (i=0; i < FSI->no_bins; i++)
     {
-      K_modtable[i] = i;
-      K_modtable[i+K] = i;
+      FSI->bin[i] = current;
+      fread(FSI->bin[i], sizeof(SEQ_index_t), FSI->bin_size[i],
+	    stream);
+      current += FSI->bin_size[i];
     }
-  FS_KK[0] = 1;
-  for (i=1; i < frag_len; i++)
-    FS_KK[i] = K * FS_KK[i-1];
+
+  fread(&(FSI->no_useqs), sizeof(ULINT), 1, stream);
+  FSI->u_heap = mallocec(FSI->no_useqs * sizeof(int)); 
+
+  fread(&(FSI->uhist_len), sizeof(ULINT), 1, stream);
+  FSI->uhist = mallocec(FSI->uhist_len * sizeof(ULINT)); 
+
+  fread(&(FSI->uL), sizeof(SEQ_index_t), 1, stream);
+
+  fread(FSI->uhist, sizeof(ULINT), FSI->uhist_len, stream); 
+  fread(FSI->u_size, sizeof(ULINT), FSI->no_bins, stream);  
+  
+  t2 = FSI->u_heap;
+  for (i=0; i < FSI->no_bins; i++)
+    {
+      FSI->u[i] = t2;
+      fread(FSI->u[i], sizeof(int), FSI->u_size[i], stream);
+      t2 += FSI->u_size[i];
+    }
+   
+  /* Allocate arrays and calculate FS_KK */
+  FSI->KK = mallocec(FSI->m * sizeof(ULINT));
+  FSI->K = FS_PARTITION_get_no_partitions(FSI->ptable);
+  FSI->K_modtable = mallocec(2*FSI->K*sizeof(int));
+  for (i = 0; i < FSI->K; i++)
+    {
+      FSI->K_modtable[i] = i;
+      FSI->K_modtable[i + FSI->K] = i;
+    }
+  FSI->KK[0] = 1;
+  for (i=1; i < FSI->m; i++)
+    FSI->KK[i] = FSI->K * FSI->KK[i-1];
     
   fclose(stream);
   free(basename);
   free(dirname);
-  return 1;
+  return FSI;
 }
 
 /* Print */
-void FS_INDEX_print_stats(FILE *stream, ULINT count, double dtime) 
+void FS_INDEX_print_stats(FSINDX *FSI, FILE *stream, ULINT count, 
+			  double dtime) 
 {
+  ULINT i;
+  ULINT CF;
+  ULINT CS;
+  
   fprintf(stream, "\n*** FS_INDEX Statistics ***\n");
-  fprintf(stream, "Database: %s\n", db_name);
-  fprintf(stream, "Database size: %ld\n", s_db->length); 
-  fprintf(stream, "Number of sequences: %ld\n\n", s_db->no_seq);  
-  fprintf(stream, "Partitions: %s\n", alphabet);
-  FS_PARTITION_print(ptable, stream);
-  fprintf(stream, "Fragment Length: %d\n", frag_len);
-  fprintf(stream, "Total Fragments in database: %ld\n", db_no_frags); 
+  fprintf(stream, "Database: %s\n", FSI->db_name);
+  fprintf(stream, "Database size: %ld\n", FSI->s_db->length); 
+  fprintf(stream, "Number of sequences: %ld\n\n", FSI->s_db->no_seq);  
+  fprintf(stream, "Partitions: %s\n", FSI->alphabet);
+  FS_PARTITION_print(FSI->ptable, stream);
+  fprintf(stream, "Fragment Length: %d\n", FSI->m);
+  fprintf(stream, "Total Fragments in database: %ld\n", 
+	  FSI->db_no_frags); 
   if (count > 0)
     fprintf(stream, "Total Counted Fragments in database: %ld\n", 
 	    count);
   if (dtime > 0)
     fprintf(stream, "Creation Time: %.2f mins\n\n", dtime);
-  FS_HASH_TABLE_print_stats(HT, stream, ptable, frag_len); 
+
+ 
+  fprintf(stream, "Total number of fragments in index: %ld\n", 
+	  FSI->no_seqs);
+  fprintf(stream, "Total number of index entries: %ld\n", 
+	  FSI->no_bins);
+  fprintf(stream, "Average size of index entry: %.2f\n", 
+	  (float) FSI->no_seqs / (float) FSI->no_bins);
+  fprintf(stream, "Largest index entry: %s\n",
+	  FS_seq_print(FSI->binL, FSI->ptable, FSI->m));
+  fprintf(stream, "Size of largest index entry: %ld\n",
+       	  FSI->bin_size[FSI->binL]);
+  fprintf(stream, "Total number of distinct fragments in index: %ld\n", 
+	  FSI->no_useqs);
+  fprintf(stream, "Average 'distinct' size of index entry: %.2f\n", 
+	  (float) FSI->no_useqs / (float) FSI->no_bins);
+  fprintf(stream, "Largest 'distinct' index entry: %s\n",
+	  FS_seq_print(FSI->uL, FSI->ptable, FSI->m));
+  fprintf(stream, "Size of largest 'distinct' index entry: %ld\n",
+	  FSI->u_size[FSI->uL]);
+
+  fprintf(stream, "\n* Distribution of numbers of fragments per"
+	  " index entry *\n");
+  fprintf(stream, "%17s %10s\n","Index entry size", "Frequency");
+  CF = 0;
+  CS = 0;
+  for (i = 0; i < FSI->shist_len; i++)
+    {
+      CF += FSI->shist[i];
+      CS += FSI->shist[i] * i;    
+      if (FSI->shist[i] > 0)
+	fprintf(stream, "%17ld %10ld %10ld %10ld\n", i, FSI->shist[i], 
+		CF, CS);
+    }
+  fprintf(stream, "\n");
+
+  fprintf(stream, "\n* Distribution of numbers of distinct fragments per"
+	  " index entry *\n");
+  fprintf(stream, "%17s %10s\n","Index entry size", "Frequency");
+  CF = 0;
+  CS = 0;
+  for (i = 0; i < FSI->uhist_len; i++)
+    {
+      CF += FSI->uhist[i];
+      CS += FSI->uhist[i] * i;
+      if (FSI->uhist[i] > 0)
+	fprintf(stream, "%17ld %10ld %10ld %10ld\n", i, FSI->uhist[i], 
+		CF, CS);
+    }
+  fprintf(stream, "\n");
+
 }
+
 
 /********************************************************************/ 
-/*                 Access functions                                 */
+/*                                                                  */
+/*                     FSSRCH object                                */ 
+/*                                                                  */
 /********************************************************************/ 
 
-SEQUENCE_DB *FS_INDEX_get_database(void)
+/* We only accept distance matrices. Conversion to be done outside.  */
+
+
+#define BITSET(a, b) ((a) |= (1 << (b)))
+#define BITTEST(a, b) ((a) & (1 << (b)))
+
+
+typedef struct
 {
-  return s_db;
-}
+  int pos;                 /* Position within fragment              */
+  int letter;              /* Letter changed to                     */
+  int dist;                /* Distance of the tranformation         */
+  FS_SEQ_t binval;         /* Bin value                             */  
+} FSTRANSF;
 
-const char *FS_INDEX_get_db_name(void)
+
+typedef struct
 {
-  return db_name;
-}
+  void *M;                 /* Scoring matrix, normal or profile     */
+  BIOSEQ *query;           /* Query sequence                        */
+  HIT_LIST_t *HL;          /* Search results                        */
+  FSINDX *FSI;             /* Index                                 */
+  int *eps;                /* Cutoff value (pointer)                */  
+  int *kNN;                /* kNN value (pointer)                   */  
+} PFUNC_ARGS;
 
-FS_PARTITION_t *FS_INDEX_get_ptable(void)
+typedef void FSINDX_scan_func(PFUNC_ARGS *args, FS_SEQ_t bin);
+
+typedef struct
 {
-  return ptable;
-}
-
-int FS_INDEX_get_frag_len(void)
-{
-  return frag_len;
-}
-
-FS_HASH_TABLE_t *FS_INDEX_get_hash_table(void)
-{
-  return HT;
-}
-
-const char *FS_index_get_alphabet(void)
-{
-  return alphabet;
-}
+  int m;                   /* Fragment length                       */
+  FS_SEQ_t qbin;           /* Full query bin                        */
+  FS_SEQ_t *qbval;         /* Query bin values by position          */  
+  FSINDX_scan_func *pfunc; /* Bin scan function pter                */
+  PFUNC_ARGS *args;        /* Arguments to the pfunc                */
+  int eps;                 /* Cutoff value                          */
+  int kNN;                 /* Number of nearest neighbours          */
+  int Tn;                  /* Size of T array                       */
+  FSTRANSF *T;             /* Transformations ordered by priority   */
+  long long *UT;           /* Allowed transformations by position   */
+  int p;                   /* Number of permutations for Z-score    */
+} FSSRCH; 
 
 
-/* Search */
+
+
 
 
 /********************************************************************/ 
-/*      Recursive tree traversal function                           */
+/*      Auxillary functions                                         */
 /********************************************************************/ 
-static int R;
-static int R_offset;
-static int dist1;
-static int FS_neighbour1;
+
+
+
+/*  FSTRANSF comparison routines */
+static 
+int FSTRANSF_comp_incr(const void *tr1, const void *tr2)
+{
+  FSTRANSF *t1 = (FSTRANSF *) tr1;
+  FSTRANSF *t2 = (FSTRANSF *) tr2;
+  return (t1->dist - t2->dist);
+}
+
+static 
+int FSTRANSF_comp_decr(const void *tr1, const void *tr2)
+{
+  FSTRANSF *t1 = (FSTRANSF *) tr1;
+  FSTRANSF *t2 = (FSTRANSF *) tr2;
+  return (t2->dist - t1->dist);
+}
 
 static
-void check_bins(FS_SEQ_t FS_neighbour, int i, int dist)
+FS_SEQ_t FSSRCH_check_query(FSINDX *FSI, BIOSEQ *query)
 {
-  int j;
-  int k;
+  FS_SEQ_t FS_query;
 
-  for (k=i+1; k < frag_len; k++)
+  /* Check length of query */
+  if (query->len != FSI->m)
     {
-      if (dist + D->pMclosest[qind[k]] <= D_cutoff)
-	{      
-	  for (j=1; j < K; j++)
-	    {
-	      R = K_modtable[FS_Q[k] + j];
-	      R_offset = 
-		FS_PARTITION_get_poffset(ptable, R);
-	      FS_neighbour1 = FS_neighbour + R * FS_KK[k];
-	      dist1 = dist + D->pM[qind[k]][R_offset]; 
-	      HIT_LIST_count_FS_seq_visited(hit_list, 1);
-	      if (dist1 <= D_cutoff)
-		{
-		  HIT_LIST_count_FS_seq_hit(hit_list, 1);
-		  pfunc(FS_neighbour1 + FS_REM[k]);
-		  check_bins(FS_neighbour1, k, dist1);
-		}
-	    }
-	}
-      FS_neighbour += FS_DC[k];
+      fprintf(stderr, 
+	      "FSSRCH_check_query(): Query fragment length (%ld)"
+	      " different from\n index fragment length (%d)."
+	      "Query: %*s\n", query->len, FSI->m, (int) query->len,
+	      query->start);
+      exit(EXIT_FAILURE);
     }
-  return;
-}
 
+  /* Calculate FS_seq from seq */
+  if (!BIOSEQ_2_FS_SEQ(query, FSI->ptable, &FS_query))
+    {
+      fprintf(stderr, 
+	      "FSSRCH_check_query(): Could not convert query"
+	      " to FS fragment\n Query: %*s\n", (int) query->len, 
+	      query->start);
+      exit(EXIT_FAILURE);
+    }
+
+  /* Also check maximum size of bit-field vs (K-1)m */
+  if (sizeof(long long)*8 < ((FSI->K - 1) * FSI->m))
+    {
+      fprintf(stderr, 
+	      "FSSRCH_check_query(): Too small bit field\n");
+      exit(EXIT_FAILURE);
+    }
+
+
+  return FS_query;
+}
 
 /********************************************************************/ 
 /*      Processing functions                                        */
 /********************************************************************/ 
-
-void FS_INDEX_QD_process_bin(FS_SEQ_t FS_query)
+static
+void process_bin(PFUNC_ARGS *args, FS_SEQ_t bin0)
 {
-  ULINT n = FS_HASH_TABLE_get_no_useqs(HT, FS_query);
-  ULINT N = FS_HASH_TABLE_get_no_seqs(HT, FS_query);
+  FSINDX *FSI = args->FSI;  
+  ULINT n = FSI->u_size[bin0];
+  ULINT N = FSI->bin_size[bin0];
+  
   int i;
   int j;
   ULINT frag_offset;
@@ -823,85 +711,599 @@ void FS_INDEX_QD_process_bin(FS_SEQ_t FS_query)
 
   for (i = 0; i < n; i++)
     {
-      j = HT->u[FS_query][i];
+      j = FSI->u[bin0][i];
+      frag_offset = FSI->bin[bin0][j];
+      fastadb_get_Ffrag(FSI->s_db, FSI->m, &subject, frag_offset);
 
-      frag_offset = FS_HASH_TABLE_retrieve_seq(HT, FS_query, j);
-      fastadb_get_Ffrag(s_db, frag_len, &subject, frag_offset);
-
-      if (SCORE_MATRIX_evaluate_max(D, query, &subject, 
-				    D_cutoff, &D_value))
+      if (SCORE_MATRIX_evaluate_max(args->M, args->query, &subject, 
+				    *(args->eps), &D_value))
 	{
-	  HIT_LIST_count_useq_hit(hit_list, 1);
-	  HIT_LIST_insert_seq_hit(hit_list, &subject, (float) D_value); 
-	  HIT_LIST_count_seq_hit(hit_list, 1);
+	  HIT_LIST_count_useq_hit(args->HL, 1);
+	  HIT_LIST_insert_seq_hit(args->HL, &subject, (float) D_value); 
+	  HIT_LIST_count_seq_hit(args->HL, 1);
 	  j++;
-	  while ((j < N && i == n-1) || j < HT->u[FS_query][i+1])
+	  while ((j < N && i == n-1) || j < FSI->u[bin0][i+1])
 	    {
-	      HIT_LIST_count_seq_hit(hit_list, 1);
-	      frag_offset = FS_HASH_TABLE_retrieve_seq(HT, FS_query, j);
-	      fastadb_get_Ffrag(s_db, frag_len, &subject, frag_offset);
-	      HIT_LIST_insert_seq_hit(hit_list, &subject, (float) D_value); 
+	      HIT_LIST_count_seq_hit(args->HL, 1);
+	      frag_offset = FSI->bin[bin0][j];
+	      fastadb_get_Ffrag(FSI->s_db, FSI->m, &subject, 
+				frag_offset);
+	      HIT_LIST_insert_seq_hit(args->HL, &subject, 
+				      (float) D_value); 
 	      j++;
 	    }
 
 	}
-      HIT_LIST_count_seq_visited(hit_list,
-	i == n-1 ? N - HT->u[FS_query][i] :
-                   HT->u[FS_query][i+1]- HT->u[FS_query][i]);
-      HIT_LIST_count_useq_visited(hit_list, 1);
+      HIT_LIST_count_seq_visited(args->HL,
+	i == n-1 ? N - FSI->u[bin0][i] :
+                   FSI->u[bin0][i+1]- FSI->u[bin0][i]);
+      HIT_LIST_count_useq_visited(args->HL, 1);
     }
 }
 
 static
-void FS_INDEX_kNN_QD_process_bin(FS_SEQ_t FS_query)
+void kNN_process_bin(PFUNC_ARGS *args, FS_SEQ_t bin0)
 {
-  ULINT n = FS_HASH_TABLE_get_no_seqs(HT, FS_query);
-  ULINT j;
+  FSINDX *FSI = args->FSI;  
+  ULINT n = FSI->u_size[bin0];
+  ULINT N = FSI->bin_size[bin0];
+  
+  int i;
+  int j;
   ULINT frag_offset;
   BIOSEQ subject;
   int D_value;
 
-  for (j = 0; j < n; j++)
+  for (i = 0; i < n; i++)
     {
-      frag_offset = FS_HASH_TABLE_retrieve_seq(HT, FS_query, j);
+      j = FSI->u[bin0][i];
+      frag_offset = FSI->bin[bin0][j];
+      fastadb_get_Ffrag(FSI->s_db, FSI->m, &subject, frag_offset);
 
-      fastadb_get_Ffrag(s_db, frag_len, &subject, frag_offset);
-      if (SCORE_MATRIX_evaluate_max(D, query, &subject, D_cutoff, &D_value) ||
-	  HIT_LIST_get_seqs_hits(hit_list) < kNN)
+      if (SCORE_MATRIX_evaluate_max(args->M, args->query, &subject, 
+				    *(args->eps), &D_value) ||
+	  HIT_LIST_get_seqs_hits(args->HL) < *(args->kNN))
 	{
-	  HIT_LIST_count_seq_hit(hit_list, 1);
-	  D_cutoff = 
-	    HIT_LIST_insert_seq_hit_queue(hit_list, &subject, 
+	  HIT_LIST_count_useq_hit(args->HL, 1);
+	  *(args->eps) = 
+	    HIT_LIST_insert_seq_hit_queue(args->HL, &subject, 
 					  (float) D_value); 	  
+	  HIT_LIST_count_seq_hit(args->HL, 1);
+	  j++;
+	  while ((j < N && i == n-1) || j < FSI->u[bin0][i+1])
+	    {
+	      HIT_LIST_count_seq_hit(args->HL, 1);
+	      frag_offset = FSI->bin[bin0][j];
+	      fastadb_get_Ffrag(FSI->s_db, FSI->m, &subject, 
+				frag_offset);
+	      *(args->eps) = 
+		HIT_LIST_insert_seq_hit_queue(args->HL, &subject, 
+					      (float) D_value); 	  
+	      j++;
+	    }
+
 	}
-      HIT_LIST_count_seq_visited(hit_list, 1);
+      HIT_LIST_count_seq_visited(args->HL,
+	i == n-1 ? N - FSI->u[bin0][i] :
+                   FSI->u[bin0][i+1]- FSI->u[bin0][i]);
+      HIT_LIST_count_useq_visited(args->HL, 1);
     }
 }
 
-void FS_INDEX_S_process_bin(FS_SEQ_t FS_query)
+/*      if (POS_MATRIX_evaluate_min(PS, &subject, Pfrom, Pto, 
+	S_cutoff, &S_value)) */
+
+
+
+static
+void profile_process_bin(PFUNC_ARGS *args, FS_SEQ_t bin0)
 {
-  ULINT n = FS_HASH_TABLE_get_no_seqs(HT, FS_query);
-  ULINT j;
+  FSINDX *FSI = args->FSI;  
+  ULINT n = FSI->no_useqs;
+  ULINT N = FSI->no_seqs;
+  
+  int i;
+  int j;
   ULINT frag_offset;
   BIOSEQ subject;
-  int S_value;
+  int D_value;
 
-  for (j = 0; j < n; j++)
+  for (i = 0; i < n; i++)
     {
-      frag_offset = FS_HASH_TABLE_retrieve_seq(HT, FS_query, j); 
+      j = FSI->u[bin0][i];
+      frag_offset = FSI->bin[bin0][j];
+      fastadb_get_Ffrag(FSI->s_db, FSI->m, &subject, frag_offset);
 
-      fastadb_get_Ffrag(s_db, frag_len, &subject, frag_offset);
-      if (SCORE_MATRIX_evaluate_min(S, query, &subject, 
-				    S_cutoff, &S_value))
+      if (POS_MATRIX_evaluate_max(args->M, &subject, 0, FSI->m+1,
+				  *(args->eps), &D_value)) 
 	{
-	  HIT_LIST_count_seq_hit(hit_list, 1);
-	  HIT_LIST_insert_seq_hit(hit_list, &subject, 
-				  (float) S_value); 
+	  HIT_LIST_count_useq_hit(args->HL, 1);
+	  HIT_LIST_insert_seq_hit(args->HL, &subject, (float) D_value); 
+	  HIT_LIST_count_seq_hit(args->HL, 1);
+	  j++;
+	  while ((j < N && i == n-1) || j < FSI->u[bin0][i+1])
+	    {
+	      HIT_LIST_count_seq_hit(args->HL, 1);
+	      frag_offset = FSI->bin[bin0][j];
+	      fastadb_get_Ffrag(FSI->s_db, FSI->m, &subject, 
+				frag_offset);
+	      HIT_LIST_insert_seq_hit(args->HL, &subject, 
+				      (float) D_value); 
+	      j++;
+	    }
+
 	}
-      HIT_LIST_count_seq_visited(hit_list, 1);
+      HIT_LIST_count_seq_visited(args->HL,
+	i == n-1 ? N - FSI->u[bin0][i] :
+                   FSI->u[bin0][i+1]- FSI->u[bin0][i]);
+      HIT_LIST_count_useq_visited(args->HL, 1);
     }
 }
 
+
+
+static
+void profile_kNN_process_bin(PFUNC_ARGS *args, FS_SEQ_t bin0)
+{
+  FSINDX *FSI = args->FSI;  
+  ULINT n = FSI->no_useqs;
+  ULINT N = FSI->no_seqs;
+  
+  int i;
+  int j;
+  ULINT frag_offset;
+  BIOSEQ subject;
+  int D_value;
+
+  for (i = 0; i < n; i++)
+    {
+      j = FSI->u[bin0][i];
+      frag_offset = FSI->bin[bin0][j];
+      fastadb_get_Ffrag(FSI->s_db, FSI->m, &subject, frag_offset);
+
+      if (POS_MATRIX_evaluate_max(args->M, &subject, 0, FSI->m+1,
+				  *(args->eps), &D_value) ||
+	  HIT_LIST_get_seqs_hits(args->HL) < *(args->kNN))
+	{
+	  HIT_LIST_count_useq_hit(args->HL, 1);
+	  *(args->eps) = 
+	    HIT_LIST_insert_seq_hit_queue(args->HL, &subject, 
+					  (float) D_value); 	  
+	  HIT_LIST_count_seq_hit(args->HL, 1);
+	  j++;
+	  while ((j < N && i == n-1) || j < FSI->u[bin0][i+1])
+	    {
+	      HIT_LIST_count_seq_hit(args->HL, 1);
+	      frag_offset = FSI->bin[bin0][j];
+	      fastadb_get_Ffrag(FSI->s_db, FSI->m, &subject, 
+				frag_offset);
+	      *(args->eps) = 
+		HIT_LIST_insert_seq_hit_queue(args->HL, &subject, 
+					      (float) D_value); 	  
+	      j++;
+	    }
+
+	}
+      HIT_LIST_count_seq_visited(args->HL,
+	i == n-1 ? N - FSI->u[bin0][i] :
+                   FSI->u[bin0][i+1]- FSI->u[bin0][i]);
+      HIT_LIST_count_useq_visited(args->HL, 1);
+    }
+}
+
+
+
+
+
+/********************************************************************/ 
+/*         FSSRCH creation / cleanup functions                      */
+/********************************************************************/ 
+
+static
+FSSRCH *FSSRCH_init(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
+		    int d0, int kNN, HIT_LIST_t *HL)
+{
+  FSSRCH *FSS = mallocec(sizeof(FSSRCH));
+  char *q = query->start;
+
+  FS_SEQ_t FS_query = 0;
+  int i;
+  int j;
+  int k;
+  int R;
+
+  /* Check correctness of query */
+  FSS->qbin = FSSRCH_check_query(FSI, query);
+
+  FSS->args = mallocec(sizeof(PFUNC_ARGS));
+  FSS->args->M = (void *) D;
+  FSS->args->query = query;
+  FSS->args->HL = HL;
+  FSS->args->FSI = FSI;
+  FSS->args->eps = &FSS->eps;
+  FSS->args->kNN = &FSS->kNN;
+ 
+  FSS->m = query->len;
+  FSS->qbval = mallocec(FSS->m * sizeof(FS_SEQ_t));
+  for (i=0; i < FSS->m; i++)
+    {
+      j = FS_PARTITION_get_pttn(FSI->ptable, q[i]);
+      FSS->qbval[i] = j * FSI->KK[i];
+      FS_query += FSS->qbval[i];
+    }
+  assert(FS_query == FSS->qbin);
+
+  if (kNN <= 0)
+    FSS->pfunc = process_bin;
+  else
+    {
+      FSS->pfunc = kNN_process_bin;
+      HIT_LIST_set_kNN(FSS->args->HL, kNN); 
+    }
+  FSS->eps = d0;
+  FSS->kNN = kNN;
+
+
+  /* All transformations */
+  FSS->Tn = (FSI->K - 1) * FSI->m;
+  FSS->T = mallocec(FSS->Tn * sizeof(FSTRANSF));
+  FSS->UT = callocec(FSI->m, sizeof(long long));
+
+  for (i=0, k=0; i < FSI->m; i++)
+    for (j=0; j < FSI->K; j++)
+      if (j != FS_PARTITION_get_pttn(FSI->ptable, q[i]))
+	{
+	  FSS->T[k].pos = i;
+	  FSS->T[k].letter = j; 
+	  R = FS_PARTITION_get_poffset(FSI->ptable, j);
+	  FSS->T[k].dist = D->pM[q[i] & A_SIZE_MASK][R]; 
+	  FSS->T[k].binval = j * FSI->KK[i];
+	  k++;
+	}
+#if 0
+  printf("k=%d\n", k);
+  printf("UNSORTED\n");
+  for (k=0; k < FSS->Tn; k++)
+    printf("%d ", FSS->T[k].dist);
+  putchar('\n');
+#endif
+   /* Sort */
+  if (kNN <= 0)
+    qsort(FSS->T, FSS->Tn, sizeof(FSTRANSF), FSTRANSF_comp_decr);
+  else
+    qsort(FSS->T, FSS->Tn, sizeof(FSTRANSF), FSTRANSF_comp_incr);
+  /* Flag transformations by position */
+  for (k=0; k < FSS->Tn; k++)
+    BITSET(FSS->UT[FSS->T[k].pos], k);
+
+
+  /* Set some info for hit list */
+  HIT_LIST_set_converted_range(FSS->args->HL, FSS->eps);
+  HIT_LIST_set_index_data(FSS->args->HL, FSI->index_name, 
+			  FSI->alphabet, FSI->no_bins,
+			  FSI->no_seqs);
+
+  return FSS;
+}
+
+static
+FSSRCH *FSSRCH_profile_init(FSINDX *FSI, POS_MATRIX *PD,
+		    int d0, int kNN, HIT_LIST_t *HL)
+{
+  FSSRCH *FSS = mallocec(sizeof(FSSRCH));
+  char *q = PD->query->start;
+
+  FS_SEQ_t FS_query = 0;
+  int i;
+  int j;
+  int k;
+  int R;
+
+  /* Check correctness of query */
+  FSS->qbin = FSSRCH_check_query(FSI, PD->query);
+
+  FSS->args = mallocec(sizeof(PFUNC_ARGS));
+  FSS->args->M = PD;
+  FSS->args->query = PD->query;
+  FSS->args->HL = HL;
+  FSS->args->FSI = FSI;
+  FSS->args->eps = &FSS->eps;
+  FSS->args->kNN = &FSS->kNN;
+ 
+  FSS->m = PD->query->len;
+  FSS->qbval = mallocec(FSS->m * sizeof(FS_SEQ_t));
+  for (i=0; i < FSS->m; i++)
+    {
+      j = FS_PARTITION_get_pttn(FSI->ptable, q[i]);
+      FSS->qbval[i] = j * FSI->KK[i];
+      FS_query += FSS->qbval[i];
+    }
+  assert(FS_query == FSS->qbin);
+
+  if (kNN <= 0)
+    FSS->pfunc = profile_process_bin;
+  else
+    {
+      FSS->pfunc = profile_kNN_process_bin;
+      HIT_LIST_set_kNN(FSS->args->HL, kNN); 
+    }
+  FSS->eps = d0;
+  FSS->kNN = kNN;
+
+
+  /* All transformations */
+  FSS->Tn = (FSI->K - 1) * FSI->m;
+  FSS->T = mallocec(FSS->Tn * sizeof(FSTRANSF));
+  FSS->UT = callocec(FSI->m, sizeof(long long));
+
+  for (i=0, k=0; i < FSI->m; i++)
+    for (j=0; j < FSI->K; j++)
+      if (j != FS_PARTITION_get_pttn(FSI->ptable, q[i]))
+	{
+	  FSS->T[k].pos = i;
+	  FSS->T[k].letter = j; 
+	  R = FS_PARTITION_get_poffset(FSI->ptable, j);
+	  FSS->T[k].dist = PD->pM[PM_pM(i, R)]; 
+	  FSS->T[k].binval = j * FSI->KK[i];
+	  k++;
+	}
+  /* Sort */
+  if (kNN <= 0)
+    qsort(FSS->T, FSS->Tn, sizeof(FSTRANSF), FSTRANSF_comp_incr);
+  else
+    qsort(FSS->T, FSS->Tn, sizeof(FSTRANSF), FSTRANSF_comp_decr);
+
+  /* Flag transformations by position */
+  for (k=0; k < FSS->Tn; k++)
+    BITSET(FSS->UT[FSS->T[k].pos], k);
+
+
+  /* Set some info for hit list */
+  HIT_LIST_set_converted_range(FSS->args->HL, FSS->eps);
+  HIT_LIST_set_index_data(FSS->args->HL, FSI->index_name, 
+			  FSI->alphabet, FSI->no_bins,
+			  FSI->no_seqs);
+
+  return FSS;
+}
+
+
+
+static
+void FSSRCH_clean(FSSRCH *FSS)
+{
+  free(FSS->qbval);
+  free(FSS->T);
+  free(FSS->UT);
+  free(FSS->args);
+  free(FSS);
+}
+
+
+/********************************************************************/ 
+/*      Recursive tree traversal function                           */
+/********************************************************************/ 
+
+static
+void check_bins(FSSRCH *FSS, int dist, FS_SEQ_t cbin, long long AT,
+		int k0)
+{
+  int k;
+  int dist1;
+  FS_SEQ_t bin1;
+  long long AT1;
+
+#if 0
+  for (k=k0; k < FSS->Tn; k++)
+    if (BITTEST(AT, k))
+      printf("%d ", FSS->T[k].dist);
+  putchar('\n');
+#endif
+  for (k=k0; k < FSS->Tn; k++)
+    if (BITTEST(AT, k))
+    {
+      HIT_LIST_count_FS_seq_visited(FSS->args->HL, 1);
+      if ((dist1 = dist + FSS->T[k].dist) <= FSS->eps)
+	{
+	  bin1 = cbin + FSS->T[k].binval - FSS->qbval[FSS->T[k].pos]; 
+	  HIT_LIST_count_FS_seq_hit(FSS->args->HL, 1);
+	  FSS->pfunc(FSS->args, bin1); 
+	  AT1 = AT & ~FSS->UT[FSS->T[k].pos];
+	  if (AT1 > 0)
+	    check_bins(FSS, dist1, bin1, AT1,k+1);	  
+	}
+    }
+
+
+
+  return;
+} 
+
+/********************************************************************/ 
+/*      Evaluation functions                                        */
+/********************************************************************/ 
+
+typedef int eval_func(void *M, BIOSEQ *query, BIOSEQ *subject);
+
+static
+int smatrix_eval(void *M, BIOSEQ *query, BIOSEQ *subject)
+{
+  return SCORE_MATRIX_evaluate(M, query, subject);
+}
+
+static
+int profile_eval(void *M, BIOSEQ *query, BIOSEQ *subject)
+{
+  return POS_MATRIX_evaluate(M, subject, 0, subject->len-1);
+}
+
+/********************************************************************/ 
+/*         Z-score functions                                        */
+/********************************************************************/ 
+static
+void Zscore(FSSRCH *FSS)
+{
+  int i;
+  int j;
+  int k;
+  int r;
+  int val;
+  int hits;
+  SEQ_HIT_t *hit;
+  char tmp;
+  double x;
+  double xx;
+  double mean;
+  double sd;
+  HIT_LIST_t *HL = FSS->args->HL;
+
+  /* int p = FSS->p; */
+  int p = 100;
+  BIOSEQ *query = FSS->args->query;
+  BIOSEQ subject;
+  eval_func *efunc;
+  
+  subject.start = callocec(query->len+1,1);
+  hits = HIT_LIST_get_seqs_hits(HL);
+  srand48(time(NULL)); 
+
+  if (FSS->pfunc == profile_process_bin ||
+      FSS->pfunc == profile_kNN_process_bin)
+    efunc = profile_eval;
+  else
+    efunc = smatrix_eval;
+  
+  for (i=0; i < hits; i++)
+    {
+      hit = HIT_LIST_get_hit(HL, i);
+      subject.len = hit->subject->len;
+      memcpy(subject.start, hit->subject->start, subject.len);
+      x=0.0;
+      xx=0.0;     
+      for (j=0; j < p; j++)
+	{
+	  for (k=subject.len-1; k > 0; k--)
+	    {
+	      r = lrand48() % subject.len;
+	      tmp = subject.start[r];
+	      subject.start[r] = subject.start[k];
+	      subject.start[k] = tmp;
+	    }
+	  val = efunc(FSS->args->M, query, &subject);
+	  x += val;
+	  xx += val*val;
+	}
+      mean = x/p;
+      sd = sqrt(xx/p - mean*mean);
+      hit->zvalue = (hit->value - mean)/sd;
+      hit->pvalue = hit->zvalue;
+    }
+}
+
+#if 0
+function(x )
+{
+#gam.apprxFIT
+#fitting parameters shape(k) and rate (1/theta) in gamma distribution
+#method is taken from the encyclopedia of biostatistics: gamma distibution, page 292
+http://www.biostat.wustl.edu/mailinglists/s-news/200106/msg00152.html
+n <- length(x)
+arith.mean <- mean(x)
+geom.mean <- exp(sum(log(x))/n)
+M <- log(arith.mean/geom.mean)
+if(M >= 0 & M <= 0.5772) {
+est.shape <- (0.5000876 + 0.1648852 * M - 0.0544276 * M^2)/M
+}
+if(M >= 0.5772 & M <= 17) {
+num <- 8.898919 + 9.05995 * M + 0.9775373 * M^2
+den <- M * (17.79728 + 11.968477 * M + M^2)
+est.shape <- num/den
+}
+if(M > 17)
+est.shape <- 1/M
+est.rate <- est.shape/arith.mean
+list(est.shape = est.shape, est.rate = est.rate)
+} 
+#endif
+
+
+
+/********************************************************************/ 
+/*      Search functions                                            */
+/********************************************************************/ 
+
+static
+void FSSRCH_search(FSSRCH *FSS)
+{
+  long long AT = 0; /* Allowed transformations */
+  int k;
+
+  /* Set all relevant AT bits to 1 */
+  for (k=0; k < FSS->Tn; k++)
+    BITSET(AT, k);
+
+  /* Process the bin associated with the query sequence */
+  HIT_LIST_count_FS_seq_visited(FSS->args->HL, 1);
+  HIT_LIST_count_FS_seq_hit(FSS->args->HL, 1);
+  FSS->pfunc(FSS->args, FSS->qbin); 
+
+  /* Process neighbouring bins - recursive */
+  check_bins(FSS, 0, FSS->qbin, AT, 0); 
+
+  /* Set off timer */
+  HIT_LIST_stop_timer(FSS->args->HL);
+
+  /* Post-processing */
+
+  /* Pull out kNN sequences */
+  if (FSS->kNN > 0)
+    HIT_LIST_sort_kNN(FSS->args->HL);
+
+  /* Convert scores */
+
+  /* Z-scores */
+  Zscore(FSS);
+  /* Orthologous clusters */
+
+  /* Keywords */
+
+  
+
+  /* Cleanup */
+  FSSRCH_clean(FSS);
+}
+
+
+void FSINDX_rng_srch(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
+		     int d0, HIT_LIST_t *HL)  
+{
+  FSSRCH_search(FSSRCH_init(FSI, query, D, d0, -1, HL));
+  return;
+}
+
+void FSINDX_kNN_srch(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
+		     int kNN, HIT_LIST_t *HL)
+{
+  FSSRCH_search(FSSRCH_init(FSI, query, D, INT_MAX, kNN, HL));
+  return;
+}
+
+void FSINDX_prof_rng_srch(FSINDX *FSI, POS_MATRIX *PD, int d0, 
+			  HIT_LIST_t *HL)
+{
+  FSSRCH_search(FSSRCH_profile_init(FSI, PD, d0, -1, HL));
+  return;
+}
+
+void FSINDX_prof_kNN_srch(FSINDX *FSI, POS_MATRIX *PD, int kNN, 
+			  HIT_LIST_t *HL)
+{
+  FSSRCH_search(FSSRCH_profile_init(FSI, PD, INT_MAX, kNN, HL));
+  return;
+}
+
+
+#if 0
 
 static inline
 int FS_INDEX_is_empty_process_bin(FS_SEQ_t FS_query)
@@ -948,153 +1350,6 @@ int FS_INDEX_S2QD_convert(SCORE_MATRIX_t *S0, BIOSEQ *query0,
 {
   return SCORE_MATRIX_evaluate(S0, query0, query0) - cutoff;
 }
-
-
-
-
-/********************************************************************/ 
-/*                 Search functions                                 */
-/********************************************************************/ 
-
-
-int FS_INDEX_search(HIT_LIST_t *hit_list0, BIOSEQ *query0, 
-		    SCORE_MATRIX_t *S0, SCORE_MATRIX_t *D0,
-		    int cutoff, FS_INDEX_process_func *pfunc0, 
-		    FS_INDEX_range_convert_func *cfunc)
-{
-  int i;
-  ULINT powKtmp = 1;
-  FS_SEQ_t FS_query;
-
-  /* Copy arguments into global variables */
-  hit_list = hit_list0;
-  query = query0;
-  S = S0;
-  D = D0;
-  pfunc = pfunc0;
-  S_cutoff = cutoff;
-  D_cutoff = cfunc(S, query, cutoff);
-  HIT_LIST_set_converted_range(hit_list, D_cutoff);
-  HIT_LIST_set_index_data(hit_list, index_name, alphabet, HT->no_bins,
-			  HT->no_seqs);
-
-
-
-  /* Check length of query */
-  if (query->len != frag_len)
-    {
-      fprintf(stderr, 
-	      "FS_INDEX_search(): Query fragment length (%ld)"
-	      " different from\n index fragment length (%d)."
-	      "Query: %*s\n", query->len, frag_len, (int) query->len,
-	      query->start);
-      exit(EXIT_FAILURE);
-    }
-
-  /* Calculate FS_seq from seq */
-  if (!BIOSEQ_2_FS_SEQ(query, ptable, &FS_query))
-    {
-      fprintf(stderr, 
-	      "FS_INDEX_search(): Could not convert query"
-	      " to FS fragment\n Query: %*s\n", (int) query->len, 
-	      query->start);
-      exit(EXIT_FAILURE);
-    }
-  
-  /* Initialise variables */
-  for (i = 0; i < frag_len; i++)
-    {
-      qind[i] = query->start[i] & A_SIZE_MASK;
-      FS_Q[i] = FS_PARTITION_get_pttn(ptable, query->start[i]); 
-      powKtmp *= K;      
-      FS_DC[i] = FS_query % powKtmp - FS_query % FS_KK[i];
-    }
-  FS_REM[frag_len-1] = 0;  
-  for (i = frag_len-2; i >= 0; i--)
-    FS_REM[i] = FS_REM[i+1] + FS_DC[i+1];
-
-  /* Process the bin associated with the query sequence */
-  pfunc(FS_query); 
-  HIT_LIST_count_FS_seq_visited(hit_list, 1);
-  HIT_LIST_count_FS_seq_hit(hit_list, 1);
-
-  /* Process neighbouring bins - recursive */
-  check_bins(0, -1, 0); 
-
-  HIT_LIST_stop_timer(hit_list);
-  return 1;
-}
-
-
-int FS_INDEX_kNN_search(HIT_LIST_t *hit_list0, BIOSEQ *query0,
-			SCORE_MATRIX_t *S0, SCORE_MATRIX_t *D0,
-			ULINT k)
-{
-  int i;
-  ULINT powKtmp = 1;
-  FS_SEQ_t FS_query;
-
-  /* Copy arguments into global variables */
-  kNN = k;
-  hit_list = hit_list0;
-  HIT_LIST_set_kNN(hit_list, kNN); 
-  query = query0;
-  S = S0;
-  D = D0;
-  pfunc = FS_INDEX_kNN_QD_process_bin;
-  S_cutoff = 0;
-  D_cutoff = INT_MAX;
-  HIT_LIST_set_index_data(hit_list, index_name, alphabet, HT->no_bins,
-			  HT->no_seqs);
-
-  /* Check length of query */
-  if (query->len != frag_len)
-    {
-      fprintf(stderr, 
-	      "FS_INDEX_search(): Query fragment length (%ld)"
-	      " different from\n index fragment length (%d)."
-	      "Query: %*s\n", query->len, frag_len, (int) query->len,
-	      query->start);
-      exit(EXIT_FAILURE);
-    }
-
-  /* Calculate FS_seq from seq */
-  if (!BIOSEQ_2_FS_SEQ(query, ptable, &FS_query))
-    {
-      fprintf(stderr, 
-	      "FS_INDEX_search(): Could not convert query"
-	      " to FS fragment\n Query: %*s\n", (int) query->len, 
-	      query->start);
-      exit(EXIT_FAILURE);
-    }
-  
-  /* Initialise variables */
-  for (i = 0; i < frag_len; i++)
-    {
-      qind[i] = query->start[i] & A_SIZE_MASK;
-      FS_Q[i] = FS_PARTITION_get_pttn(ptable, query->start[i]); 
-      powKtmp *= K;      
-      FS_DC[i] = FS_query % powKtmp - FS_query % FS_KK[i];
-    }
-  FS_REM[frag_len-1] = 0;  
-  for (i = frag_len-2; i >= 0; i--)
-    FS_REM[i] = FS_REM[i+1] + FS_DC[i+1];
-
-  /* Process the bin associated with the query sequence */
-  pfunc(FS_query); 
-  HIT_LIST_count_FS_seq_visited(hit_list, 1);
-  HIT_LIST_count_FS_seq_hit(hit_list, 1);
-
-  /* Process neighbouring bins - recursive */
-  check_bins(0, -1, 0); 
-
-  HIT_LIST_sort_kNN(hit_list);
-  HIT_LIST_set_converted_range(hit_list, D_cutoff);
-  HIT_LIST_stop_timer(hit_list);
-
-  return 1;
-}
-
 
 /********************************************************************/
 /********************************************************************/
@@ -1211,182 +1466,4 @@ int FS_INDEX_has_neighbour(BIOSEQ *query0, SCORE_MATRIX_t *D0,
     return 1;
 }
 
-
-
-/********************************************************************/
-/********************************************************************/
-
-/********************************************************************/    
-/*                                                                  */
-/*                     PROFILE BASED SEARCHES                       */ 
-/*                                                                  */
-/********************************************************************/    
-
-/* Profile specific functions:
-
-   FS_INDEX_profile_S_process_bin();
-   FS_INDEX_profile_D_process_bin();
-   check_bin_profile();
- */
-
-/********************************************************************/ 
-/*      Processing functions                                        */
-/********************************************************************/ 
-
-void FS_INDEX_profile_S_process_bin(FS_SEQ_t FS_query)
-{
-  ULINT n = FS_HASH_TABLE_get_no_seqs(HT, FS_query);
-  ULINT j;
-  ULINT frag_offset;
-  BIOSEQ subject;
-  int S_value;
-
-  for (j = 0; j < n; j++)
-    {
-      frag_offset = FS_HASH_TABLE_retrieve_seq(HT, FS_query, j);
-
-      fastadb_get_Ffrag(s_db, frag_len, &subject, frag_offset);
-
-      if (POS_MATRIX_evaluate_min(PS, &subject, Pfrom, Pto, 
-				  S_cutoff, &S_value))
-	{
-	  HIT_LIST_count_seq_hit(hit_list, 1);
-	  HIT_LIST_insert_seq_hit(hit_list, &subject, 
-				  (float) S_value); 
-	}
-      HIT_LIST_count_seq_visited(hit_list, 1);
-    }
-}
-
-/* This is no longer active but left just in case */
-void FS_INDEX_profile_D_process_bin(FS_SEQ_t FS_query)
-{
-  ULINT n = FS_HASH_TABLE_get_no_seqs(HT, FS_query);
-  ULINT j;
-  ULINT frag_offset;
-  BIOSEQ subject;
-  int D_value;
-
-  for (j = 0; j < n; j++)
-    {
-      frag_offset = FS_HASH_TABLE_retrieve_seq(HT, FS_query, j);
-
-      fastadb_get_Ffrag(s_db, frag_len, &subject, frag_offset);
-
-      if (POS_MATRIX_evaluate_max(PD, &subject, Pfrom, Pto, 
-				  D_cutoff, &D_value))
-	{
-	  HIT_LIST_count_seq_hit(hit_list, 1);
-	  HIT_LIST_insert_seq_hit(hit_list, &subject, 
-				  (float) D_value); 
-	}
-      HIT_LIST_count_seq_visited(hit_list, 1);
-    }
-}
-
-/********************************************************************/ 
-/*      Recursive tree traversal function - profiles                */
-/********************************************************************/ 
-
-static
-void check_bins_profile(FS_SEQ_t FS_neighbour, int i, int dist)
-{
-  int j;
-  int k;
-
-  for (k=i+1; k < frag_len; k++)
-    {
-      if (dist + PS->pMclosest[k] <= D_cutoff)
-	{      
-	  for (j=1; j < K; j++)
-	    {
-	      R = K_modtable[FS_Q[k] + j];
-	      R_offset = 
-		FS_PARTITION_get_poffset(ptable, R);
-	      FS_neighbour1 = FS_neighbour + R * FS_KK[k];
-	      dist1 = dist + PS->pM[PM_pM(k, R_offset)]; 
-	      HIT_LIST_count_FS_seq_visited(hit_list, 1);
-	      if (dist1 <= D_cutoff)
-		{
-		  HIT_LIST_count_FS_seq_hit(hit_list, 1);
-		  ppfunc(FS_neighbour1 + FS_REM[k]);
-		  check_bins_profile(FS_neighbour1, k, dist1);
-		}
-	    }
-	}
-      FS_neighbour += FS_DC[k];
-    }
-  return;
-}
-
-/********************************************************************/ 
-/*                 Search functions  profiles                       */
-/********************************************************************/ 
-
-int FS_INDEX_profile_search(HIT_LIST_t *hit_list0, POS_MATRIX *PS0, 
-			    ULINT Pfrom0, ULINT Pto0, int cutoff, 
-			    FS_INDEX_profile_process_func *ppfunc0, 
-			    FS_INDEX_range_convert_func *cfunc)
-{
-  int i;
-  ULINT powKtmp = 1;
-  FS_SEQ_t FS_query;
-
-  /* Copy arguments into global variables */
-  hit_list = hit_list0;
-  query = PS0->query;
-  PS = PS0;
-  Pfrom = Pfrom0;
-  Pto = Pto0;
-  ppfunc = ppfunc0;
-  S_cutoff = cutoff;
-  D_cutoff = POS_MATRIX_evaluate(PS, query, Pfrom, Pto) - cutoff;
-  HIT_LIST_set_converted_range(hit_list, D_cutoff);
-  HIT_LIST_set_index_data(hit_list, index_name, alphabet, 
-			  HT->no_bins, HT->no_seqs);
-
-  /* Check length of query */
-  if (query->len != frag_len)
-    {
-      fprintf(stderr, 
-	      "FS_INDEX_search(): Query fragment length (%ld)"
-	      " different from\n index fragment length (%d)."
-	      "Query: %*s\n", query->len, frag_len, (int) query->len,
-	      query->start);
-      exit(EXIT_FAILURE);
-    }
-
-  /* Calculate FS_seq from seq */
-  if (!BIOSEQ_2_FS_SEQ(query, ptable, &FS_query))
-    {
-      fprintf(stderr, 
-	      "FS_INDEX_search(): Could not convert query"
-	      " to FS fragment\n Query: %*s\n", (int) query->len, 
-	      query->start);
-      exit(EXIT_FAILURE);
-    }
-  
-  /* Initialise variables */
-  for (i = 0; i < frag_len; i++)
-    {
-      FS_Q[i] = FS_PARTITION_get_pttn(ptable, query->start[i]); 
-      powKtmp *= K;      
-      FS_DC[i] = FS_query % powKtmp - FS_query % FS_KK[i];
-    }
-  FS_REM[frag_len-1] = 0;  
-  for (i = frag_len-2; i >= 0; i--)
-    FS_REM[i] = FS_REM[i+1] + FS_DC[i+1];
-
-  /* Process the bin associated with the query sequence */
-  ppfunc(FS_query); 
-
-  /* Process neighbouring bins - recursive */
-  check_bins_profile(0, -1, 0); 
-
-  HIT_LIST_stop_timer(hit_list);
-  return 1;
-}
-
-
-/*********************************************************************/
-/*********************************************************************/
+#endif

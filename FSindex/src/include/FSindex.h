@@ -44,30 +44,139 @@ typedef struct
 
 /********************************************************************/    
 /*                                                                  */
-/*                     FS_HASH_TABLE module                         */ 
+/*                     FS_INDEX module                              */ 
 /*                                                                  */
 /********************************************************************/    
 
+extern int FS_INDEX_VERBOSE;
+extern int FS_INDEX_PRINT_BAR;
+
+/* FSindex variables - essentially constant throughout all searches
+   with the same index .*/ 
+
 typedef struct
 {
-  ULINT no_bins;
-  ULINT no_seqs;
-  ULINT no_useqs;
-  ULINT shist_len;              /* Length of shist */
-  ULINT *shist;                 /* Histogram of bin sizes */
-  ULINT uhist_len;              /* Length of uhist */
-  ULINT *uhist;                 /* Histogram of bin sizes 
-				   - unique sequences */
+  char *db_name;           /* Name of the database                  */
+  char *index_name;        /* Name of the index                     */
+  SEQUENCE_DB *s_db;       /* Pointer to the fasta database         */
+
+  char *alphabet;          /* Amino acid alphabet - partitioned     */
+  char separator;          /* Partitioning character                */
+  int K;                   /* Number of letters in reduced alphabet */
+  FS_PARTITION_t *ptable;  /* Partition table                       */
+  ULINT *KK;               /* KK[i] = K ^ i, i = 0, 1 ... frag_len  */
+  int *K_modtable;         /* K_modtable[i] = i % K for i < 2*K     */
+
+  int m;                   /* Length of indexed fragments           */
+  ULINT db_no_frags;       /* Number of fragments in full database  */
+  ULINT no_bins;           /* Number of bins = K^frag_len           */
+  ULINT no_seqs;           /* Number of indexed fragments           */
+  ULINT no_useqs;          /* Number of indexed unique fragments    */
+
+  ULINT shist_len;         /* Length of shist                       */
+  ULINT *shist;            /* Histogram of bin sizes                */
+  ULINT uhist_len;         /* Length of uhist                       */
+  ULINT *uhist;            /* Histogram of bin sizes - unique seqs  */
+
   ULINT *bin_size;
+
+
   ULINT *max_bin_size;
   SEQ_index_t **bin;
-  SEQ_index_t binL;             /* Largest bin */
+  SEQ_index_t binL;        /* Largest bin                           */
   SEQ_index_t *heap;
   ULINT *u_size;
   int **u;
   int *u_heap;
-  SEQ_index_t uL;               /* Largest bin - unique seqs */
-} FS_HASH_TABLE_t;
+  SEQ_index_t uL;          /* Largest bin - unique seqs             */
+
+} FSINDX;
+
+
+
+
+
+FSINDX *FS_INDEX_create(const char *database, ULINT flen,
+			const char *abet, const char sepchar, 
+			int skip);
+
+void FS_INDEX_destroy(FSINDX *FSI);
+
+int FS_INDEX_save(FSINDX *FSI, const char *filename);
+FSINDX *FS_INDEX_load(const char *filename);
+
+void FS_INDEX_print_stats(FSINDX *FSI, FILE *stream, ULINT count, 
+			  double dtime); 
+
+
+/* Search functions */
+
+void FSINDX_rng_srch(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
+		     int d0, HIT_LIST_t *HL);  
+
+void FSINDX_kNN_srch(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
+		     int kNN, HIT_LIST_t *HL);
+
+void FSINDX_prof_rng_srch(FSINDX *FSI, POS_MATRIX *PD, int d0, 
+			  HIT_LIST_t *HL);
+
+void FSINDX_prof_kNN_srch(FSINDX *FSI, POS_MATRIX *PD, int kNN, 
+			  HIT_LIST_t *HL);
+
+
+/* Experiments */
+HIT_LIST_t *SSCAN_QD_search(SEQUENCE_DB *s_db, const char *matrix, 
+			    BIOSEQ *query, ULINT D_cutoff);
+#if 0
+int FS_INDEX_has_neighbour(BIOSEQ *query, SCORE_MATRIX_t *D0, 
+			   int cutoff);
+#endif
+int SSCAN_has_neighbour(SEQUENCE_DB *s_db,  SCORE_MATRIX_t *D, 
+			FS_PARTITION_t *ptable,
+			BIOSEQ *query, ULINT D_cutoff);
+
+
+
+
+/* Access functions */
+#define FS_INDEX_get_ptable(FSI) \
+        ((FSI)->ptable)
+
+#define FS_INDEX_get_database(FSI) \
+        ((FSI)->s_db)
+
+#define FS_INDEX_get_frag_len(FSI) \
+        ((FSI)->m)
+
+#define FS_INDEX_get_no_bins(FSI) \
+        ((FSI)->no_bins)
+
+#define FS_INDEX_get_no_seqs(FSI, i) \
+        ((FSI)->bin_size[(i)])
+
+#define FS_INDEX_get_no_useqs(FSI, i) \
+        ((FSI)->u_size[(i)])
+
+#define FS_INDEX_retrieve_seq(FSI, i, j) \
+        ((FSI)->bin[(i)][(j)])
+
+#define FS_INDEX_get_all_seqs(FSI, i) \
+        ((FSI)->bin[(i)])
+
+
+#if 0
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* Main constructor */
 FS_HASH_TABLE_t *FS_HASH_TABLE_create(ULINT no_bins, ULINT def_size); 
@@ -104,30 +213,9 @@ void FS_HASH_TABLE_print_stats(FS_HASH_TABLE_t *HT, FILE *stream,
 			       FS_PARTITION_t *FS_partition, 
 			       ULINT frag_len);
 
-/********************************************************************/    
-/*                                                                  */
-/*                     FS_INDEX module                              */ 
-/*                                                                  */
-/********************************************************************/    
-#if 0
-typedef struct
-{
-  char *db_name;
-  char *matrix;
-  char *alphabet; 
-  char separator;
-  ULINT frag_len;
-  ULINT db_no_frags;
-  SEQUENCE_DB *s_db;
-  FS_PARTITION_t *ptable;
-  SCORE_MATRIX_t *S;
-  SCORE_MATRIX_t *D;
-  FS_HASH_TABLE_t *HT;
-} FS_INDEX_t;
-#endif
 
-extern int FS_INDEX_VERBOSE;
-extern int FS_INDEX_PRINT_BAR;
+
+
 
 typedef void FS_INDEX_process_func(FS_SEQ_t FS_neighbour);
 
@@ -185,16 +273,6 @@ FS_INDEX_range_convert_func FS_INDEX_identity_convert;
 FS_INDEX_range_convert_func FS_INDEX_S2QD_convert;
 
 
-/* Experiments */
-HIT_LIST_t *SSCAN_QD_search(SEQUENCE_DB *s_db, const char *matrix, 
-			    BIOSEQ *query, ULINT D_cutoff);
-
-int FS_INDEX_has_neighbour(BIOSEQ *query, SCORE_MATRIX_t *D0, 
-			   int cutoff);
-
-int SSCAN_has_neighbour(SEQUENCE_DB *s_db,  SCORE_MATRIX_t *D, 
-			FS_PARTITION_t *ptable,
-			BIOSEQ *query, ULINT D_cutoff);
 
 
 /********************************************************************/    
@@ -236,21 +314,33 @@ FS_INDEX_profile_process_func FS_INDEX_profile_D_process_bin;
 /********************************************************************/    
 
 /* Element access */
-#define FS_HASH_TABLE_get_no_bins(HT) \
-        ((HT)->no_bins)
 
-#define FS_HASH_TABLE_get_no_seqs(HT, i) \
-        ((HT)->bin_size[(i)])
+ULINT FS_HASH_TABLE_get_total_seqs(FS_HASH_TABLE_t *FSI)
+{
+  return FSI->no_seqs;
+}
 
-#define FS_HASH_TABLE_get_no_useqs(HT, i) \
-        ((HT)->u_size[(i)])
-
-#define FS_HASH_TABLE_retrieve_seq(HT, i, j) \
-        ((HT)->bin[(i)][(j)])
-
-#define FS_HASH_TABLE_get_all_seqs(HT, i) \
-        ((HT)->bin[(i)])
+/********************************************************************/ 
+/*                 Access functions                                 */
+/********************************************************************/ 
 
 
+const char *FS_INDEX_get_db_name(void)
+{
+  return db_name;
+}
+
+FS_PARTITION_t *FS_INDEX_get_ptable(void)
+{
+  return ptable;
+}
+
+
+
+const char *FS_index_get_alphabet(void)
+{
+  return alphabet;
+}
+#endif /* #if 0 */ 
 #endif   
 
