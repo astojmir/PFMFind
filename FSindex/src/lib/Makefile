@@ -6,14 +6,9 @@ INCLUDES= ../include/misclib.h ../include/fastadb.h \
 	  ../include/FSindex.h ../include/hit_list.h \
           ../include/smatrix.h ../include/avl.h 
 
-# ../include/blastlib.h ../include/clusters.h ../include/quadtree.h
 
 OBJECTS= misclib.o fastadb.o  bioseq.o partition.o FSindex.o hit_list.o \
          smatrix.o avl.o 
-
-#sequential.o randseq.o 
-
-# blastlib.o quadtree.o clusters.o
 
 all: libFSindex.a
 
