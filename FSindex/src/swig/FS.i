@@ -1,87 +1,195 @@
 %module FS
 
-%typemap(in) FILE *stream {
-  $1 = PyFile_AsFile($input);
-}
 
 %{
 #include "misclib.h"
 #include "bioseq.h"
 #include "fastadb.h"
-#include "partition.h"
 #include "smatrix.h"
-#include "pmatrix.h"
-#include "randseq.h"
-#include "hit_list.h"
 #include "FSindex.h"
+#include "hit_list.h"
 
 EXCEPTION FSexcept_array[1];
 EXCEPTION *except;
 
 struct exception_context the_exception_context[1];
 
- typedef FS_PARTITION_t ptable;
+ typedef SCORE_MATRIX Smatrix;
  typedef SEQUENCE_DB db;
- typedef SCORE_MATRIX_t smatrix;
+ typedef FSINDX index;
  typedef SEQ_HIT_t hit;
  typedef HIT_LIST_t hit_list;
- typedef FSINDX index;
-
-
-  typedef struct {
-    BIOSEQ *seq;
-    int free_flag;
-    int defline_flag;
-  } seqn;
-
-  int seqn_len_get(seqn *self) {
-    return self->seq->len;
-  }
-  const char *seqn_seq_get(seqn *self) {
-    return self->seq->start;
-  }
-  const char *seqn_defline_get(seqn *self) {
-    if (!self->defline_flag || self->seq->id.defline == NULL)
-      return "";
-    else 
-      return self->seq->id.defline;
-  }
-
-  int ptable_no_pttn_get(ptable *self) {
-    return FS_PARTITION_get_no_partitions(self);
-  }
-
-  ptable *ptable_read(FILE *stream) {
-    return FS_PARTITION_read(stream);
-  }
-
-  typedef struct {
-    SEQ_GENERATOR_t *sgen;
-    char *heap;
-    ULINT max_len;
-    seqn *Fseq;
-  } fgen;
-
-  index *index_load(const char *filename) {
-   return FS_INDEX_load(filename);
-  }
-
-  hit_list *sscan_qd_srch(db *s_db, const char *matrix, 
-			  seqn *query, ULINT D_cutoff) {
-    return SSCAN_QD_search(s_db, matrix, query->seq, 
-			  D_cutoff);
-  }
- int sscan_has_nbr(db *s_db, smatrix *D, ptable *pt, 
-		   seqn *query, ULINT D_cutoff) {
-   return SSCAN_has_neighbour(s_db, D, pt, query->seq, D_cutoff);
- }
-
- hit_list *parse_hl_xml(FILE *stream) {
-   return HIT_LIST_parse_xml(stream);
- }
-
-
+ typedef HIT_LIST_t * hit_list_array;
 %}
+
+%include cstring.i
+%typemap(newfree) char * {
+  free($1);
+}
+%typemap(in) FILE *stream {
+  $1 = PyFile_AsFile($input);
+}
+%apply (char *STRING, int LENGTH) { (char *s1, int l1) };
+%apply (char *STRING, int LENGTH) { (char *s2, int l2) };
+%apply (char *STRING, int LENGTH) { (char *qseq, int qlen) };
+
+/* Converting matrix as dictionary into M + alphabet */
+%typemap(in) (int **M, char *alphabet) {
+  int i, j;
+  int a_set[A_SIZE];
+  int a_len = 0;
+  char *a, *b;
+  int val;
+  PyObject *key, *value;
+  PyObject *Pa, *Pb;
+  int pos = 0;
+
+  if (!PyDict_Check($input)) {
+    PyErr_SetString(PyExc_ValueError, "Expecting a dictionary");
+    return NULL;
+  }
+  memset(a_set, 0 , A_SIZE * sizeof(int));
+  $1 = callocec(A_SIZE, sizeof(int *));
+  for (i=0; i < A_SIZE; i++)
+    $1[i] = callocec(A_SIZE, sizeof(int));
+  while (PyDict_Next($input, &pos, &key, &value)) {
+    if (PyTuple_Check(key) && PyTuple_GET_SIZE(key) == 2) {
+      Pa = PyTuple_GetItem(key, 0); 
+      Pb = PyTuple_GetItem(key, 1); 
+      if (PyString_Check(Pa) && PyString_Check(Pb)) {
+	if (PyString_Size(Pa) == 1 && PyString_Size(Pb) == 1) {
+	  a = PyString_AsString(Pa);
+	  b = PyString_AsString(Pb);
+	}
+      }
+      else continue;
+      if (PyInt_Check(value))
+	val = (int) PyInt_AsLong(value);
+      else if (PyFloat_Check(value))
+	val = (int) PyFloat_AsDouble(value);
+      else continue;
+      $1[*a & A_SIZE_MASK][*b & A_SIZE_MASK] = val;
+      $1[*b & A_SIZE_MASK][*a & A_SIZE_MASK] = val;
+      if (++(a_set[*a & A_SIZE_MASK]) == 1)
+	a_len++;
+      if (++(a_set[*b & A_SIZE_MASK]) == 1)
+	a_len++;
+    }
+  }
+  if (!a_len) {
+    PyErr_SetString(PyExc_ValueError, "No valid entry given");
+    for (i=0; i < A_SIZE; i++)
+      free($1[i]);
+    free($1);
+    return NULL;
+  }
+  $2 = callocec(a_len+1,1);
+  for (j=0, i=0; i < A_SIZE; i++) 
+    if (a_set[i]) $2[j++] = 64+i;
+} 
+
+/* Converting pssm as list of dictionaries into M + alphabet + len */
+%typemap(in) (int **M, int len, char *alphabet) {
+  int i, j;
+  int a_set[A_SIZE];
+  int a_len = 0;
+  char *a;
+  int val;
+  PyObject *key, *value;
+  PyObject *row;
+  PyObject *dict;
+  int pos = 0;
+
+  if (!PyList_Check($input)) {
+    PyErr_SetString(PyExc_ValueError, "Expecting a list");
+    return NULL;
+  }
+  memset(a_set, 0 , A_SIZE * sizeof(int));
+  $2 = PyList_GET_SIZE($input);
+  $1 = callocec($2, sizeof(int *));
+
+  for (i=0; i < $2; i++) {
+    $1[i] = callocec(A_SIZE, sizeof(int));
+    row = PyList_GET_ITEM($input, i);
+    if (!(PyTuple_Check(row) && PyTuple_GET_SIZE(row) == 2))
+      continue;
+    dict = PyTuple_GetItem(row, 1); 
+    if (!PyDict_Check(dict)) continue;
+    pos = 0;
+    while (PyDict_Next(dict, &pos, &key, &value)) {
+      if (PyString_Check(key) && PyString_GET_SIZE(key)==1)
+	a = PyString_AsString(key);
+      else continue;
+      if (PyInt_Check(value))
+	val = (int) PyInt_AsLong(value);
+      else if (PyFloat_Check(value))
+	val = (int) PyFloat_AsDouble(value);
+      else continue;
+      $1[i][*a & A_SIZE_MASK] = val;
+      if (++(a_set[*a & A_SIZE_MASK]) == 1)
+	a_len++;
+    }
+  }
+  if (!a_len) {
+    PyErr_SetString(PyExc_ValueError, "No valid entry given");
+    for (i=0; i < $2; i++)
+      free($1[i]);
+    free($1);
+    return NULL;
+  }
+  $3 = callocec(a_len+1,1);
+  for (j=0, i=0; i < A_SIZE; i++) 
+    if (a_set[i]) $3[j++] = 64+i;
+} 
+
+/* Converting list of strings into char ** */
+%typemap(in) (ULINT len, const char **sepn) {
+  int i;
+  if (!PyList_Check($input)) {
+    PyErr_SetString(PyExc_ValueError, "Expecting a list");
+    return NULL;
+  }
+  $1 = PyList_Size($input);
+  $2 = (char **) malloc($1*sizeof(char *));
+  for (i = 0; i < $1; i++) {
+    PyObject *s = PyList_GetItem($input,i);
+    if (!PyString_Check(s)) {
+        free($2);
+        PyErr_SetString(PyExc_ValueError, "List items must be strings");
+        return NULL;
+    }
+    $2[i] = PyString_AsString(s);
+  }
+}
+
+%typemap(freearg) (int len, const char **pttn) {
+   if ($2) free($2);
+}
+
+%typemap(in,numinputs=0) (ULINT *len, char ***sepn) (ULINT temp_len, char **temp_sepn) {
+  $1 = &temp_len;
+  $2 = &temp_sepn;
+}
+
+%typemap(argout) (ULINT *len, char ***sepn) {
+ int i;
+ 
+ $result = PyList_New(*$1);
+ for (i=0; i < *$1; i++) {
+   PyObject *s = PyString_FromString((*$2)[i]);
+   PyList_SetItem($result, i, s);
+ }
+}
+/* Returning a string + size - without allocation */
+%typemap(in,numinputs=0) (char **s, int *l) (char *stemp, int ltemp) {
+  $1 = &stemp;
+  $2 = &ltemp;
+} 
+%typemap(argout) (char **s, int *l) {
+  $result = PyString_FromStringAndSize(*$1, *$2);
+}
+
+
 
 
 
@@ -97,22 +205,9 @@ struct exception_context the_exception_context[1];
       case NO_MEM:
 	PyErr_SetString(PyExc_MemoryError, except->msg);
 	break;
-      case NEG_MEM_REQ:
-	PyErr_SetString(PyExc_RuntimeError, except->msg);
-	break;
       case FOPEN_ERR:
-	PyErr_SetString(PyExc_IOError, except->msg);
-	break;
       case FCLOSE_ERR:
-	PyErr_SetString(PyExc_IOError, except->msg);
-	break;
-      case BAD_ARGS:
-	PyErr_SetString(PyExc_RuntimeError, except->msg);
-	break;
       case EOF_REACHED:
-	PyErr_SetString(PyExc_IOError, except->msg);
-	break;
-      case GETLINE_ERR:
 	PyErr_SetString(PyExc_IOError, except->msg);
 	break;
       case INDEX_OUT_OF_RANGE:
@@ -126,55 +221,25 @@ struct exception_context the_exception_context[1];
   }
 }
 
+
+
+
+
 %nodefault;
 
 typedef unsigned long ULINT;
 typedef signed short SSINT;
 
-
-/********************************************************************/ 
-/*         seqn                                                    */
-/********************************************************************/ 
-
-typedef struct {} 
-seqn;
-
-
-%extend seqn {
-  seqn(char *sqn, char *defline="A sequence") {
-    seqn *Fseq;
-    
-    Fseq = mallocec(sizeof(seqn));
-    Fseq->seq = mallocec(sizeof(BIOSEQ));
-    Fseq->seq->start = sqn;
-    Fseq->seq->len = strlen(sqn);
-    Fseq->seq->id.defline = defline;
-    Fseq->free_flag = 1;
-    Fseq->defline_flag = 1;
-    return Fseq;
-  }
-  ~seqn() {
-    if (self->free_flag)
-      free(self->seq);
-    free(self);
-  }
-  const char *__str__() {
-    return self->seq->start;
-  }
-  %immutable;
-  int len;
-  const char *seq;
-  const char *defline;
-}
-
 /********************************************************************/ 
 /*         db                                                       */
 /********************************************************************/ 
+/* ONLY BARE DATABASE - NO ITERATORS NOW */
 
 typedef struct
 {
 %immutable;
-  char *db_name; 
+  char *db_name;
+  ULINT length;
   ULINT no_seq;  
 } db;
 
@@ -195,465 +260,350 @@ typedef struct
   ~db() {
     fastadb_close(self);
   }
-  %newobject __str__;
-  char *__str__() {
-    char *s;
-    ULINT len;
-    len = fastadb_count_Ffrags(self, 1);
-    s = mallocec(strlen(self->db_name)+7+20+9+10+12);
-    sprintf(s,"File: %s\nLength: %d\nSequences: %d",
-	    self->db_name, len, self->no_seq);
-    return s;
-  }
-  seqn *get_seq(ULINT seq_no) {
-    seqn *Fseq;
-    Fseq = mallocec(sizeof(seqn));
-    Fseq->free_flag = 0;
-    Fseq->defline_flag = 1;
-
-    fastadb_get_seq(self, seq_no, &(Fseq->seq));
-    return Fseq;
-  }
-  /* Fragment functions */
-  void init_frags(ULINT min_len, ULINT max_len) {
-    fastadb_init_frags(self, min_len, max_len);
-  }
-  void clear_frags() {
-     fastadb_clear_frags(self);
-  }
-  ULINT get_nofrags(ULINT min_len, ULINT max_len) {
-    ULINT n = 0;
-
-    fastadb_get_nofrags(self, &n, min_len, max_len);
-    return n;
-  }
-  seqn *get_frag(ULINT n, ULINT min_len, ULINT max_len) {
-    seqn *Fseq;
-    BIOSEQ *ts;
-
-    Fseq = mallocec(sizeof(seqn));
-    Fseq->free_flag = 1;
-    Fseq->defline_flag = 0;
-
-    fastadb_get_frag(self, ts, n, min_len, max_len);
-    Fseq->seq = bioseq_copy(ts);
-    return Fseq;
-  }
-
-  /* Ffragment functions */
-  void init_Ffrags(ULINT len) {
-    fastadb_init_Ffrags(self, len);
-  }
-  ULINT count_Ffrags(ULINT len) {
-    ULINT c;
-    c = fastadb_count_Ffrags(self, len);
-    return c;
-  }
-  seqn *get_Ffrag(ULINT len, ULINT n) {
-    seqn *Fseq;
-    BIOSEQ *ts;
-    Fseq = mallocec(sizeof(seqn));
-    Fseq->free_flag = 1;
-    Fseq->defline_flag = 0;
-
-    fastadb_get_Ffrag(self, len, ts, n);
-    Fseq->seq = bioseq_copy(ts);
-    return Fseq;
-  }
-  /* TO DO:
-     fastadb_find_Ffrag_seq()
-     fastadb_get_Ffrag_seq()
-  */
+  %pythoncode %{
+  def __str__(self):
+    return 'FASTA SEQUENCE DATABASE\nFile: %s\nLength: %d\nSequences: %d\n' % (self.db_name, self.length , self.no_seq)    
+  %}
+ const char *get_seq(ULINT i) {
+   if (i < self->no_seq)
+     return self->seq[i].start;
+   else
+     return NULL;
+ }
+ const char *get_def(ULINT i) {
+   if (i < self->no_seq)
+     return self->seq[i].id.defline;
+   else
+     return NULL;
+ }
+ /* No error checking here - this function is meant only
+    for getting the sequences of hits */
+ %newobject get_frag;
+ PyObject *get_frag(ULINT i, ULINT from, ULINT to) {
+   int len = to - from;
+   return PyString_FromStringAndSize(self->seq[i].start + from, len);
+ }
 }
 
-/********************************************************************/ 
-/*         ptable                                                   */
-/********************************************************************/ 
-
-typedef struct {}
-ptable;
-
-%extend ptable {
-  ptable(const char *alphabet) {
-    return FS_PARTITION_create(alphabet, '#');
-  }
-  ~ptable() {
-    FS_PARTITION_destroy(self);
-  }
-  void print_table(FILE *stream=stdout) {
-    FS_PARTITION_print(self, stream);
-  }
-  char * __str__() {
-    return self->alphabet;
-  }
-  %immutable;
-  int no_pttn;
-
-  int get_pttn(char letter) {
-    return FS_PARTITION_get_pttn(self, letter);
-  }
-  int get_posn(char letter) {
-    return FS_PARTITION_get_pos(self, letter);
-  }
-  int get_pttn_size(int pttn) {
-    return FS_PARTITION_get_size(self, pttn);
-  }
-  int get_poffset(int pttn) {
-    return FS_PARTITION_get_poffset(self, pttn);
-  }
-  char get_letter(int pttn, int posn) {
-    return (char) FS_PARTITION_get_letter(self, pttn, posn);
-  }
-  int check_seqn(seqn *Fseq) {
-    return FS_PARTITION_check_seq(Fseq->seq, self);
-  }
-  void write(FILE *stream=stdout) {
-    FS_PARTITION_write(self, stream);
-  }
-  %newobject seqn2reduced;
-  seqn *seqn2reduced(seqn *Fseq) {
-    char c;
-    int i;
-    int j=0;
-    char *newseq = mallocec(Fseq->seq->len+1);
-    seqn *Rseq;
-
-    for (j=0; j < Fseq->seq->len; j++)
-      {
-	c = Fseq->seq->start[j];
-	i = self->partition_table[c & A_SIZE_MASK];
-	if (i == -1) 
-	  {
-	    free(newseq);
-	    Throw FSexcept(BAD_ARGS, "Sequence contains"
-			   " letters not in ptable.\n");
-	  }
-	sprintf(newseq+j, "%1.1d", i);
-      }
-    newseq[j]='\0';
-
-    Rseq = mallocec(sizeof(seqn));
-    Rseq->seq = mallocec(sizeof(BIOSEQ));
-    Rseq->seq->start = newseq;
-    Rseq->seq->len = Fseq->seq->len;
-    Rseq->seq->id.defline = Fseq->seq->id.defline;
-    Rseq->free_flag = 1;
-    Rseq->defline_flag = 1;
-    return Rseq;
-  }
-}
-  extern ptable *ptable_read(FILE *stream=stdin);
-
-/********************************************************************/ 
-/*         randseq                                                  */
-/********************************************************************/ 
-
-typedef struct {
-%immutable;
-  ULINT max_len;
-} fgen;
-
-%extend fgen {
-  fgen(const char *filename, ptable *ptable, ULINT max_len=30) {
-    fgen *FG = mallocec(sizeof(fgen));
-    FG->sgen = SEQ_GENERATOR_create(filename, ptable);
-    FG->max_len = max_len;
-    FG->heap = mallocec(max_len+1);
-    FG->Fseq = mallocec(sizeof(seqn));
-    FG->Fseq->free_flag = 0;
-    FG->Fseq->defline_flag = 1;
-    FG->Fseq->seq = mallocec(sizeof(BIOSEQ));
-    FG->Fseq->seq->id.defline = "Random Sequence";
-    return FG;
-  }
-  ~fgen() {
-    SEQ_GENERATOR_destroy(self->sgen);
-    free(self->heap);
-    free(self->Fseq->seq);
-    free(self->Fseq);
-    free(self);
-  }
-  seqn *rand_seq(ULINT len) {
-    if (len >= self->max_len) {
-      self->max_len = len;
-      self->heap = reallocec(self->heap, self->max_len+1);
-    }
-    SEQ_GENERATOR_rand_seq(self->sgen, self->Fseq->seq, len, 
-			   self->heap);
-    return self->Fseq;
-  }
-  double freq(char c) {
-    int i = c & A_SIZE_MASK;
-    if (i==0)
-      return ((double) self->sgen->cum_freq[i])/ self->sgen->total_residues;  
-    else
-      return ((double) (self->sgen->cum_freq[i] - self->sgen->cum_freq[i-1])) /
-	self->sgen->total_residues;
-  }
-
-
-}
 
 /********************************************************************/ 
 /*         smatrix                                                  */
 /********************************************************************/ 
 
+typedef enum {SCORE, POSITIONAL} MATRIX_TYPE;
+typedef enum {SIMILARITY, DISTANCE} SCORE_TYPE;
+
+#define POS 1
+#define QUASI 2
+#define MAX 4
+#define AVG 6
+
 typedef struct {
 %immutable;
-  const char *filename;
-  int similarity_flag;
-}
-smatrix;
-
-%extend smatrix {
-  smatrix(const char *filename, ptable *ptable) {
-    return SCORE_MATRIX_create(filename, ptable);
-  }
-  ~smatrix() {
-    SCORE_MATRIX_destroy(self);
-  }
-  void set_M(char row, char col, SSINT val) {
-    SCORE_MATRIX_set_M(self, row, col, val);
-  }
-  void set_SS(char row, SSINT val) {
-    SCORE_MATRIX_set_SS(self, row, val);
-  }
-  int get_M(char row, char col) {
-    return SCORE_MATRIX_get_M(self, row, col);
-  }
-  int get_pM(char row, int group) {
-    return SCORE_MATRIX_get_pM(self, row, group);
-  }
-  int get_pMc(char row) {
-    return SCORE_MATRIX_get_pMc(self, row);
-  }
-  int get_SS(char row) {
-    return SCORE_MATRIX_get_SS(self, row);
-  }
-  int score(seqn *query, seqn *subject) {
-    return SCORE_MATRIX_evaluate(self, query->seq, subject->seq);
-  }
-  void print_matrix(FILE *stream=stdout, 
-		    const char *title="SCORE MATRIX") {
-    SCORE_MATRIX_print(self, stream, title); 
-  }
-  smatrix *S2Dmax() {
-    return SCORE_MATRIX_S_2_Dmax(self);
-  }
-  smatrix *S2Davg() {
-    return SCORE_MATRIX_S_2_Davg(self);
-  }
-  smatrix *S2Dquasi() {
-    return SCORE_MATRIX_S_2_Dquasi(self);
-  }
-}
-
-/********************************************************************/ 
-/*         hit_list                                                 */
-/********************************************************************/ 
-
-typedef struct 
-{
-  /* %immutable; */
-  ULINT sequence_id;
-  ULINT sequence_from;
-  ULINT sequence_to;
-  ULINT bin;
-  ULINT pos;
-  float value;
-} hit;
-
-%extend hit {
-  seqn *get_subject() {
-    seqn *Fseq;
-    
-    Fseq = mallocec(sizeof(seqn));
-    Fseq->seq = bioseq_copy(&self->subject);
-    Fseq->free_flag = 1;
-    Fseq->defline_flag = 1;
-    return Fseq;
-  }
-}
-
-typedef struct
-{
-%immutable;
-  /* db_stats */
-  db *s_db;
-  char *db_name;
-  char *db_path;
-  ULINT db_length;
-  ULINT db_no_seq;
-  ULINT db_min_frag_len;
-  ULINT db_max_frag_len;
-  ULINT db_no_frags;
-
-  /* index_stats */
-  char *index_name;
+  MATRIX_TYPE Mtype;
+  SCORE_TYPE Stype;
+  int len;
+  char *qseq;
   char *alphabet;
-
-  /* FS_query */
-  ULINT frag_len;
-  SEARCH_TYPE_t srch_type;
-  BIOSEQ query;
-  const char *matrix;
-  void *M;
-  eval_func *efunc;
-  int range;
-  int converted_range;
-  int kNN;
-
-  /* FS_search_stats */
-  ULINT FS_seqs_total;
-  ULINT FS_seqs_visited;
-  ULINT FS_seqs_hits;
-  ULINT index_seqs_total;
-  ULINT seqs_visited;
-  ULINT seqs_hits;
-  ULINT useqs_total;
-  ULINT useqs_visited;
-  ULINT useqs_hits;
-  double start_time;
-  double end_time;
-  double search_time;
-
-
-  /* FS_hits */
-  ULINT max_hits;
-  ULINT actual_seqs_hits;
-  ULINT accepted;
-  /*  hit *hits; */
-
-} hit_list;
-
-extern hit_list *parse_hl_xml(FILE *stream);
-
-%extend hit_list {
-  /* No constructor - can get it only as results of searches */
-  ~hit_list() {
-    HIT_LIST_destroy(self);
-  }
-
-  void print_list(FILE *stream=stdout) {
-    HIT_LIST_print(self, stream, NULL);
-  } 
-  void print_xml(FILE *stream=stdout) {
-    HIT_LIST_xml(self, stream, 0);
-  }
-
-  hit *get_hit(ULINT i) {
-    return HIT_LIST_get_hit(self, i);
-  }
-  %newobject get_query;
-  seqn *get_query() {
-    seqn *Fseq;
-    
-    Fseq = mallocec(sizeof(seqn));
-    Fseq->seq = bioseq_copy(&self->query);
-    Fseq->free_flag = 1;
-    Fseq->defline_flag = 1;
-    return Fseq;
-  }
-  %pythoncode %{
-  def HitList(self, HitList_class, Hit_class):
-    self.sort_incr()
-    HL = HitList_class()
-
-    HL.db_name = self.db_name
-    HL.db_path = self.db_path
-    HL.db_length = self.db_length
-    HL.db_no_seq = self.db_no_seq
-    HL.db_min_frag_len = self.db_min_frag_len
-    HL.db_max_frag_len = self.db_max_frag_len
-    HL.db_no_frags = self.db_no_frags
-
-    HL.index_name = self.index_name
-    HL.alphabet = self.alphabet
-  
-    HL.frag_len = self.frag_len
-    q = self.get_query()
-    HL.query_seq = q.seq
-    HL.query_defline = q.defline
-    HL.matrix = self.matrix
-    HL.range = self.range
-    HL.kNN = self.kNN
-
-    HL.FS_seqs_total = self.FS_seqs_total
-    HL.FS_seqs_visited = self.FS_seqs_visited
-    HL.FS_seqs_hits = self.FS_seqs_hits
-    HL.index_seqs_total = self.index_seqs_total
-    HL.seqs_visited = self.seqs_visited
-    HL.seqs_hits = self.seqs_hits
-    HL.useqs_total = self.useqs_total
-    HL.useqs_visited = self.useqs_visited
-    HL.useqs_hits = self.useqs_hits
-    HL.start_time = self.start_time
-    HL.end_time = self.end_time
-    HL.search_time = self.search_time
-    
-    HL.hits = list()
-    for i in range(self.actual_seqs_hits):
-      HL.hits.append(Hit_class())
-      ht = self.get_hit(i)
-      sbj = ht.get_subject()
-      HL.hits[i].seq = sbj.seq
-      HL.hits[i].defline = sbj.defline
-      HL.hits[i].sequence_id = ht.sequence_id
-      HL.hits[i].sequence_from = ht.sequence_from
-      HL.hits[i].sequence_to = ht.sequence_to
-      HL.hits[i].bin = ht.bin
-      HL.hits[i].pos = ht.pos
-      HL.hits[i].value = ht.value
-    return HL
-  %}
-#if 0
-  void Z_scores() {
-    HIT_LIST_Zscores(self);
-  }
-#endif
-  void sort_decr() {
-    HIT_LIST_sort_decr(self);
-  }
-  void sort_incr() {
-    HIT_LIST_sort_incr(self);
-  }
-  void sort_by_seq() {
-    HIT_LIST_sort_by_sequence(self);
-  }
+%mutable;
 }
+Smatrix;
 
-/********************************************************************/ 
-/*         pmatrix                                                  */
-/********************************************************************/ 
+%newobject Smatrix_load;
+extern Smatrix *Smatrix_load(const char *filename);
+%newobject Smatrix_pssm;
+extern Smatrix *Smatrix_pssm(int **M, int len, char *alphabet);
+%{
+  Smatrix *Smatrix_load(const char *filename) {
+    return SCORE_MATRIX_from_file(filename);
+  }
+  Smatrix *Smatrix_pssm(int **M, int len, char *alphabet) {
+    return SCORE_MATRIX_init(M, len, POSITIONAL, SIMILARITY, alphabet);
+  }
+%}
 
-
+%extend Smatrix {
+  Smatrix(int **M, char *alphabet, SCORE_TYPE Stype=SIMILARITY) {
+    return SCORE_MATRIX_init(M, 0, SCORE, Stype, alphabet);
+  }
+  ~Smatrix() {
+    SCORE_MATRIX_del(self);
+  }
+  %newobject copy;
+  Smatrix *copy() {
+    return SCORE_MATRIX_copy(self);
+  }
+  %newobject __str__;
+  char *__str__() {
+    return SCORE_MATRIX_sprint(self);
+  }
+  void fprint(FILE *fp=stdout) {
+    SCORE_MATRIX_fprint(self, fp);
+  }
+  int eval_score(char *s1, int l1, char *s2, int l2) {
+    l2 = l1 > l2 ? l1 : l2;
+    return self->eval_score(self, s1, s2, l2);
+  }
+  int range_conv(char *s1, int l1, int r) {
+    return self->range_conv(self, s1, l1, r);
+  }
+  int item_conv(char c, int i, int j) {
+    return self->item_conv(self, c, i, j);
+  }
+  %newobject matrix_conv;
+  Smatrix *matrix_conv(char *s1, int l1) {
+    return self->matrix_conv(self, s1, l1);
+  }
+  int conv_type;
+}
+%{
+int Smatrix_conv_type_get(Smatrix *S) {
+  return S->conv_type;
+}
+void Smatrix_conv_type_set(Smatrix *S, int ctype) {
+  S->set_conv_type(S, ctype);
+}
+%}
 
 
 /********************************************************************/ 
 /*         index                                                    */
 /********************************************************************/ 
 
+/* Conversion of hit lists into Python dictionaries */
+%{
+PyObject *Dict_FromHitList(hit_list *HL) {
+
+    PyObject *dict = PyDict_New();
+    PyObject *obj;
+    PyObject *list;
+    PyObject *hdict;
+    SEQ_HIT_t *hit;
+    int i;
+
+    HIT_LIST_sort_incr(HL);
+
+    /* Query data */
+    obj = PyString_FromStringAndSize(HL->query.start,
+				     HL->query.len);
+    PyDict_SetItemString(dict, "query_seq", obj);
+    Py_DECREF(obj);
+
+    obj = PyString_FromString(HL->query.id.defline);
+    PyDict_SetItemString(dict, "query_def", obj);
+    Py_DECREF(obj);
+
+    /* Matrix is deliberately missing - the caller of
+       search function should have it anyway. */
+
+    PyDict_SetItemString(dict, "conv_type",
+			 PyInt_FromLong(HL->conv_type));
+    PyDict_SetItemString(dict, "sim_range",
+			 PyInt_FromLong(HL->sim_range));
+    PyDict_SetItemString(dict, "dist_range",
+			 PyInt_FromLong(HL->dist_range));
+    PyDict_SetItemString(dict, "kNN",
+			 PyInt_FromLong(HL->kNN));
+
+    /* Index performance data */
+    PyDict_SetItemString(dict, "bins_visited",
+			 PyInt_FromLong(HL->FS_seqs_visited));
+    PyDict_SetItemString(dict, "bins_hit",
+			 PyInt_FromLong(HL->FS_seqs_hits));
+    PyDict_SetItemString(dict, "frags_visited",
+			 PyInt_FromLong(HL->seqs_visited));
+    PyDict_SetItemString(dict, "frags_hit",
+			 PyInt_FromLong(HL->seqs_hits));
+    PyDict_SetItemString(dict, "unique_frags_visited",
+			 PyInt_FromLong(HL->useqs_visited));
+    PyDict_SetItemString(dict, "unique_frags_hit",
+			 PyInt_FromLong(HL->useqs_hits));
+    PyDict_SetItemString(dict, "search_time",
+			 PyFloat_FromDouble(HL->search_time));
+
+
+    list = PyList_New(HL->actual_seqs_hits);
+    for (i=0, hit=HL->hits; i < HL->actual_seqs_hits; i++, hit++) {
+      hdict = PyDict_New();
+      /* Sequence and defline are not here - saving memory */
+#if 0
+      obj = PyString_FromStringAndSize(hit->subject.start,
+				       hit->subject.len);
+      PyDict_SetItemString(hdict, "seq", obj);
+#endif
+      PyDict_SetItemString(hdict, "seq_id",
+			   PyInt_FromLong(hit->sequence_id));
+      PyDict_SetItemString(hdict, "seq_from",
+			   PyInt_FromLong(hit->sequence_from));
+      PyDict_SetItemString(hdict, "seq_to",
+			   PyInt_FromLong(hit->sequence_to));
+      PyDict_SetItemString(hdict, "dist",
+			   PyInt_FromLong(hit->dist));
+      PyDict_SetItemString(hdict, "sim",
+			   PyInt_FromLong(hit->sim));
+
+      PyList_SET_ITEM(list, i, hdict);
+    }
+    PyDict_SetItemString(dict, "hits", list);
+    Py_DECREF(list);
+    
+    return dict;
+}  
+%}
+
+%typemap(out) hit_list * {
+  $result = Dict_FromHitList($1);
+  /* Free the hit list */
+  HIT_LIST_destroy($1);
+}
+
+
+/* Search arguments as list */
+%typemap(in, numinputs=1) (SRCH_ARGS *args, int n, hit_list_array *res) (hit_list_array tmp) {
+  int i;
+  int process_error = 0;
+  int list_size;
+  PyObject *obj;
+  PyObject *list;
+  
+  $3 = &tmp;
+  if (!PyList_Check($input)) {
+    PyErr_SetString(PyExc_ValueError, "Expecting a list");
+    return NULL;
+  }
+  $2 = PyList_GET_SIZE($input);
+  $1 = mallocec($2 * sizeof(SRCH_ARGS));
+  for (i=0; i < $2; i++) {
+    list = PyList_GetItem($input, i); 
+    if (!PyList_Check(list) || (list_size = PyList_GET_SIZE(list)) < 5) {
+      process_error++;
+      break;
+    }
+    /* Default values for optional arguments */
+    $1[i].ptype = FS_BINS;
+    $1[i].stype = SARRAY;
+
+    /* First item - query sequence */
+    obj = PyList_GetItem(list, 0);
+    if (!PyString_Check(obj)) {
+      process_error++;
+      break;
+    }
+    $1[i].query.start = PyString_AsString(obj);
+    $1[i].query.len = PyString_GET_SIZE(obj);
+
+    /* Second item - matrix */
+    obj = PyList_GetItem(list, 1);
+    if ((SWIG_ConvertPtr(obj, (void **) &($1[i].M), 
+			 $descriptor(Smatrix *),
+			 SWIG_POINTER_EXCEPTION | 0 )) == -1) {
+      process_error++;
+      break;
+    }
+			   
+    /* Third item - range */
+    obj = PyList_GetItem(list, 2);
+    if (PyInt_Check(obj)) {
+      $1[i].range = PyInt_AS_LONG(obj);
+    }
+    else if (PyLong_Check(obj)) {
+      $1[i].range = PyLong_AsLong(obj);
+    }
+    else {
+      process_error++;
+      break;
+    }
+    
+    /* Fourth item - kNN */
+    obj = PyList_GetItem(list, 3);
+    if (PyInt_Check(obj)) {
+      $1[i].kNN = PyInt_AS_LONG(obj);
+    }
+    else if (PyLong_Check(obj)) {
+      $1[i].kNN = PyLong_AsLong(obj);
+    }
+    else {
+      process_error++;
+      break;
+    }
+
+    /* Fifth item - query defline */
+    obj = PyList_GetItem(list, 4);
+    if (!PyString_Check(obj)) {
+      process_error++;
+      break;
+    }
+    $1[i].query.id.defline = PyString_AsString(obj);
+
+    /* Optional arguments */
+
+    /* SFUNC */
+    if (list_size < 6) continue;
+    obj = PyList_GetItem(list, 5);
+    if (PyInt_Check(obj)) {
+      $1[i].ptype = PyInt_AS_LONG(obj);
+    }
+
+    /* PFUNC */
+    if (list_size < 7) continue;
+    obj = PyList_GetItem(list, 6);
+    if (PyInt_Check(obj)) {
+      $1[i].stype = PyInt_AS_LONG(obj);
+    }
+  }
+  /* Error - free array */
+  if (process_error) {
+    free($1);
+    PyErr_SetString(PyExc_ValueError, "Wrong Arguments");
+    return NULL;
+  }
+}
+
+%typemap(argout) (SRCH_ARGS *args, int n, hit_list_array *res) {
+  int i;
+
+  $result = PyList_New($2);
+  for (i=0; i < $2; i++) {
+    /* printf("conversion #%d, hits %d\n", i, (*$3)[i].actual_seqs_hits); */
+    PyList_SET_ITEM($result, i, Dict_FromHitList(*$3+i));
+  }
+}
+
+%typemap(freearg) (SRCH_ARGS *args, int n, hit_list_array *res) {
+  int i;
+  if ($1) free($1);
+  if (*$3) {
+    for (i=0; i < $2; i++) {
+      HIT_LIST_cleanup(*$3+i);
+    }
+    free(*$3);
+  }
+}
+/* ***** End of hit list conversion code ***** */
+
+extern int next_avail_srch;
+
 typedef struct
 {
   %immutable;
-  char *db_name;           /* Name of the database                  */
-  char *index_name;        /* Name of the index                     */
   db *s_db;                /* Pointer to the fasta database         */
-  ptable *ptable;          /* Partition table                       */
-  int m;                   /* Length of indexed fragments           */
-  ULINT db_no_frags;       /* Number of fragments in full database  */
-  ULINT no_bins;           /* Number of bins = K^frag_len           */
-  ULINT no_seqs;           /* Number of indexed fragments           */
-  ULINT no_useqs;          /* Number of indexed unique fragments    */
 } index;
 
-extern index *index_load(const char *filename);
+/* Only database attribute is available - everything else can be
+   obtained as Python dictionary by calling get_data() method */
 
+typedef enum {FS_BINS, SUFFIX_ARRAY, SEQ_SCAN} SFUNC_TYPE;
+typedef enum {SARRAY, DUPS_ONLY, FULL_SCAN} PFUNC_TYPE;
 
 %extend index {
-  index(const char *database, ULINT flen, const char *abet, 
-	 int skip=1) {
-    return FS_INDEX_create(database, flen, abet, '#', skip);
+  /* Call with [] (empty list) as second argument to load from file */
+ index(const char *database, ULINT len, 
+       const char **sepn, int use_sa = 1,
+       int print_flag=0) {
+   if (len) 
+     return FS_INDEX_create(database, len, sepn, use_sa, print_flag);
+   else
+     return FS_INDEX_load(database);
   }
   ~index() {
     FS_INDEX_destroy(self);
@@ -661,45 +611,99 @@ extern index *index_load(const char *filename);
   void save(const char *filename) {
     FS_INDEX_save(self, filename);
   }
-  void print_stats(int options=3, FILE *stream=stdout) {
-    FS_INDEX_print_stats(self, stream, options);
-  }  
-  void print_bin(seqn *Fseq, int options=1, FILE *stream=stdout) {
-    FS_INDEX_print_bin(self, Fseq->seq, stream, options);
+  %newobject __str__;
+  char *__str__() {
+    return FS_INDEX_sprint_stats(self, 0);
+  }
+  ULINT seq2bin(char *s1, int l1) {
+    return FS_SEQ(self->ptable, s1, l1);
+  }
+  %newobject print_bin;
+  char *print_bin(ULINT bin, int options=1) {
+    return FS_INDEX_sprint_bin(self, bin, options);
+  }
+  %newobject print_stats;
+  char *print_stats(int options=3) {
+    return FS_INDEX_sprint_stats(self, options);
   }
   ULINT get_bin_size(ULINT bin) {
-    return FS_INDEX_get_bin_size(self, bin); 
+    return FS_INDEX_get_bin_size(self, bin);
   }
   ULINT get_unique_bin_size(ULINT bin) {
     return FS_INDEX_get_unique_bin_size(self, bin);
   }
-  %newobject get_seq;
-  seqn *get_seq(ULINT bin, ULINT i) {
-    seqn *Fseq;
+
+  /* Index data as Python dictionary */
+  %newobject get_data;
+  PyObject *get_data() {
+    PyObject *dict = PyDict_New();
+    PyObject *obj;
+    SEQUENCE_DB *sdb = self->s_db;
+    FS_TABLE *ptable = self->ptable;
+    int i;
+  
+    /* FASTA Sequence Database data */ 
+    PyDict_SetItemString(dict, "db_name", 
+			 PyString_FromString(sdb->db_name));
+    PyDict_SetItemString(dict, "db_length", 
+			 PyInt_FromLong(sdb->length));
+    PyDict_SetItemString(dict, "db_no_seq", 
+			 PyInt_FromLong(sdb->no_seq));
+    PyDict_SetItemString(dict, "db_min_frag_len",
+			 PyInt_FromLong(sdb->min_len));
+    PyDict_SetItemString(dict, "db_min_frag_len",
+			 PyInt_FromLong(sdb->max_len));
     
-    Fseq = mallocec(sizeof(seqn));
-    Fseq->seq = bioseq_copy(FS_INDEX_get_seq(self, bin, i));
-    Fseq->free_flag = 1;
-    Fseq->defline_flag = 1;
-    return Fseq;
-  }
-  hit_list *rng_srch(seqn *query, smatrix *D, int d0) {
-    return FSINDX_rng_srch(self, query->seq, D, d0, NULL);
-  }
-  hit_list *kNN_srch(seqn *query, smatrix *D, int k) {
-    return FSINDX_kNN_srch(self, query->seq, D, k, NULL);
+    /* Index data */
+    PyDict_SetItemString(dict, "index_name",
+			 PyString_FromString(self->index_name));
+    obj = PyList_New(ptable->len);
+    for (i=0; i < ptable->len; i++) { 
+      PyList_SetItem(obj, i, PyString_FromString(ptable->sepn[i]));
+    }
+    PyDict_SetItemString(dict, "ptable", obj);
+    Py_DECREF(obj);
+
+    PyDict_SetItemString(dict, "alphabet",
+			 PyString_FromString(ptable->alphabet));
+    PyDict_SetItemString(dict, "bins",
+			 PyInt_FromLong(self->no_bins));
+    PyDict_SetItemString(dict, "fragments",
+			 PyInt_FromLong(self->no_seqs));
+    PyDict_SetItemString(dict, "unique_fragments",
+			 PyInt_FromLong(self->no_useqs));
+    PyDict_SetItemString(dict, "indexed_fragment_length",
+			 PyInt_FromLong(self->m));
+    PyDict_SetItemString(dict, "largest_bin",
+			 PyInt_FromLong(self->binL));
+    PyDict_SetItemString(dict, "largest_bin_unique",
+			 PyInt_FromLong(self->uL));
+    
+    return dict;
   }
 
-
-  /* TO DO:
-     - profile searches
-  */
+  hit_list *rng_srch(char *qseq, int qlen, Smatrix *M, int range,
+		     int conv_type, SFUNC_TYPE stype = FS_BINS,
+		     PFUNC_TYPE ptype = SARRAY, char *qdef ="") {
+    BIOSEQ query;
+    query.start = qseq;
+    query.len = qlen;
+    query.id.defline = qdef;
+    return FSINDX_rng_srch(self, &query, M, range, conv_type, NULL,
+			   stype, ptype);
+  }
+  hit_list *kNN_srch(char *qseq, int qlen, Smatrix *M, int kNN,
+		     SFUNC_TYPE stype = FS_BINS, 
+		     PFUNC_TYPE ptype = SARRAY, char *qdef ="") {
+    BIOSEQ query;
+    query.start = qseq;
+    query.len = qlen;
+    query.id.defline = qdef;
+    return FSINDX_kNN_srch(self, &query, M, kNN, NULL, stype, ptype);
+  }
+  void threaded_search(SRCH_ARGS *args, int n, hit_list_array *res) {
+    *res = FSINDX_threaded_srch(self, args, n);
+  }
 }
-
-extern hit_list *sscan_qd_srch(db *s_db, const char *matrix, 
-			       seqn *query, ULINT D_cutoff);
-
-extern int sscan_has_nbr(db *s_db, smatrix *D, ptable *pt, 
-			 seqn *query, ULINT D_cutoff);
 
 
