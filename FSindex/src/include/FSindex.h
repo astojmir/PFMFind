@@ -124,6 +124,7 @@ void FS_INDEX_print_stats(FILE *stream, ULINT count, double dtime);
 
 /* Get / Set members */
 SEQUENCE_DB *FS_INDEX_get_database(void);
+const char *FS_INDEX_get_db_name(void);
 FS_PARTITION_t *FS_INDEX_get_ptable(void);
 int FS_INDEX_get_frag_len(void);
 FS_HASH_TABLE_t *FS_INDEX_get_hash_table(void);
@@ -156,10 +157,10 @@ FS_INDEX_range_convert_func FS_INDEX_S2QD_convert;
 /* Experiments */
 HIT_LIST_t *SSCAN_QD_search(SEQUENCE_DB *s_db, const char *matrix, 
 			    BIOSEQ *query, ULINT D_cutoff);
-#if 0
-int FS_INDEX_has_neighbour(FS_INDEX_t *FS_index, BIOSEQ *query, 
-			   ULINT D_cutoff);
-#endif
+
+int FS_INDEX_has_neighbour(BIOSEQ *query, SCORE_MATRIX_t *D0, 
+			   int cutoff);
+
 int SSCAN_has_neighbour(SEQUENCE_DB *s_db,  SCORE_MATRIX_t *D, 
 			FS_PARTITION_t *ptable,
 			BIOSEQ *query, ULINT D_cutoff);
