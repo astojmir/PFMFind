@@ -240,6 +240,11 @@ static int S_cutoff;
 static int D_cutoff;
 static FS_INDEX_process_func *pfunc; 
 
+static POS_MATRIX *PS;
+static POS_MATRIX *PD;
+static FS_INDEX_profile_process_func *ppfunc; 
+ULINT Pfrom;
+ULINT Pto;
 
 /* Query specific variables - can be shared for the same query */ 
 static HIT_LIST_t *hit_list;
@@ -550,7 +555,7 @@ int FS_INDEX_get_frag_len(void)
 
 
 /********************************************************************/ 
-/*      Static variables and functions                              */
+/*      Recursive tree traversal function                           */
 /********************************************************************/ 
 static int R;
 static int R_offset;
@@ -878,14 +883,6 @@ int FS_INDEX_has_neighbour(FS_INDEX_t *FS_index, BIOSEQ *query,
 #endif
 
 
-
-
-
-
-#if 0
-
-
-
 /********************************************************************/
 /********************************************************************/
 
@@ -895,51 +892,18 @@ int FS_INDEX_has_neighbour(FS_INDEX_t *FS_index, BIOSEQ *query,
 /*                                                                  */
 /********************************************************************/    
 
-/* FSINDEX general (static) functions and variables used here:
-
-   FS_INDEX_verify_query();
-   FS_INDEX_iter_init();
-   kSubsetLexSuccessor();
-   All static variables associated with FS generator.
-*/
-
 /* Profile specific functions:
 
-   POS_MATRIX_get_no_changes() - may be moved to pmatrix module;
    FS_INDEX_profile_S_process_bin();
    FS_INDEX_profile_D_process_bin();
-   FS_INDEX_profile_iter_next();
+   check_bin_profile();
  */
 
-static 
-int POS_MATRIX_get_no_changes(POS_MATRIX *PD, int D_cutoff, 
-			      ULINT Pfrom, ULINT Pto)
-{
-  int *D = mallocec((Pto - Pfrom + 1) * sizeof(int));
-  ULINT i;
-  int S = 0;
+/********************************************************************/ 
+/*      Processing functions                                        */
+/********************************************************************/ 
 
-  for (i = 0; i <= Pto - Pfrom; i++)
-    D[i] = PD->pMclosest[i+Pfrom];
-  
-  qsort(D, Pto - Pfrom + 1, sizeof(int), compare_int);
-
-  for (i = 0; i <= Pto - Pfrom; i++)
-    {
-      S += D[i];
-      if (S > D_cutoff)
-	break;
-    }
-  free(D);
-  return i;
-}
-
-void FS_INDEX_profile_S_process_bin(FS_INDEX_t *FS_index, 
-				    HIT_LIST_t *hit_list,
-				    POS_MATRIX *PS,
-				    ULINT Pfrom, ULINT Pto,
-				    FS_SEQ_t FS_query, 
-				    int S_cutoff)
+void FS_INDEX_profile_S_process_bin(FS_SEQ_t FS_query)
 {
   ULINT n = FS_HASH_TABLE_get_no_seqs(HT, FS_query);
   ULINT j;
@@ -949,11 +913,9 @@ void FS_INDEX_profile_S_process_bin(FS_INDEX_t *FS_index,
 
   for (j = 0; j < n; j++)
     {
-      frag_offset = FS_HASH_TABLE_retrieve_seq(HT, 
-					       FS_query, j);
+      frag_offset = FS_HASH_TABLE_retrieve_seq(HT, FS_query, j);
 
-      fastadb_get_Ffrag(s_db, frag_len, 
-			&subject, frag_offset);
+      fastadb_get_Ffrag(s_db, frag_len, &subject, frag_offset);
 
       if (POS_MATRIX_evaluate_min(PS, &subject, Pfrom, Pto, 
 				  S_cutoff, &S_value))
@@ -967,12 +929,7 @@ void FS_INDEX_profile_S_process_bin(FS_INDEX_t *FS_index,
 }
 
 
-void FS_INDEX_profile_D_process_bin(FS_INDEX_t *FS_index, 
-				    HIT_LIST_t *hit_list,
-				    POS_MATRIX *PD,
-				    ULINT Pfrom, ULINT Pto,
-				    FS_SEQ_t FS_query,
-				    int D_cutoff)
+void FS_INDEX_profile_D_process_bin(FS_SEQ_t FS_query)
 {
   ULINT n = FS_HASH_TABLE_get_no_seqs(HT, FS_query);
   ULINT j;
@@ -982,11 +939,9 @@ void FS_INDEX_profile_D_process_bin(FS_INDEX_t *FS_index,
 
   for (j = 0; j < n; j++)
     {
-      frag_offset = FS_HASH_TABLE_retrieve_seq(HT, 
-					       FS_query, j);
+      frag_offset = FS_HASH_TABLE_retrieve_seq(HT, FS_query, j);
 
-      fastadb_get_Ffrag(s_db, frag_len, 
-			&subject, frag_offset);
+      fastadb_get_Ffrag(s_db, frag_len, &subject, frag_offset);
 
       if (POS_MATRIX_evaluate_max(PD, &subject, Pfrom, Pto, 
 				  D_cutoff, &D_value))
@@ -999,104 +954,111 @@ void FS_INDEX_profile_D_process_bin(FS_INDEX_t *FS_index,
     }
 }
 
-static inline
-int FS_INDEX_profile_iter_next(FS_INDEX_t *FS_index, POS_MATRIX *PD, 
-			       ULINT Pfrom, ULINT Pto, 
-			       FS_SEQ_t FS_query, int *dist,  
-			       FS_SEQ_t *FS_neighbour) 
-{
-  ULINT i;
-  int r = FS_r;
-  int R;
+/********************************************************************/ 
+/*      Recursive tree traversal function - profiles                */
+/********************************************************************/ 
 
-  if (FS_r >= FS_Kl) return 0;
-  *dist = 0;
-  *FS_neighbour = FS_S0;
-  for (i = 0; i < FS_l; i++)
+static
+void check_bins_profile(FS_SEQ_t FS_neighbour, int i, int dist)
+{
+  int j;
+  int k;
+
+  for (k=i+1; k < frag_len; k++)
     {
-      R = ((r % (FS_K-1)) + FS_Q[i] + 1) % FS_K;
-      *dist += PD->pM[PM_pM(Pfrom + TT[i], R)];
-      *FS_neighbour += R * FS_KTT[i];
-      r /= (FS_K-1);
+      if (dist + PD->pMclosest[k] <= D_cutoff)
+	{      
+	  for (j=1; j < K; j++)
+	    {
+	      R = K_modtable[FS_Q[k] + j];
+	      R_offset = 
+		FS_PARTITION_get_poffset(ptable, R);
+	      FS_neighbour1 = FS_neighbour + R * FS_KK[k];
+	      dist1 = dist + PD->pM[PM_pM(k, R_offset)]; 
+	      HIT_LIST_count_FS_seq_visited(hit_list, 1);
+	      if (dist1 <= D_cutoff)
+		{
+		  HIT_LIST_count_FS_seq_hit(hit_list, 1);
+		  ppfunc(FS_neighbour1 + FS_REM[k]);
+		  check_bins(FS_neighbour1, k, dist1);
+		}
+	    }
+	}
+      FS_neighbour += FS_DC[k];
     }
-  FS_r++;
-  return 1;
+  return;
 }
 
+/********************************************************************/ 
+/*                 Search functions  profiles                       */
+/********************************************************************/ 
 
-
-
-
-
-int FS_INDEX_profile_search(FS_INDEX_t *FS_index, 
-			    HIT_LIST_t *hit_list, 
-			    POS_MATRIX *PS, POS_MATRIX *PD, 
-			    ULINT Pfrom, ULINT Pto, BIOSEQ *query,
-			    ULINT cutoff, 
-			    FS_INDEX_profile_process_func *pfunc, 
-			    POS_MATRIX_range_convert_func *cfunc)
+int FS_INDEX_profile_search(HIT_LIST_t *hit_list0, BIOSEQ *query0, 
+			    POS_MATRIX *PS0, POS_MATRIX *PD0, 
+			    ULINT Pfrom0, ULINT Pto0, int cutoff, 
+			    FS_INDEX_profile_process_func *ppfunc0, 
+			    FS_INDEX_range_convert_func *cfunc)
 {
+  int i;
+  ULINT powKtmp = 1;
   FS_SEQ_t FS_query;
-  FS_SEQ_t FS_neighbour;
-  int dist;
 
-  ULINT i;
-  int FS_range;
-  int S_cutoff = cutoff;
-  int D_cutoff = cfunc(PS, query, cutoff, Pfrom, Pto);
-
+  /* Copy arguments into global variables */
+  hit_list = hit_list0;
+  query = query0;
+  PS = PS0;
+  PD = PD0;
+  Pfrom = Pfrom0;
+  Pto = Pto0;
+  ppfunc = ppfunc0;
+  S_cutoff = cutoff;
+  D_cutoff = cfunc(S, query, cutoff);
   HIT_LIST_set_converted_range(hit_list, D_cutoff);
+  HIT_LIST_set_index_data(hit_list, index_name, alphabet, HT->no_bins,
+			  HT->no_seqs);
+
+  /* Check length of query */
+  if (query->len != frag_len)
+    {
+      fprintf(stderr, 
+	      "FS_INDEX_search(): Query fragment length (%ld)"
+	      " different from\n index fragment length (%d)."
+	      "Query: %*s\n", query->len, frag_len, (int) query->len,
+	      query->start);
+      exit(EXIT_FAILURE);
+    }
+
   /* Calculate FS_seq from seq */
-  if (!FS_INDEX_verify_query(FS_index, query, &FS_query))
-    return 0;
-
- /* Initialise variables */
-  FS_K = ptable->no_partitions;
-  FS_KK[0] = 1;
-  for (i = 1; i <= frag_len; i++)
-    FS_KK[i] = FS_KK[i-1] * FS_K;
-
-  /* Calculate the maximum number of changes */
-  FS_range =  POS_MATRIX_get_no_changes(PD, D_cutoff, Pfrom, Pto);
+  if (!BIOSEQ_2_FS_SEQ(query, ptable, &FS_query))
+    {
+      fprintf(stderr, 
+	      "FS_INDEX_search(): Could not convert query"
+	      " to FS fragment\n Query: %*s\n", (int) query->len, 
+	      query->start);
+      exit(EXIT_FAILURE);
+    }
+  
+  /* Initialise variables */
+  for (i = 0; i < frag_len; i++)
+    {
+      FS_Q[i] = FS_PARTITION_get_pttn(ptable, query->start[i]); 
+      powKtmp *= K;      
+      FS_DC[i] = FS_query % powKtmp - FS_query % FS_KK[i];
+    }
+  FS_REM[frag_len-1] = 0;  
+  for (i = frag_len-2; i >= 0; i--)
+    FS_REM[i] = FS_REM[i+1] + FS_DC[i+1];
 
   /* Process the bin associated with the query sequence */
-  pfunc(FS_index, hit_list, PS, Pfrom, Pto, FS_query, S_cutoff);
+  ppfunc(FS_query); 
 
-  /* Process neighbouring bins */
-  i = 1;
-  do 
-    {
-      /* Initialize combination generator*/
-      kSubsetLexInit(i);
-      do 
-	{
-	  if (!POS_MATRIX_verify_pos(PD, Pfrom, Pto, TT, i, D_cutoff))
-	    continue;
-
-	  FS_INDEX_iter_init(FS_index, FS_query);
-
-	  while (FS_INDEX_profile_iter_next(FS_index, PD, Pfrom, Pto,  
-		   FS_query, &dist, &FS_neighbour)) 
-	    {
-	      HIT_LIST_count_FS_seq_visited(hit_list, 1);
-	      if (dist > D_cutoff)
-		continue;
-	      HIT_LIST_count_FS_seq_hit(hit_list, 1);
-	      pfunc(FS_index, hit_list, PS, Pfrom, Pto, FS_neighbour,
-		    S_cutoff); 
-	    }
-	} 
-      while (kSubsetLexSuccessor(i, frag_len));
-      i++;
-    } 
-  while (i <= FS_range);
-
+  /* Process neighbouring bins - recursive */
+  check_bins_profile(0, -1, 0); 
 
   HIT_LIST_stop_timer(hit_list);
   return 1;
 }
 
-/*********************************************************************/
-/*********************************************************************/
 
-#endif
+/*********************************************************************/
+/*********************************************************************/
