@@ -48,6 +48,56 @@ void create_counts(POS_MATRIX *PS)
       }
 }
 
+static
+void print_counts(POS_MATRIX *PS, FILE *stream)
+{
+  int i, j;
+  
+
+  fprintf(stream, "%s\n", "Amino Acid Counts");
+  fprintf(stream, "    ");
+  for (i=0; i <  PS->len; i++)
+    fprintf(stream, " %5d ", i);
+  fprintf(stream, "\n");
+
+  for (j=0; j < A_SIZE; j++)
+    {
+      if (PS->ptable->partition_table[j] == -1)
+	continue;
+      fprintf(stream, " %3c ", j+64);
+      for (i=0; i < PS->len; i++)
+	fprintf(stream, "%6.3g ", PS->count[PM_M(i,j)]);
+      fprintf(stream, "\n");
+    }
+  fprintf(stream, "TOT. ");
+  for (i=0; i < PS->len; i++)
+    fprintf(stream, "%6.3g ", PS->count[PM_M(i,0)]);
+  fprintf(stream, "\n");
+  fprintf(stream, "\n");
+      
+
+}
+static
+void print_M(POS_MATRIX *PS, FILE *stream)
+{
+  int i, j;
+
+  fprintf(stream, "%s\n", "Position Scoring matrix");
+  fprintf(stream, "    ");
+  for (i=0; i <  PS->len; i++)
+    fprintf(stream, " %3d ", i);
+  fprintf(stream, "\n");
+
+  for (j=0; j < A_SIZE; j++)
+    {
+      if (PS->ptable->partition_table[j] == -1)
+	continue;
+      fprintf(stream, " %3c ", j+64);
+      for (i=0; i < PS->len; i++)
+	fprintf(stream, "%4d ", PS->M[PM_M(i,j)]);
+      fprintf(stream, "\n");
+    }
+}
 
 static inline
 void compute_log_odds(POS_MATRIX *PS)
@@ -186,8 +236,17 @@ void POS_MATRIX_update(POS_MATRIX *PS)
 
   /* Update score matrix */
   create_counts(PS);
+#ifdef DEBUG
+  print_counts(PS, stdout);
+#endif
   PS->pcnf(PS);
+#ifdef DEBUG
+  print_counts(PS, stdout);
+#endif
   compute_log_odds(PS);
+#ifdef DEBUG
+  print_M(PS, stdout);
+#endif
 
   /* Compute maximum similarities to pattern letters (subsets of
      alphabet partitions) */
@@ -254,6 +313,7 @@ POS_MATRIX *SCORE_2_POS_MATRIX(SCORE_MATRIX_t *S, BIOSEQ *query)
   PS->query->start = mallocec(PS->len + 1);
   memcpy(PS->query->start, query->start, PS->len + 1);
   PS->query->id.defline = "PSM";
+  PS->query->len = query->len;
 
   /* Copy matrices position-wise */
 
@@ -295,7 +355,7 @@ void POS_MATRIX_simple_pseudo_counts(POS_MATRIX *PS)
 
   for (i=0; i < PS->len; i++) 
     for (j=1; j < A_SIZE; j++) 
-      if (PS->bkgrnd[j] >= 0.0)
+      if (PS->ptable->partition_table[j] != -1)
 	{
 	  PS->count[PM_M(i, j)] += *A * PS->bkgrnd[j];
 	  PS->count[PM_M(i, 0)] += *A * PS->bkgrnd[j];  
