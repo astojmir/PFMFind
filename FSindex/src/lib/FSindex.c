@@ -259,7 +259,7 @@ static int *qind; /* sequence converted to indices */
 /* Main constructor */
 void FS_INDEX_create(const char *database, ULINT flen,
 		     const char *abet, 
-		     const char sepchar)
+		     const char sepchar, int skip)
  
 {
   time_t time0 = time(NULL);
@@ -274,6 +274,7 @@ void FS_INDEX_create(const char *database, ULINT flen,
   ULINT no_frags;
   BIOSEQ *frag = mallocec(sizeof(BIOSEQ));
   FS_SEQ_t FS_seq;
+  ULINT added_frags = 0;
 
   fastadb_arg fastadb_argt[3];
   fastadb_argv_t fastadb_argv[3];
@@ -303,7 +304,7 @@ void FS_INDEX_create(const char *database, ULINT flen,
  
   /* Make fragment database */
   no_frags = fastadb_count_Ffrags(s_db, frag_len);
-  one_percent_fragments = no_frags / 100;
+  one_percent_fragments = (ULINT) (((double) no_frags/skip) / 100);
   fastadb_init_Ffrags(s_db, frag_len);
 
   /* Create partition table */
@@ -343,22 +344,28 @@ void FS_INDEX_create(const char *database, ULINT flen,
 
   /* For each fragment */ 
   j = 0;
-  while (fastadb_get_next_Ffrag(s_db, frag_len, frag, &i))  
+  while (fastadb_get_next_Ffrag(s_db, frag_len, frag, &i, skip))  
     {
       j++;
       /* Calculate its FS_seq */
       if (BIOSEQ_2_FS_SEQ(frag, ptable, &FS_seq))
 	{
 	  /* Add to appropriate FS_bin */
-	  FS_HASH_TABLE_insert_seq(HT, i, FS_seq); 
+	  added_frags++;
+	  FS_HASH_TABLE_insert_seq(HT, i, FS_seq);
 	}
+      else
+	{
+	  fprintf(stderr, "%ld %.*s\n", j, (int) frag->len, frag->start);
+	}
+
       /* Print progress bar */
       if (FS_INDEX_PRINT_BAR > 0)
 	printbar(stdout, j+1, one_percent_fragments, 50);  
     }  
+
   /* Resize bins */
   FS_HASH_TABLE_resize(HT); 
-
 
   /* Take time */
   time1 = time(NULL);
@@ -366,6 +373,8 @@ void FS_INDEX_create(const char *database, ULINT flen,
   db_no_frags = no_frags;
 
   /* Print statistics */
+  fprintf(stderr, "added_frags = %d, HT->no_seqs=%d"
+	  " before printing\n", added_frags, HT->no_seqs);
   if (FS_INDEX_VERBOSE > 0)
     FS_INDEX_print_stats(stdout, j, dt); 
 
