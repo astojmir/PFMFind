@@ -1,4 +1,3 @@
-#include "misclib.h"
 #include "fastadb.h"
 #include <time.h>
 #include <stdlib.h>
@@ -6,131 +5,97 @@
 #include <stdio.h>
 #include <unistd.h>
 #include "FSindex.h"
+#include "misclib.h"
 
 EXCEPTION FSexcept_array[1];
 EXCEPTION *except;
 struct exception_context the_exception_context[1];
 
-int FS_PARTITION_VERBOSE = 0;
-int SCORE_MATRIX_VERBOSE = 0;
-int FS_INDEX_VERBOSE = 0;
-int FS_INDEX_PRINT_BAR = 0;
-int POS_MATRIX_VERBOSE;
-FILE *POS_MATRIX_STREAM;
-
+#define BUF_SIZE 1024
 static 
-void print_help(const char *progname)
+FSINDX *FS_INDEX_create_from_file(FILE *fp)
 {
-  fprintf(stderr, "Usage: %s options\n"
-	  "\n"
-	  "Mandatory:\n"
-	  "-d  f   Fasta sequence database\n"
-	  "-p  s   Alphabet partitions (separated by '#')\n"
-	  "-m  n   Fragment length\n"
-	  "\n"
-	  "Optional:\n"
-	  "-F  f   Write index to file f\n"
-	  "-s  n   Skip n fragments\n"
-	  "-v      Verbose: print indexing messages\n"
-	  "-V      Verbose: print partitioning messages as well\n"
-	  "-b      Print progress bar\n"
-	  "\n"
-	  ,progname);
-}
+  FSINDX *FSI = NULL;
+  char buf[BUF_SIZE];
+  char *database = NULL;
+  char *outfile = NULL;
+  ULINT len = 0;
+  int use_sa = 1;
+  const char **sepn = NULL;
+  int row = 0;
+  int j = 0;
 
+  while(!feof(fp)) {
+    fgets(buf, BUF_SIZE, fp);
+    if (row == 0) {
+      database = strdup(buf);
+      database[strlen(database)-1]='\0';
+    }
+    else if (row == 1) {
+      outfile = strdup(buf);
+      outfile[strlen(outfile)-1]='\0';
+    }
+    else if (row == 2) {
+      sscanf(buf, "%ld %d", &len, &use_sa);
+      if (len == 0) break;
+      sepn = callocec(len, sizeof(char *));
+    }
+    else {
+      if (row > len+2) break;
+      buf[strlen(buf)-1] = '\0';
+      sepn[row-3] = strdup(buf);
+      j++;
+    }
+    row++;
+  }
+
+  Try {
+    if (database && outfile && len && j == len) {
+      printf("Creating index...\n");
+      FSI = FS_INDEX_create(database, len, sepn, use_sa, 1);
+      printf("Saving index...\n");
+      FS_INDEX_save(FSI, outfile);
+      for (j=0; j < len; j++)
+	free((char *)sepn[j]);
+      free(sepn);
+      free(database);
+      free(outfile);
+    }
+    else {
+      Throw FSexcept(BAD_ARGS, "Insufficient arguments supplied.");
+    }
+  }
+  Catch(except) {
+    for (j=0; j < len; j++)
+      free((char *)sepn[j]);
+    free(sepn);
+    free(database);
+    free(outfile);
+    Throw except;
+  }
+  return FSI;
+}
 
 int main(int argc, char **argv)
 {
-  int c;                              /* Option character          */ 
-  extern char *optarg;                /* Option argument           */
-  int errflg = 0;                     /* Option error flag         */
+  FSINDX *FSI = NULL;
+  FILE *fp = stdin;
 
-  const char separator = '#';
-  ULINT frag_len = 0;
-  const char *db_name = NULL;
-  const char *alphabet = NULL;
-  char *filename = NULL;
-  char *index_dir;
-  char *db_dir;
-  char *index_base;
-  char *db_base;
-  int skip = 1;
-
-  int filename_flag = 0;
-  FSINDX *FSI;
-
-  while ((c = getopt(argc, argv, "d:p:m:F:s:Vvb")) != EOF)
-    switch (c) 
-      {
-      case 'd':
-	db_name = optarg;
-	break;
-      case 'p':
-	alphabet = optarg;
-	break;
-      case 'm':
-	frag_len = atoi(optarg);
-	break;
-      case 'F':
-	filename = optarg;
-	filename_flag = 1;
-	break;
-      case 's':
-	skip = atoi(optarg);
-	if (skip < 1)
-	  errflg++;
-	break;
-      case 'V':
-	FS_PARTITION_VERBOSE = 1;
-      case 'v':
-	FS_INDEX_VERBOSE = 1;
-	break;
-      case 'b':
-	FS_INDEX_PRINT_BAR = 1;
-	break;
-      case '?':
-      default:
-	errflg++;
-	break;
-      }
-
-  if ((db_name == NULL) || (alphabet == NULL) || (frag_len == 0))
-    errflg++;
-
-  if (errflg)
-    {
-      fprintf(stderr,"Error: Insufficient or invalid arguments \n");
-      print_help(argv[0]);
-      exit(EXIT_FAILURE);
-    }
-
-  if (filename_flag)
-    {
-      split_base_dir(filename, &index_base, &index_dir);
-      split_base_dir(db_name, &db_base, &db_dir);
-      if (strcmp(db_dir, index_dir) != 0)
-	{
-	  fprintf(stderr, "Warning! The directories of database file "
-		  "and index file must match.\nSetting the index directory"
-		  " to the database directory.\n");
-	  cat_base_dir(&filename, index_base, db_dir);
-	  fprintf(stderr, "The new path is %s\n", filename);      
-	}
-    }
-
+  if (argc > 1 && (fp=fopen(argv[1],"r"))==NULL) {
+    fprintf(stderr, "Could not open %s\n", argv[1]);
+    return EXIT_FAILURE;
+  } 
   Try {
-    printf("Creating index...\n");
-    FSI = FS_INDEX_create(db_name, frag_len, alphabet, separator, skip); 
-    FS_INDEX_print_stats(FSI, stdout, 0); 
-    if (filename_flag)
-      {
-	printf("Saving index...\n");
-	FS_INDEX_save(FSI, filename);
-      }
+    FSI = FS_INDEX_create_from_file(fp);
   }
   Catch(except) {
     fprintf(stderr, "Error %d: %s\n", except->code, except->msg);  
     return EXIT_FAILURE;
   }
+  if (argc > 1) fclose(fp);
+  FS_INDEX_destroy(FSI);
+#ifdef USE_DMALLOC
+  dmalloc_shutdown();
+#endif
   return EXIT_SUCCESS;
 }
