@@ -92,6 +92,9 @@ void FS_HASH_TABLE_insert_seq(FS_HASH_TABLE_t *FS_HT, ULINT i,
     }
   FS_HT->no_seqs++;
 
+  if (FS_HT->bin_size[seq_i] > FS_HT->bin_size[FS_HT->largest_bin])
+    FS_HT->largest_bin = seq_i;
+
   if (FS_HT->bin_size[seq_i] >= FS_HT->max_seqs_per_bin)
     {
       old_seqs_per_bin = FS_HT->max_seqs_per_bin;
@@ -102,7 +105,6 @@ void FS_HASH_TABLE_insert_seq(FS_HASH_TABLE_t *FS_HT, ULINT i,
       memset(FS_HT->freq_seqs_per_bin + old_seqs_per_bin, 0, 
 	     (FS_HT->max_seqs_per_bin - old_seqs_per_bin) 
 	     * sizeof(ULINT));
-      FS_HT->largest_bin = seq_i;
     }
   FS_HT->freq_seqs_per_bin[FS_HT->bin_size[seq_i]]++;
 }
@@ -204,7 +206,7 @@ void FS_HASH_TABLE_print_stats(FS_HASH_TABLE_t *FS_HT, FILE *stream,
   fprintf(stream, "Average size of index entry: %.2f\n", 
 	  (float) FS_HT->no_seqs / (float) FS_HT->no_bins);
   fprintf(stream, "Maximum size of index entry: %ld\n", 
-	  FS_HT->max_seqs_per_bin-1);
+	  FS_HT->bin_size[FS_HT->largest_bin]);
   fprintf(stream, "Largest index entry: %s\n",
 	  FS_seq_print(FS_HT->largest_bin, FS_partition, frag_len));
 
