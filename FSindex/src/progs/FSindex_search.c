@@ -96,7 +96,6 @@ int main(int argc, char **argv)
   SCORE_MATRIX_t *S = NULL;
   SCORE_MATRIX_t *D = NULL;
 
-  POS_MATRIX *PS = NULL;
   double lambda = 1.0;
   double A = 20.0;
   const char *freq_filename = NULL;
@@ -106,12 +105,10 @@ int main(int argc, char **argv)
   int cutoff2 = 0;
 
   int d0;
+  int s0;
 
-
-  int score_cutoff = 0;
   int cutoff2_flag = 0;
 
-  int i;
 
   enum {T_SIMILARITY, T_QUASI_METRIC, T_METRIC, T_PROFILE} search_type 
     = T_QUASI_METRIC; 
@@ -244,6 +241,7 @@ int main(int argc, char **argv)
   /* Convert matrices for range searches*/
   switch (search_type)
     {
+    case T_PROFILE:
     case T_SIMILARITY:
     case T_QUASI_METRIC:
       D = SCORE_MATRIX_S_2_Dquasi(S);
@@ -262,63 +260,34 @@ int main(int argc, char **argv)
       switch (search_type)
 	{
 	case T_PROFILE:
-	  PS = SCORE_2_POS_MATRIX(S, query);
-	  POS_MATRIX_init(PS, lambda, POS_MATRIX_simple_pseudo_counts,
-			  freq_filename);
-	  POS_MATRIX_simple_pseudo_counts_init(PS, A);
-	  
 	  if (cutoff_type == SCORE)
 	    {
-	      FSINDX_prof_rng_srch(FSI, PS, score_cutoff, HL); 
-	      HIT_LIST_sort_incr(HL);
+	      HL = FSINDX_prof_rng_srch(FSI, query, D, cutoff, lambda,
+					A, freq_filename, iters,
+					 cutoff2, HL);
+	      HIT_LIST_sort_decr(HL);
 	    }
 	  else /* cutoff_type == kNN */
 	    {
-	      FSINDX_prof_kNN_srch(FSI, PS, cutoff, HL);
-	      HIT_LIST_sort_kNN(HL);
+	      HL = FSINDX_prof_kNN_srch(FSI, query, D, cutoff, 
+					A, freq_filename, iters, HL); 
 	    }
-	  /* TO DO: Convert results */
-	  HIT_LIST_print(HL, out_stream, 0); 
 
-	  i = iters;
-	  while (i--)
-	    {
-	      HIT_LIST_get_hit_seqs(HL, &PS->seq, cutoff, 
-				    &PS->no_seqs, &PS->max_no_seqs);
-	      if (PS->no_seqs == 0)
-		break;
-	      POS_MATRIX_Henikoff_weights(PS);
-	      POS_MATRIX_update(PS);
-
-	      if (cutoff_type == SCORE)
-		{
-		  /* TO DO: Convert range */
-		  FSINDX_prof_rng_srch(FSI, PS, score_cutoff, HL); 
-		  HIT_LIST_sort_incr(HL);
-		}
-	      else /* cutoff_type == kNN */
-		{
-		  FSINDX_prof_kNN_srch(FSI, PS, cutoff, HL);
-		  HIT_LIST_sort_kNN(HL);
-		}
-	      /* TO DO: Convert results */
-	      HIT_LIST_sort_by_sequence(HL);
-	      HIT_LIST_sort_decr(HL);
-	      HIT_LIST_print(HL, out_stream, 0); 
-	    }
+	  HIT_LIST_print(HL, out_stream, 0); 	
 	  break;
 	case T_SIMILARITY:
+	  s0 = SCORE_MATRIX_evaluate(S, query, query);
 	  if (cutoff_type == SCORE)
 	    {
-	      d0 = SCORE_MATRIX_evaluate(S, query, query) - cutoff;
+	      d0 = s0 - cutoff;
 	      HL = FSINDX_rng_srch(FSI, query, D, d0, HL);
-	      HIT_LIST_sort_incr(HL);
 	    }
 	  else /* cutoff_type == kNN */
 	    {
 	      HL = FSINDX_kNN_srch(FSI, query, D, cutoff, HL);
 	    }
-	  /* TO DO: Convert results */
+	  HIT_LIST_sort_incr(HL);
+	  SCORE_MATRIX_convert(s0, HL);
 	  HIT_LIST_print(HL, out_stream, 0); 
 	  break;
 	case T_QUASI_METRIC:
@@ -327,12 +296,12 @@ int main(int argc, char **argv)
 	    {
 	      d0 = cutoff;
 	      HL = FSINDX_rng_srch(FSI, query, D, d0, HL);
-	      HIT_LIST_sort_incr(HL);
 	    }
 	  else /* cutoff_type == kNN */
 	    {
 	      HL = FSINDX_kNN_srch(FSI, query, D, cutoff, HL);
 	    }
+	  HIT_LIST_sort_incr(HL);
 	  HIT_LIST_print(HL, out_stream, 0); 
 	  break;
 	default:

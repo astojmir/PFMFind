@@ -9,6 +9,8 @@ int FS_PARTITION_VERBOSE = 0;
 int SCORE_MATRIX_VERBOSE = 0;
 int FS_INDEX_VERBOSE = 0;
 int FS_INDEX_PRINT_BAR = 1;
+int POS_MATRIX_VERBOSE = 0;
+FILE *POS_MATRIX_STREAM;
 
 int main(int argc, char **argv)
 {

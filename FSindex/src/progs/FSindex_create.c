@@ -12,6 +12,8 @@ int FS_PARTITION_VERBOSE = 0;
 int SCORE_MATRIX_VERBOSE = 0;
 int FS_INDEX_VERBOSE = 0;
 int FS_INDEX_PRINT_BAR = 0;
+int POS_MATRIX_VERBOSE;
+FILE *POS_MATRIX_STREAM;
 
 static 
 void print_help(const char *progname)
