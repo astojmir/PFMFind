@@ -134,7 +134,7 @@ typedef struct FSINDX_s
   /* Bins and its lcp */
   int *oa;               /* Offset array - bin order              */
   uint32_t *bins;        /* Bin start offset                      */
-  uint8_t *lcpb;         /* Longest common prefix aray for oa     */
+  uint8_t *lcpb;         /* Longest common prefix array for oa     */
 
 } FSINDX;
 
