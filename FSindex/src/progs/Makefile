@@ -1,13 +1,21 @@
 SHELL=/bin/sh
 
-FSLIB=../lib/libFSindex.a
-
+FSLIB=libFSindex.a libsarray.a
+VPATH=../lib:../sarray
 all: $(FSLIB) \
+     test_smatrix \
      FSindex_create \
-     FSindex_rand_perf \
-     FSindex_rand_queries \
-     fastadb_sample \
-     FSindex_stats 
+     FSindex_rng_perf \
+     FSindex_rng_perf_thr \
+     FSindex_kNN_perf 
+#     FSindex_rand_perf \
+#     FSindex_rand_queries \
+#     fastadb_sample \
+#     FSindex_stats 
+#     partition_test \
+
+
+
 #     FSindex_search \
 #     FSindex_bin_size \
 #     SS_search \
