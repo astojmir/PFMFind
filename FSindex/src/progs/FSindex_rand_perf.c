@@ -3,7 +3,6 @@
 #include <time.h>
 #include <stdlib.h>
 #include <string.h>
-#include "randseq.h"
 #include "FSindex.h"
 #include "hit_list.h"
 
