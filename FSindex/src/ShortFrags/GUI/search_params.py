@@ -3,17 +3,17 @@ import Pmw
 
 class SrchCutoff(Tkinter.Frame):
     def __init__(self, parent=None, rng_default=25, kNN_default=100,
-                 rel_default=0.1):
+                 rel_default=10):
         Tkinter.Frame.__init__(self,parent)
         Tkinter.Label(self, text='Search Cutoff:').grid(sticky='w', pady=5)
 
         vld1 = {'validator':'numeric', 'min':0}
-        vld2 = {'validator':'real', 'min':0.0, 'max':0.1}
+        vld2 = {'validator':'real', 'min':0.0, 'max':1e05}
 
         self.srch_types = [
             ['range','Range',rng_default,int, None, None, vld1],
             ['kNN', 'Nearest\nNeigbours', kNN_default, int, None, None, vld1],
-            ['rel', 'Relative\nRange', rel_default, float, None, None, vld2],
+            ['rel', 'E-value', rel_default, float, None, None, vld2],
             ]
         self.srch_type=Tkinter.IntVar()
 
@@ -28,10 +28,10 @@ class SrchCutoff(Tkinter.Frame):
                                   value=t[2])
             t[5].grid(row=i+1, column=1, sticky='w')
             
-        self.srch_type.set(0)
+        self.srch_type.set(2)
         
     def restore_defaults(self):
-        self.srch_type.set(0)
+        self.srch_type.set(2)
         for t in self.srch_types:
             t[5].setvalue(str(t[2]))
             
