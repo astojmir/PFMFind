@@ -35,11 +35,10 @@ B{Classes}:
 """
 
 from cStringIO import StringIO
-import os, os.path, struct, re, string, md5
+import os, os.path, struct, re, string, md5, sys, dbm
 from ShortFrags.Expt import FS, keywords
 from ShortFrags.Expt.db import db
 from ShortFrags.Expt.hit_list import Hit, HitList
-
 
 
 FS_BINS = FS.FS_BINS
@@ -124,8 +123,78 @@ def _md5digest(filename):
     return sum.hexdigest()
 
 
-class IndexedDb(object):
+# TO DO: IMPLEMENT THIS TO USE RELATIONAL DATABASE AND
+# BioSQL
 
+def parse_uniprot_descr(flatfile, outfile1):
+    # Do it directly, should be faster
+    # We want AC, DE, and OS lines only
+
+    fp = file(flatfile, 'r')
+    db = dbm.open(outfile, 'n')
+
+    for i, line in enumerate(fp):
+        if i > 2000: break
+        if line[0:2] == 'AC':
+            sp = string.split(line)
+            AC = string.rstrip(sp[1], ';')
+            DE_flag = 0
+        elif line[0:2] == 'DE':
+            if DE_flag == 0:
+                sp = string.split(line, None, 1)
+                DE = string.rstrip(sp[1], '.\n ')
+                DE = string.split(DE, '[', 1)[0]
+            elif DE_flag == 1:
+                DE = DE + '...'
+            DE_flag += 1
+        elif line[0:2] == 'OS':
+            sp = string.split(line, None, 1)
+            OS = "[%s]" % string.rstrip(sp[1], '.\n ')
+            print "%s %s %s" % (AC, DE, OS)
+
+    fp.close()
+
+def parse_uniprot_descr_fasta_old(fastafile, outfile1=None):
+    sp_acc = re.compile('\((\w+)\)')
+    fp = file(fastafile, 'r')
+    if outfile1 != None:
+        fp1 = file(outfile1, 'w')
+    else:
+        fp1 = sys.stdout
+
+    for i, line in enumerate(fp):
+        if line[0] == '>':
+            m = sp_acc.search(line) 
+            AC = m.groups()[0]
+            DE = string.rstrip(sp_acc.split(line,1)[2])
+            fp1.write("%s %s\n" % (AC, DE))
+    fp.close()
+    if outfile1 != None:
+        fp1.close()
+
+def parse_uniprot_descr_fasta(fastafile, outfile):
+    sp_acc = re.compile('\((\w+)\)')
+    fp = file(fastafile, 'r')
+    tmp_dict = {}
+
+    db = dbm.open(outfile, 'n')
+
+    for i, line in enumerate(fp):
+        if i % 500000 == 0:
+            print 'line %d\n' % i
+        if line[0] == '>':
+            m = sp_acc.search(line) 
+            AC = m.groups()[0]
+            DE = string.rstrip(sp_acc.split(line,1)[2])
+            if AC not in tmp_dict:
+                db[AC] = DE
+                tmp_dict[AC] = 0
+    fp.close()
+    db.close()
+
+
+    
+class IndexedDb(object):
     """
     Provides the functions to load the databases and 
     print the index.
@@ -141,6 +210,7 @@ class IndexedDb(object):
 	Idata for hit_list.
         """
         self.defline = {}
+        self.cluster = {}
         self.kw = None
 
     def load_keywords(self, filename):
@@ -149,11 +219,15 @@ class IndexedDb(object):
         Hit.keywords = property(fget=lambda hit, kw=self.kw : kw.get_keywords(hit.accession))
 
     def load_descriptions(self, filename):
-        fp = file(filename, 'r')
-        for line in fp:
-            s = string.split(line)
-            self.defline[s[0]] = s[1]
-        fp.close()
+        db = dbm.open(filename, 'r')
+        self.defline = db
+        self._def_cache = {}
         Hit.defline = property(fget=lambda hit,\
-                               defline=self.defline : defline.get(hit.accession, hit.accession))
- 
+                               cache=self._def_cache, db=self.defline : cache.get(hit.accession, db[hit.accession]))
+
+    def load_clusters(self, filename):
+        db = dbm.open(filename, 'r')
+        self.cluster = db
+        Hit.cluster = property(fget=lambda hit,\
+                               cluster=self.cluster : cluster.get(hit.accession, hit.accession))
+        
