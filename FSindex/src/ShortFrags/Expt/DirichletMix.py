@@ -142,8 +142,9 @@ class DirichletMix:
         return q * B / P
 
     def _probs(self, i, coeff, n):
-        a = array([self.alpha[k][i+1] for k in range(self.num_distr)])
-        return sum(a * coeff) + n[i] * sum(coeff)
+        a = array([self.alpha[k][i+1] for k in xrange(self.num_distr)])
+        sum_a_j = array([sum(self.alpha[k][1:]) for k in xrange(self.num_distr)])
+        return sum(coeff*(a+n[i])/(sum_a_j + sum(n)))
 
     def aa_vector(self, aa_dict):
         return [aa_dict[a] for a in self.alphabet]
@@ -154,23 +155,12 @@ class DirichletMix:
         
     def _pos_probs(self, counts):
         n = array(counts)
-        sum_n = sum(n)
 
         # Calculate coefficients - reused for all amino acids,
         # depend only on k
-##         for k in range(self.num_distr):
-##             print "k=%d, %.4e" % (k, self._coeffs(k, n, sum_n)) 
-        
-        coeff = array([self._coeffs(k, n, sum_n) for k in range(self.num_distr)])
-##         print "coeff="
-##         print coeff
-##         print "sum_coeff=", sum(coeff)
-##         print "self.alpha[k][0] + sum_n=", (self.alpha[k][0] + sum_n)
-        coeff = coeff / (sum(coeff) * (self.alpha[k][0] + sum_n))
-        #print "*********"
-        #print "n=", n
-        #print "coeff=", coeff
-        return [self._probs(i, coeff, n) for i in range(len(counts))]
+        coeff = array([self._coeffs(k, n, sum(n)) for k in range(self.num_distr)])
+        coeff = coeff / sum(coeff)
+        return [self._probs(i, coeff, n) for i in xrange(len(counts))]
 
     def _pos_log_odds(self, _pos_probs, bkgrnd, scale=1.0):
         n = len(_pos_probs)
