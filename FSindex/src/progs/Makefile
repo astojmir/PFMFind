@@ -3,6 +3,7 @@ SHELL=/bin/sh
 FSLIB=../lib/libFSindex.a
 
 all: $(FSLIB) \
+     distances \
      FSindex_search \
      FSindex_cluster \
      FSindex_bin_size \
@@ -29,6 +30,8 @@ all: $(FSLIB) \
 #     FSindex_rand_perf \
 #     FSindex_benchmark \
 #     FSindex_eps_net1 \
+
+distances:
 
 check_db:
 
