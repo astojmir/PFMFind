@@ -32,6 +32,10 @@ typedef struct
   ULINT sequence_from;
   float value;
   double pvalue;
+  double zvalue;
+  int oc_cluster;
+  double cratio;
+  double kw;
 } SEQ_HIT_t;
 
 /* This type is presently not used */
@@ -83,6 +87,9 @@ typedef struct
   ULINT no_tmp_hits;
   SEQ_HIT_t *tmp_hits;
  
+  int max_no_oc;           /* Maximum no. orthologous clusters      */
+  int no_oc;               /* No. orthologous clusters              */
+  int *oc;                 /* Orthologous clusters                  */
 } HIT_LIST_t;
 
 /* This type is presently not used */
@@ -134,6 +141,9 @@ void HIT_LIST_sort_decr(HIT_LIST_t *HIT_list);
 void HIT_LIST_sort_incr(HIT_LIST_t *HIT_list);
 void HIT_LIST_sort_by_sequence(HIT_LIST_t *HIT_list);
 void HIT_LIST_sort_kNN(HIT_LIST_t *HL);
+void HIT_LIST_sort_oc(HIT_LIST_t *HL);
+
+
 
 /* Add p-values */
 void HIT_LIST_Gaussian_pvalues(HIT_LIST_t *HT, double mean, 

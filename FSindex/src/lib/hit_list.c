@@ -30,13 +30,22 @@ void SEQ_HIT_print(SEQ_HIT_t *hit, FILE *stream,
 		   SEQ_HIT_PRINT_OPT_t options)
 {
   char dots[] = "...";
-  
+#if 0  
   if (strlen(hit->subject->id.defline) > 57)
     fprintf(stream, "%-57.57s%3.3s %6.0f %5.2e\n",
 	    hit->subject->id.defline,
 	    dots, hit->value, hit->pvalue);
   else
     fprintf(stream, "%-57.57s%3.3s %6.0f %5.2e\n",
+	    hit->subject->id.defline,
+	    "", hit->value, hit->pvalue);
+#endif
+  if (strlen(hit->subject->id.defline) > 57)
+    fprintf(stream, "%-57.57s%3.3s %6.0f %5.2f\n",
+	    hit->subject->id.defline,
+	    dots, hit->value, hit->pvalue);
+  else
+    fprintf(stream, "%-57.57s%3.3s %6.0f %5.2f\n",
 	    hit->subject->id.defline,
 	    "", hit->value, hit->pvalue);
 }
@@ -103,6 +112,27 @@ int SEQ_HIT_cmp_by_seq(const void *S1, const void *S2)
     return 0;
 }
 
+static
+int SEQ_HIT_cmp_by_oc(const void *S1, const void *S2)
+{
+  const SEQ_HIT_t *T1 = S1;
+  const SEQ_HIT_t *T2 = S2;
+
+  if (T1->oc_cluster > T2->oc_cluster)
+    return 1;
+  else if (T1->oc_cluster < T2->oc_cluster)
+    return -1;
+  else if (T1->sequence_id > T2->sequence_id)
+    return 1;
+  else if (T1->sequence_id < T2->sequence_id)
+    return -1;
+  else if (T1->sequence_from > T2->sequence_from)
+    return 1;
+  else if (T1->sequence_from < T2->sequence_from)
+    return -1;
+  else
+    return 0;
+}
 
 /********************************************************************/    
 /*                                                                  */
@@ -551,6 +581,12 @@ void HIT_LIST_sort_kNN(HIT_LIST_t *HL)
     }
   memcpy(HL->hits + i, HL->tmp_hits, 
 	 HL->no_tmp_hits * sizeof(SEQ_HIT_t));
+}
+
+void HIT_LIST_sort_oc(HIT_LIST_t *HL)
+{
+  qsort(HL->hits, HL->actual_seqs_hits, 
+	sizeof(SEQ_HIT_t), SEQ_HIT_cmp_by_oc);
 }
 
 
