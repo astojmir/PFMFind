@@ -1,3 +1,20 @@
+"""
+This module loads and prints the index.
+
+Exceptions:
+RuntimeError
+IOError
+
+Classes:
+IndexedDb  -  Load the databases and print the index.
+
+Functions:
+md5digest(filename)
+    Read a file in as a message digest.
+
+
+"""
+
 from cStringIO import StringIO
 import os
 import os.path
@@ -9,6 +26,12 @@ import hit_list
 
 BLOCKSIZE = 1024*1024
 def md5digest(filename):
+    """
+    Open a file and read it in as a new message digest.
+
+    Return a message digest as a string of length 32 with only hexadecimal 
+    digits.
+    """
     fp = open(filename, "rb")
     sum = md5.new()
     while 1:
@@ -21,6 +44,21 @@ def md5digest(filename):
 
 
 class IndexedDb:
+
+    """
+    Class contains the functions to load the databases and 
+    print the index.
+    
+    Methods:
+    __init__(self)
+    load_fasta_db(self, filename, md5sum = None)
+    load_index(self, filename, md5sum = None)
+    load_descriptions(self, filename)
+    _default_deflines(self)
+    _fasta_deflines(self)
+    _clusters_deflines(self)
+    print_str(self)
+    """
     def __init__(self):
         self.I = None
         self.sdb = None
@@ -35,6 +73,14 @@ class IndexedDb:
         hit_list.Hit.Idata = self
 
     def load_fasta_db(self, filename, md5sum = None):
+        """
+	Load fasta database.
+	
+	Return the new message digest.
+	
+	Throws a RuntimeError exception if the loaded database does not
+	match the database given as an argument.
+	"""
         # Do md5digest and compare - throw exception if bad
         new_md5sum = md5digest(filename)
         if md5sum != None and new_md5sum != md5sum:
@@ -57,6 +103,15 @@ class IndexedDb:
         return new_md5sum
         
     def load_index(self, filename, md5sum = None):
+        """
+	Load the index.
+	
+	Return the new message digest.
+	
+	Throws a RuntimeError exception if the loaded database does not match
+	the fasta database.
+	Throws an IOError if the index file cannot be loaded.
+        """
         # Read the name of fasta file - the first 4 bytes of the
         # file contain the length including the trailing '\0'.
         # The string itself follows.
@@ -95,27 +150,49 @@ class IndexedDb:
         return new_md5sum
 
     def load_descriptions(self, filename):
+        """
+	Does nothing, method employs pass statement.
+	"""
         pass
 
     def _default_deflines(self):
+        """
+	Set default defline values.  
+	"""
         self.get_def = lambda i: "Protein Sequence #%d" % i
         self.seq2cluster = lambda i: i
         self.get_accession = lambda i: str(i)
 
     def _fasta_deflines(self):
+        """
+	Set fasta deflines.
+	"""
         self.get_def = self.sdb.get_def 
         self.seq2cluster = lambda i: i
         self.get_accession = lambda i: str(i)
 
     def _clusters_deflines(self):
+        """
+	Set cluster deflines.
+	"""
         self.get_def = lambda i: self.deflines[i]
         self.seq2cluster = lambda i: self.seq2clusters[i]
         self.get_accession = lambda i: self.accessions[i]
 
     def print_str(self):
+        """
+	Print the index's information.
+	
+	Will print nothing if index does not exist.
+	
+	Return file string.
+	"""
         if self.I == None: return ""
 
         class Data:
+	    """
+	    Class does nothing, employs the pass statement
+	    """
             pass
         data = Data()
         data.__dict__ = self.I.get_data()

@@ -1,10 +1,38 @@
+"""
+This module contains the classes and functions needed to print 
+and manipulate hit results.
+
+Exceptions:
+KeyError
+
+Classes:
+Hit  -  Define dictionary for possible values of name.
+HitList  -  More options for printing and sorting hit results.
+
+Functions:
+description(hits, query_seq, qs=0):
+    Print details for hits
+summary(hits, show_rank=0, defline_width=DEFLINE_MAX, rank_offset=0)
+    Print summary for  hits
+    
+"""
+
+
 from cStringIO import StringIO
 
 class Hit:
+
     """
-    Contains the functions to print a summary of hits 
-    and the details for a list of hits.
+    Class Hit will define the dictionary and find the correct 
+    dictionary entry for a given name.
     
+    Class Hit will raise a KeyError exception in __getattr__ if the name
+    cannot be found in the dictionary attr.  If the name is found it will
+    be returned.
+    
+    Methods:
+    __init__(self, dict)
+    __getattr__(self, name)
     """     
 
     Idata = None
@@ -13,6 +41,7 @@ class Hit:
             'cluster': 'self.Idata.seq2cluster(self.seq_id)',
             'accession': 'self.Idata.get_accession(self.seq_id)',
             }
+	    
     def __init__(self, dict):
         self.__dict__ = dict
 
@@ -34,7 +63,7 @@ def summary(hits,
 	    defline_width=DEFLINE_MAX,
             rank_offset=0):
     """
-    Prints the summary of a list of hits
+    Print the summary of a list of hits
     """
 	
     file_str = StringIO()
@@ -65,7 +94,7 @@ def summary(hits,
 
 def description(hits, query_seq, qs=0):
     """
-    Prints full details for a list of hits.
+    Print full details for a list of hits.
     """
     file_str = StringIO()
 
@@ -86,12 +115,36 @@ def description(hits, query_seq, qs=0):
     return file_str.getvalue()
 
 class HitList:
+
     """
-    Contains the functions to print query details, print a full summary, print full details for all hits,
-    and to print performance statistics.  The class also contains the functions necessary to sort
-    and print the results by priority, similarity score, distance, sequence (alphabetical), 
-    sequence id, and by orthologous cluster.
+    Contains the functions needed to print and sort the hit results
+    in a variety of ways.
+    
+    The class may be used to print query details, print a full summary, 
+    print full details for all hits, and to print performance statistics.  
+    The class also contains the functions necessary to sort and print 
+    the results by priority, similarity score, distance, 
+    sequence(alphabetical), sequence id, and by orthologous cluster.
+    
+    Methods:
+    __init__(self, dict)
+    __str__(self)
+    header_str(self)
+    summary_str(self)
+    full_str(self)
+    perf_str(self, Idata=None)
+    print_str(self, Idata=None, qs=0)
+    _sort_hits(self, incr, attribs)
+    sort_by_similarity(self, incr=True)
+    sort_by_distance(self, incr=True)
+    sort_by_seq(self, incr=True)
+    sort_by_seqid(self, incr=True)
+    sort_by_orthologs(self, incr=True)
+    get_seqs(self)
+    get_deflines(self)
+    
     """
+    
     def __init__(self, dict):
         self.__dict__ = dict
         tmphits = [Hit(ht) for ht in self.hits]
@@ -102,7 +155,7 @@ class HitList:
 
     def header_str(self):
         """
-        Prints the query details.
+        Print the query details.
         """
 
         file_str = StringIO()
@@ -119,7 +172,7 @@ class HitList:
 
     def summary_str(self):
         """
-        Prints the full summary.
+        Print the full summary.
         """
 
         file_str = StringIO()
@@ -130,7 +183,7 @@ class HitList:
 
     def full_str(self, qs=0):
         """
-        Prints full details for all hits.
+        Print full details for all hits.
         """
 
         file_str = StringIO()
@@ -183,6 +236,9 @@ class HitList:
         return file_str.getvalue()
     
     def print_str(self, Idata=None, qs=0):
+        """
+	Print the header, summary, full details, and performance statistics.
+	"""
         file_str = StringIO()
         file_str.write(self.header_str())
         file_str.write(self.summary_str(defline_func))

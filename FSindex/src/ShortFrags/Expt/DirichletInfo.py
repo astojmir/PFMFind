@@ -1,6 +1,20 @@
+"""
+Contains information needed for indexing.
+
+Functions:
+get_mix  -  Get information from DIR_MIX dictionary.
+get_names  -  Get information from NAMES dictionary.
+
+Variables:
+NAMES - A dictionary of names.
+DIR_MIX - A dictionary containing the reduced alphabet and other 
+calculations for each name in the dictionary NAMES.
+   
+"""
+
 import DirichletMix
 
-get_mix = lambda name: DirichletMix.DirichletMix(DIR_MIX[name])
+get_mix = lambda name: DirichletMix.DirichletMix(DIR_MIX[name])  
 get_names = lambda : NAMES
 
 NAMES = ['CGP-opt6.12comp', 'byst-4.5-0-3.9comp', 'dist.20comp', 
