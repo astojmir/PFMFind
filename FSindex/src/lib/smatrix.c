@@ -94,7 +94,7 @@ SCORE_MATRIX_t *SCORE_MATRIX_create(const char *filename,
   S = callocec(1, sizeof(SCORE_MATRIX_t));
   S->similarity_flag = 1;
   S->ptable = ptable;
-
+  S->filename = filename;
 
   /* Load similarity matrix */
   j = 0;
@@ -153,6 +153,7 @@ SCORE_MATRIX_t *SCORE_MATRIX_create(const char *filename,
       if (ptable->partition_table[i] == -1)
 	continue;
       S->pMclosest[i] = SHRT_MIN;
+      S->SS[i] = S->M[i][i];
       for (j=0; j < ptable->no_partitions; j++)
 	{
 	  if (ptable->partition_table[i] != j)
@@ -303,11 +304,13 @@ SCORE_MATRIX_t *SCORE_MATRIX_S_2_Dquasi(SCORE_MATRIX_t *S)
 
   D->similarity_flag = 0;
   D->ptable = S->ptable;
+  D->filename = S->filename;
 
   for (i=0; i < A_SIZE; i++)
     {
       if (D->ptable->partition_table[i] == -1)
 	continue;
+      D->SS[i] = S->SS[i];
       for (j=0; j < A_SIZE; j++)
 	{
 	  if (D->ptable->partition_table[j] == -1)

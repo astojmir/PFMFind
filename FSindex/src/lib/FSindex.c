@@ -918,7 +918,13 @@ FSSRCH *FSSRCH_init(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
   FSS->args = mallocec(sizeof(PFUNC_ARGS));
   FSS->args->M = (void *) D;
   FSS->args->query = query;
-  FSS->args->HL = HL;
+
+  if (HL = NULL)  FSS->args->HL = 
+    HIT_LIST_create(query, FSI->s_db, SCORE_MATRIX_filename(D), d0);
+  else
+    HIT_LIST_reset(HL, query, FSI->s_db, SCORE_MATRIX_filename(D),
+		  d0);
+		  
   FSS->args->FSI = FSI;
   FSS->args->eps = &FSS->eps;
   FSS->args->kNN = &FSS->kNN;
@@ -1233,7 +1239,7 @@ list(est.shape = est.shape, est.rate = est.rate)
 /********************************************************************/ 
 
 static
-void FSSRCH_search(FSSRCH *FSS)
+HIT_LIST_t *FSSRCH_search(FSSRCH *FSS)
 {
   long long AT = 0; /* Allowed transformations */
   int k;
@@ -1271,31 +1277,78 @@ void FSSRCH_search(FSSRCH *FSS)
 
   /* Cleanup */
   FSSRCH_clean(FSS);
+  return FSS->args->HL;
 }
 
 
-void FSINDX_rng_srch(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
+HIT_LIST_t *FSINDX_rng_srch(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
 		     int d0, HIT_LIST_t *HL)  
 {
-  FSSRCH_search(FSSRCH_init(FSI, query, D, d0, -1, HL));
-  return;
+  return FSSRCH_search(FSSRCH_init(FSI, query, D, d0, -1, HL));
 }
 
-void FSINDX_kNN_srch(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
+HIT_LIST_t *FSINDX_kNN_srch(FSINDX *FSI, BIOSEQ *query, SCORE_MATRIX_t *D,
 		     int kNN, HIT_LIST_t *HL)
 {
-  FSSRCH_search(FSSRCH_init(FSI, query, D, INT_MAX, kNN, HL));
-  return;
+  return FSSRCH_search(FSSRCH_init(FSI, query, D, INT_MAX, kNN, HL));
 }
 
-void FSINDX_prof_rng_srch(FSINDX *FSI, POS_MATRIX *PD, int d0, 
+HIT_LIST_t *FSINDX_prof_rng_srch(FSINDX *FSI, POS_MATRIX *PD, int d0, 
 			  HIT_LIST_t *HL)
+
+HIT_LIST_t *FSINDX_prof_rng_srch(FSINDX *FSI, BIOSEQ *query, 
+				 SCORE_MATRIX_t *D,
+				 int d0, HIT_LIST_t *HL)  
+
 {
+  PS = SCORE_2_POS_MATRIX(D, query);
+  POS_MATRIX_init(PS, lambda, POS_MATRIX_simple_pseudo_counts,
+		  freq_filename);
+  POS_MATRIX_simple_pseudo_counts_init(PS, A);
+	  
+  /* First search comes here */
+  HL = FSSRCH_search(FSSRCH_profile_init(FSI, PS, d0, -1, HL));
+
+  /* TO DO: Convert results */
+  HIT_LIST_print(HL, out_stream, 0); 
+
+  i = iters;
+  while (i--)
+    {
+      /* Filter here */
+
+      HIT_LIST_get_hit_seqs(HL, &PS->seq, cutoff, 
+			    &PS->no_seqs, &PS->max_no_seqs);
+      if (PS->no_seqs == 0)
+	break;
+      POS_MATRIX_Henikoff_weights(PS);
+      POS_MATRIX_update(PS);
+      
+      /* Another search here */
+      HL = FSSRCH_search(FSSRCH_profile_init(FSI, PS, d0, -1, HL));
+     /* TO DO: Convert results */
+
+      HIT_LIST_sort_by_sequence(HL);
+      HIT_LIST_sort_decr(HL);
+      HIT_LIST_print(HL, out_stream, 0); 
+    }
+
+
+
+
+
+
+
+
+
+
+
+
   FSSRCH_search(FSSRCH_profile_init(FSI, PD, d0, -1, HL));
   return;
 }
 
-void FSINDX_prof_kNN_srch(FSINDX *FSI, POS_MATRIX *PD, int kNN, 
+HIT_LIST_t *FSINDX_prof_kNN_srch(FSINDX *FSI, POS_MATRIX *PD, int kNN, 
 			  HIT_LIST_t *HL)
 {
   FSSRCH_search(FSSRCH_profile_init(FSI, PD, INT_MAX, kNN, HL));

@@ -29,6 +29,8 @@ typedef struct
   SSINT M[A_SIZE][A_SIZE];
   SSINT pM[A_SIZE][P_SIZE];
   SSINT pMclosest[A_SIZE];
+  SSINT SS[A_SIZE];
+  const char *filename;
   char similarity_flag;
   FS_PARTITION_t *ptable;
   double mean;
@@ -140,6 +142,10 @@ void SCORE_MATRIX_get_meanvar(SCORE_MATRIX_t *S, double *mean,
   *mean = S->mean;
   *var = S->var;
 }
+
+#define SCORE_MATRIX_filename(S) \
+        ((S)->filename)
+
 
 /* Similarities to Distances, Quasi-metrics ... */
 

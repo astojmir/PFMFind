@@ -247,6 +247,7 @@ void POS_MATRIX_update(POS_MATRIX *PS)
 
   /* Compute maximum similarities to pattern letters (subsets of
      alphabet partitions) */
+  PS->qS = 0;
   for (SM_i=0; SM_i < PS->len; SM_i++)
     {      
       for (SM_j=0; SM_j < PS->ptable->no_partitions; SM_j++)
@@ -264,8 +265,12 @@ void POS_MATRIX_update(POS_MATRIX *PS)
       
       /* Convert similarities to distances */
       maxS = POS_MATRIX_max_entry_pos(PS, SM_i, &k);
+      PS->SS[SM_i] = maxS;
+      PS->qS += maxS;
       PS->query->start[SM_i]= 64 + k;
-
+      for (j=0; j < A_SIZE; j++)
+	PS->M[PM_M(SM_i,j)] = maxS - PS->M[PM_M(SM_i,j)];
+	    
       for (j=0; j < P_SIZE; j++)
 	PS->pM[PM_pM(SM_i,j)] = maxS - PS->pM[PM_pM(SM_i,j)];
 
@@ -276,6 +281,7 @@ void POS_MATRIX_update(POS_MATRIX *PS)
 	  if (PS->ptable->partition_table[k] != j)
 	    {
 	      j_offset = FS_PARTITION_get_poffset(PS->ptable, j); 
+	      /* This looks suspicious!!! */
 	      PS->pMclosest[SM_i] = 
 		maxS - max(PS->pMclosest[SM_i], 
 			   PS->pM[PM_pM(SM_i, j_offset)]); 
@@ -289,8 +295,9 @@ void POS_MATRIX_update(POS_MATRIX *PS)
 
 POS_MATRIX *SCORE_2_POS_MATRIX(SCORE_MATRIX_t *S, BIOSEQ *query)
 {
-  /* As all this routine does is copying, it can be used for both
-     similarity and distance matrices */
+  /* All this routine does is copying: it can be used for both
+     similarity and distance matrices but a distance matrix
+     must be used for searches. */
 
 
   POS_MATRIX *PS = callocec(1, sizeof(POS_MATRIX)); 
@@ -301,11 +308,13 @@ POS_MATRIX *SCORE_2_POS_MATRIX(SCORE_MATRIX_t *S, BIOSEQ *query)
 
   PS->len = query->len;
   PS->ptable = S->ptable;
+  PS->filename = S->filename;
 
   PS->M = mallocec(PS->len * A_SIZE * sizeof(SSINT));
   PS->pM = mallocec(PS->len * P_SIZE * sizeof(SSINT));
   PS->pMclosest = mallocec(PS->len * sizeof(SSINT));
-
+  PS->SS = mallocec(PS->len * sizeof(SSINT));
+  
   PS->query = mallocec(sizeof(BIOSEQ));
   PS->query->start = mallocec(PS->len + 1);
   memcpy(PS->query->start, query->start, PS->len + 1);
@@ -313,7 +322,7 @@ POS_MATRIX *SCORE_2_POS_MATRIX(SCORE_MATRIX_t *S, BIOSEQ *query)
   PS->query->len = query->len;
 
   /* Copy matrices position-wise */
-
+  PS->qS = 0;
   for (i=0; i < PS->len; i++, q++)
     {
       k = *q & A_SIZE_MASK;
@@ -328,9 +337,9 @@ POS_MATRIX *SCORE_2_POS_MATRIX(SCORE_MATRIX_t *S, BIOSEQ *query)
 	    S->pM[k][j];
 	}
       PS->pMclosest[i] = S->pMclosest[k];
+      PS->SS[i] = S->SS[k];
+      PS->qS += PS->SS[i];
     }
-
-  POS_MATRIX_S_2_D(PS);
   return PS;
 }
 
@@ -340,6 +349,7 @@ void POS_MATRIX_destroy(POS_MATRIX *PS)
   free(PS->M);
   free(PS->pM);
   free(PS->pMclosest);
+  free(PS->SS);
   free(PS);
 }
 

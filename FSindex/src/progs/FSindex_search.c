@@ -79,7 +79,7 @@ int main(int argc, char **argv)
   extern int opterr;
 
   FSINDX *FSI = NULL;
-  HIT_LIST_t *hit_list = NULL;
+  HIT_LIST_t *HL = NULL;
   BIOSEQ *query = NULL;
 
   const char *filename = NULL;
@@ -91,8 +91,6 @@ int main(int argc, char **argv)
   fastadb_argv_t fastadb_argv[5];
 
   char *matrix_full = NULL;
-  char *matrix_base = NULL;
-  char *matrix_dir = NULL;
 
   FS_PARTITION_t *ptable = NULL;
   SCORE_MATRIX_t *S = NULL;
@@ -238,10 +236,7 @@ int main(int argc, char **argv)
   input_db = fastadb_open(in_file, fastadb_argt, fastadb_argv); 
   FSI = FS_INDEX_load(filename);
   ptable = FS_INDEX_get_ptable(FSI);
-  split_base_dir(matrix_full, &matrix_base, &matrix_dir);  
   S = SCORE_MATRIX_create(matrix_full, ptable); 
-  hit_list = HIT_LIST_create(query, FS_INDEX_get_database(FSI), 
-			     matrix_base, cutoff);
 
   fprintf(stdout,"Searching ... \n");
 
@@ -264,35 +259,6 @@ int main(int argc, char **argv)
   /* Iterate over all query sequences */
   while (fastadb_get_next_seq(input_db, &query))
     {
-      HIT_LIST_reset(hit_list, query, FS_INDEX_get_database(FSI),
-		     matrix_base, score_cutoff);
-#if 0      
-      /***************************************************/
-      /* Arrange cutoffs for normal searches */
-      if (search_type != T_PROFILE)
-	{
-	  if (search_type == T_SIMILARITY)
-	    T = S;
-	  else 
-	    T = D;
-
-	  PS = SCORE_2_POS_MATRIX(S, query);
-	  POS_MATRIX_init(PS, 0, POS_MATRIX_simple_pseudo_counts,
-			  freq_filename);
-	  if (!score_cutoff_flag)
-	    score_cutoff = 
-	     SCORE_MATRIX_Gaussian_cutoff(T, query, PS->bkgrnd, cutoff);
-	  else
-	    {
-	      (void) 
-	      SCORE_MATRIX_Gaussian_cutoff(T, query, PS->bkgrnd, cutoff);
-	      score_cutoff = (int) cutoff;
-	    }
-      /***************************************************/
-	  HIT_LIST_reset(hit_list, query, FS_INDEX_get_database(FSI),
-			 matrix_base, score_cutoff);
-	}
-#endif
       switch (search_type)
 	{
 	case T_PROFILE:
@@ -301,82 +267,73 @@ int main(int argc, char **argv)
 			  freq_filename);
 	  POS_MATRIX_simple_pseudo_counts_init(PS, A);
 	  
-	  HIT_LIST_reset(hit_list, query, FS_INDEX_get_database(FSI),
-			 matrix_base, score_cutoff);
-
 	  if (cutoff_type == SCORE)
 	    {
-	      FSINDX_prof_rng_srch(FSI, PS, score_cutoff, hit_list); 
-	      HIT_LIST_sort_incr(hit_list);
+	      FSINDX_prof_rng_srch(FSI, PS, score_cutoff, HL); 
+	      HIT_LIST_sort_incr(HL);
 	    }
 	  else /* cutoff_type == kNN */
 	    {
-	      FSINDX_prof_kNN_srch(FSI, PS, cutoff, hit_list);
-	      HIT_LIST_sort_kNN(hit_list);
+	      FSINDX_prof_kNN_srch(FSI, PS, cutoff, HL);
+	      HIT_LIST_sort_kNN(HL);
 	    }
 	  /* TO DO: Convert results */
-	  HIT_LIST_print(hit_list, out_stream, 0); 
+	  HIT_LIST_print(HL, out_stream, 0); 
 
 	  i = iters;
 	  while (i--)
 	    {
-	      HIT_LIST_get_hit_seqs(hit_list, &PS->seq, cutoff, 
+	      HIT_LIST_get_hit_seqs(HL, &PS->seq, cutoff, 
 				    &PS->no_seqs, &PS->max_no_seqs);
 	      if (PS->no_seqs == 0)
 		break;
 	      POS_MATRIX_Henikoff_weights(PS);
 	      POS_MATRIX_update(PS);
 
-
-	      HIT_LIST_reset(hit_list, query, FS_INDEX_get_database(FSI),
-			     matrix_base, score_cutoff);
-
 	      if (cutoff_type == SCORE)
 		{
 		  /* TO DO: Convert range */
-		  FSINDX_prof_rng_srch(FSI, PS, score_cutoff, hit_list); 
-		  HIT_LIST_sort_incr(hit_list);
+		  FSINDX_prof_rng_srch(FSI, PS, score_cutoff, HL); 
+		  HIT_LIST_sort_incr(HL);
 		}
 	      else /* cutoff_type == kNN */
 		{
-		  FSINDX_prof_kNN_srch(FSI, PS, cutoff, hit_list);
-		  HIT_LIST_sort_kNN(hit_list);
+		  FSINDX_prof_kNN_srch(FSI, PS, cutoff, HL);
+		  HIT_LIST_sort_kNN(HL);
 		}
 	      /* TO DO: Convert results */
-	      HIT_LIST_sort_by_sequence(hit_list);
-	      HIT_LIST_sort_decr(hit_list);
-	      HIT_LIST_print(hit_list, out_stream, 0); 
+	      HIT_LIST_sort_by_sequence(HL);
+	      HIT_LIST_sort_decr(HL);
+	      HIT_LIST_print(HL, out_stream, 0); 
 	    }
 	  break;
 	case T_SIMILARITY:
 	  if (cutoff_type == SCORE)
 	    {
 	      d0 = SCORE_MATRIX_evaluate(S, query, query) - cutoff;
-	      FSINDX_rng_srch(FSI, query, D, d0, hit_list);
-	      HIT_LIST_sort_incr(hit_list);
+	      HL = FSINDX_rng_srch(FSI, query, D, d0, HL);
+	      HIT_LIST_sort_incr(HL);
 	    }
 	  else /* cutoff_type == kNN */
 	    {
-	      FSINDX_kNN_srch(FSI, query, D, cutoff, hit_list);
-	      HIT_LIST_sort_kNN(hit_list);
+	      HL = FSINDX_kNN_srch(FSI, query, D, cutoff, HL);
 	    }
 	  /* TO DO: Convert results */
-	  HIT_LIST_print(hit_list, out_stream, 0); 
+	  HIT_LIST_print(HL, out_stream, 0); 
 	  break;
 	case T_QUASI_METRIC:
 	case T_METRIC:
 	  if (cutoff_type == SCORE)
 	    {
 	      d0 = cutoff;
-	      FSINDX_rng_srch(FSI, query, D, d0, hit_list);
-	      HIT_LIST_sort_incr(hit_list);
+	      HL = FSINDX_rng_srch(FSI, query, D, d0, HL);
+	      HIT_LIST_sort_incr(HL);
 	    }
 	  else /* cutoff_type == kNN */
 	    {
-	      FSINDX_kNN_srch(FSI, query, D, cutoff, hit_list);
-	      HIT_LIST_sort_kNN(hit_list);
+	      HL = FSINDX_kNN_srch(FSI, query, D, cutoff, HL);
 	    }
-	  HIT_LIST_print(hit_list, out_stream, 0); 
+	  HIT_LIST_print(HL, out_stream, 0); 
 	  break;
 	default:
 	  break;
