@@ -155,7 +155,8 @@ void fastadb_init_Ffrags(SEQUENCE_DB *s_db, ULINT len);
 ULINT fastadb_count_Ffrags(SEQUENCE_DB *s_db, ULINT len);
 
 int fastadb_get_next_Ffrag(SEQUENCE_DB *s_db, ULINT len, 
-			   BIOSEQ *frag, ULINT *offset);
+			   BIOSEQ *frag, ULINT *offset,
+			   int skip);
 
 int fastadb_get_Ffrag(SEQUENCE_DB *s_db, ULINT len, 
 		      BIOSEQ *frag, ULINT offset);
@@ -217,7 +218,8 @@ ULINT fastadb_count_Ffrags(SEQUENCE_DB *s_db, ULINT len)
 
 MY_INLINE
 int fastadb_get_next_Ffrag(SEQUENCE_DB *s_db, ULINT len, 
-			   BIOSEQ *frag, ULINT *offset)
+			   BIOSEQ *frag, ULINT *offset,
+			   int skip)
 {
   if (s_db->Ff_c >= s_db->Ff_r)
     {
@@ -235,7 +237,7 @@ int fastadb_get_next_Ffrag(SEQUENCE_DB *s_db, ULINT len,
   frag->start = s_db->seq_data + s_db->Ff_c;
   frag->len = len;
   *offset = s_db->Ff_c;
-  s_db->Ff_c++;
+  s_db->Ff_c+= skip;
   return 1;
 }
 
