@@ -59,8 +59,13 @@ typedef struct
   const char *matrix;
   int range;
   int converted_range;
+
+  const char *index_name;
+  const char *alphabet;
+  ULINT FS_seqs_total;
   ULINT FS_seqs_visited;
   ULINT FS_seqs_hits;
+  ULINT index_seqs_total;
   ULINT seqs_visited;
   ULINT seqs_hits;
   double start_time;
@@ -103,6 +108,11 @@ void HIT_LIST_print(HIT_LIST_t *HIT_list, FILE *stream,
 ULINT HIT_LIST_get_seqs_hits(HIT_LIST_t *HIT_list);
 SEQ_HIT_t *HIT_LIST_get_hit(HIT_LIST_t *HIT_list, ULINT i);
 void HIT_LIST_set_converted_range(HIT_LIST_t *HIT_list, int crange);
+void HIT_LIST_set_index_data(HIT_LIST_t *HIT_list, 
+			     const char *index_name,
+			     const char *alphabet,
+			     ULINT FS_seqs_total,
+			     ULINT index_seqs_total);
 
 /* Sorting */
 void HIT_LIST_sort_decr(HIT_LIST_t *HIT_list);

@@ -74,7 +74,7 @@ void FS_HASH_TABLE_print_stats(FS_HASH_TABLE_t *FS_HT, FILE *stream,
 /*                     FS_INDEX module                              */ 
 /*                                                                  */
 /********************************************************************/    
-
+#if 0
 typedef struct
 {
   char *db_name;
@@ -89,97 +89,74 @@ typedef struct
   SCORE_MATRIX_t *D;
   FS_HASH_TABLE_t *HT;
 } FS_INDEX_t;
+#endif
 
 extern int FS_INDEX_VERBOSE;
 extern int FS_INDEX_PRINT_BAR;
 
-typedef void FS_INDEX_process_func(FS_INDEX_t *FS_index, 
-				   HIT_LIST_t *hit_list, 
-				   BIOSEQ *query,
-				   FS_SEQ_t FS_neighbour,
-				   int cutoff);
+typedef void FS_INDEX_process_func(FS_SEQ_t FS_neighbour);
 
 /* These functions should convert the cutoff value to distances for
    bin search */
 
-typedef int FS_INDEX_range_convert_func(FS_INDEX_t *FS_index,
-					BIOSEQ *query,
+typedef int FS_INDEX_range_convert_func(SCORE_MATRIX_t *S0, 
+					BIOSEQ *query0,
 					int cutoff);	
 
 /* Main constructor */
-FS_INDEX_t *FS_INDEX_create(const char *db_name, ULINT frag_len,
-			    const char *alphabet, 
-			    const char separator);
+void FS_INDEX_create(const char *database, ULINT flen,
+		     const char *abet, 
+		     const char sepchar);
 
 /* Destructor */
-void FS_INDEX_destroy(FS_INDEX_t *FS_index); 
+void FS_INDEX_destroy(void);
 
 /* Load, Save */
-int FS_INDEX_save(FS_INDEX_t *FS_index, const char *filename);
-FS_INDEX_t *FS_INDEX_load(const char *filename);
+int FS_INDEX_save(const char *filename);
+int FS_INDEX_load(const char *filename);
 
 /* Print */
-void FS_INDEX_print_stats(FS_INDEX_t *FS_index, FILE *stream, 
-			  ULINT count, double dtime);
+void FS_INDEX_print_stats(FILE *stream, ULINT count, double dtime); 
+
 
 /* Get / Set members */
-SEQUENCE_DB *FS_INDEX_get_database(FS_INDEX_t *FS_index);
-FS_PARTITION_t *FS_INDEX_get_ptable(FS_INDEX_t *FS_index);
+SEQUENCE_DB *FS_INDEX_get_database(void);
+FS_PARTITION_t *FS_INDEX_get_ptable(void);
+int FS_INDEX_get_frag_len(void);
 
-void FS_INDEX_set_matrix(FS_INDEX_t *FS_index, 
-			 char *matrix_name, 
-			 SCORE_MATRIX_t *S, SCORE_MATRIX_t *D);
 
 /* Main general range search */
-int FS_INDEX_search(FS_INDEX_t *FS_index, HIT_LIST_t *hit_list,
-		    BIOSEQ *query, ULINT cutoff,
-		    FS_INDEX_process_func *pfunc, 
+int FS_INDEX_search(HIT_LIST_t *hit_list0, BIOSEQ *query0, 
+		    SCORE_MATRIX_t *S0, SCORE_MATRIX_t *D0,
+		    int cutoff, FS_INDEX_process_func *pfunc0, 
 		    FS_INDEX_range_convert_func *cfunc);
- 
-/* Other Searches */
-HIT_LIST_t *FS_INDEX_QD_search(FS_INDEX_t *FS_index, 
-			       BIOSEQ *query, ULINT D_cutoff);
 
-int FS_INDEX_kNN_search(FS_INDEX_t *FS_index, HIT_LIST_t *hit_list, 
-			BIOSEQ *query, ULINT k, int V0,
-			FS_INDEX_process_func *pfunc, 
+/* Other Searches */
+int FS_INDEX_kNN_search(HIT_LIST_t *hit_list0, BIOSEQ *query0,
+			SCORE_MATRIX_t *S0, SCORE_MATRIX_t *D0,
+			ULINT k, int V0,
+			FS_INDEX_process_func *pfunc0, 
 			FS_INDEX_range_convert_func *cfunc);
+
 
 /* Process bin functions */
 
-void FS_INDEX_count_only_process_bin(FS_INDEX_t *FS_index, 
-				     HIT_LIST_t *hit_list, 
-				     BIOSEQ *query,
-				     FS_SEQ_t FS_query,
-				     int D_cutoff);
+FS_INDEX_process_func FS_INDEX_QD_process_bin;
+FS_INDEX_process_func FS_INDEX_S_process_bin;
+FS_INDEX_process_func FS_INDEX_count_only_process_bin;
 
-void FS_INDEX_QD_process_bin(FS_INDEX_t *FS_index, 
-			     HIT_LIST_t *hit_list, 
-			     BIOSEQ *query,
-			     FS_SEQ_t FS_query,
-			     int D_cutoff);
-
-void FS_INDEX_S_process_bin(FS_INDEX_t *FS_index, 
-			    HIT_LIST_t *hit_list, 
-			    BIOSEQ *query,
-			    FS_SEQ_t FS_query,
-			    int S_cutoff);
 /* Conversion functions */
-int FS_INDEX_identity_convert(FS_INDEX_t *FS_index,
-			      BIOSEQ *query,
-			      int cutoff);
+FS_INDEX_range_convert_func FS_INDEX_identity_convert;
+FS_INDEX_range_convert_func FS_INDEX_S2QD_convert;
 
-int FS_INDEX_S2QD_convert(FS_INDEX_t *FS_index,
-			  BIOSEQ *query,
-			  int cutoff);
 
 /* Experiments */
 HIT_LIST_t *SSCAN_QD_search(SEQUENCE_DB *s_db, const char *matrix, 
 			    BIOSEQ *query, ULINT D_cutoff);
-
+#if 0
 int FS_INDEX_has_neighbour(FS_INDEX_t *FS_index, BIOSEQ *query, 
 			   ULINT D_cutoff);
-
+#endif
 int SSCAN_has_neighbour(SEQUENCE_DB *s_db,  SCORE_MATRIX_t *D, 
 			FS_PARTITION_t *ptable,
 			BIOSEQ *query, ULINT D_cutoff);
@@ -190,7 +167,7 @@ int SSCAN_has_neighbour(SEQUENCE_DB *s_db,  SCORE_MATRIX_t *D,
 /*                     PROFILE BASED SEARCHES                       */ 
 /*                                                                  */
 /********************************************************************/    
-
+#if 0
 typedef void FS_INDEX_profile_process_func(FS_INDEX_t *FS_index, 
 					   HIT_LIST_t *hit_list,
 					   POS_MATRIX *PS,
@@ -226,7 +203,7 @@ void FS_INDEX_profile_D_process_bin(FS_INDEX_t *FS_index,
 				    FS_SEQ_t FS_query,
 				    int D_cutoff);
 
-
+#endif
 
 
 
@@ -320,27 +297,6 @@ SEQ_index_t FS_HASH_TABLE_retrieve_seq(FS_HASH_TABLE_t *FS_HT, ULINT i,
 /*                     FS_INDEX module                              */ 
 /*                                                                  */
 /********************************************************************/    
-MY_INLINE
-SEQUENCE_DB *FS_INDEX_get_database(FS_INDEX_t *FS_index)
-{
-  return FS_index->s_db;
-}
-
-MY_INLINE
-FS_PARTITION_t *FS_INDEX_get_ptable(FS_INDEX_t *FS_index)
-{
-  return FS_index->ptable;
-}
-
-MY_INLINE
-void FS_INDEX_set_matrix(FS_INDEX_t *FS_index, 
-			 char *matrix_name, 
-			 SCORE_MATRIX_t *S, SCORE_MATRIX_t *D)
-{
-  FS_index->matrix = matrix_name;
-  FS_index->S = S;
-  FS_index->D = D;
-}
 
 #endif   
 

@@ -20,6 +20,7 @@
 #define _QUADTREE_H
 
 #include "misclib.h"
+#include <stdio.h>
 
 #ifdef USE_MPATROL
 #include <mpatrol.h>
@@ -73,6 +74,8 @@ int QUAD_TREE_find_minimal_pair(QUAD_TREE *qtree, ULINT *pt1,
 /* Half-array function */
 ULINT half_array(ULINT i, ULINT j);
 
+void print_levels(QUAD_TREE *qtree, FILE *stream);
+
 /********************************************************************/    
 /********************************************************************/    
 /***                                                              ***/
@@ -98,7 +101,6 @@ ULINT half_array(ULINT i, ULINT j);
 
 #ifdef QUAD_TREE_INLINE
 
-#endif /* #ifdef QUAD_TREE_INLINE */
 
 MY_INLINE
 ULINT half_array(ULINT i, ULINT j)
@@ -106,5 +108,6 @@ ULINT half_array(ULINT i, ULINT j)
   /* Assume j < i */
   return (i*(i-1))/2 + j;
 }
+#endif /* #ifdef QUAD_TREE_INLINE */
 
 #endif /* #ifndef _QUADTREE_H */
