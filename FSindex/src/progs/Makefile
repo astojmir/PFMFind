@@ -16,11 +16,13 @@ all: $(FSLIB) \
      QD_ddist \
      split_db \
      check_db \
+     print_doublets
 #     FSindex_delta \
 #     cluster_test \
 #     FSindex_rand_perf \
 #     FSindex_benchmark \
 #     FSindex_eps_net1 \
+
 check_db:
 
 split_db:
@@ -55,9 +57,9 @@ clean:
 	for x in *; do [ -x $$x -a -f $$x.c ] && echo $$x; done\
 	 | xargs rm -f; \
 	rm -f *.o; \
-	rm -f core; \
+	rm -f core;
 
 srcclean: clean
-	rm -f *~; \
+	rm -f *~;
 
 
