@@ -1,0 +1,8 @@
+/home/aleksand/Projects/code/FSindex/db/ecoli.aa
+/home/aleksand/Projects/code/FSindex/db/ecoli_5.ix
+5 2 2 0
+S#T#A#N#I#L#V#M#K#R#D#E#Q#W#F#Y#H#G#P#C
+S#T#A#N#I#L#V#M#K#R#D#E#Q#W#F#Y#H#G#P#C
+STA#N#ILV#M#KR#DE#Q#W#FY#H#G#P#C
+STA#N#ILV#M#KR#DE#Q#W#FY#H#G#P#C
+STA#N#ILV#M#KR#DE#Q#W#FY#H#G#P#C
