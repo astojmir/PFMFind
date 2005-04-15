@@ -113,3 +113,4 @@ void *avl_t_cur (struct avl_traverser *);
 void *avl_t_replace (struct avl_traverser *, void *);
 
 #endif /* avl.h */
+
