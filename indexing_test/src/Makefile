@@ -19,12 +19,16 @@ CFLAGS = $(COPTIM) $(INCS) $(CWARNINGS) -fPIC # -D USE_DMALLOC
 
 all: progs 
 
-progs: MVPT2_create MVPT_test MVPT_perf
+progs: fragdist MVPT2_create MVPT_test MVPT_perf
 	if [ ! -d  $(BINDIR) ]; then \
 	   mkdir $(BINDIR); \
 	fi
 	for x in *; do if [ -x $$x -a -f $$x.c ]; \
 	then mv $$x $(BINDIR); fi done; \
+
+fragdist: avl.h avl.o fragdist.o
+	$(CC) $(LDFLAGS) fragdist.o avl.o $(LDLIBS) -o fragdist
+	rm -rf fragdist.o
 
 MVPT2_create: ufragdb.h mvptree.h avl.h ufragdb.o mvptree.o avl.o MVPT2_create.o
 	$(CC) $(LDFLAGS) MVPT2_create.o ufragdb.o mvptree.o avl.o $(LDLIBS) -o MVPT2_create
@@ -47,7 +51,7 @@ clean:
 	cd ..; \
 
 srcclean: clean
-	rm -f *~; 
+	rm -f *~
 
 tarball: 
 	tar -czvf index_test.tar.gz Makefile *.c *.h
