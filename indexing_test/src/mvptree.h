@@ -1,7 +1,6 @@
 #ifndef _MVPTREE_H
 #define _MVPTREE_H
 
-
 #include <stdio.h>
 #include <math.h>
 #include "misclib.h"

@@ -2,7 +2,6 @@
 #include <string.h>
 #include "mvptree.h"
 
-
 EXCEPTION FSexcept_array[1];
 EXCEPTION *except;
 struct exception_context the_exception_context[1];
