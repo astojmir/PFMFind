@@ -19,19 +19,6 @@
 /********************************************************************/    
 /********************************************************************/    
 
-
-typedef struct
-{
-  const char *db_name;
-  const char *db_path;
-  ULINT length; 
-  ULINT no_seq; 
-  ULINT no_frags;
-  ULINT min_len; 
-  ULINT max_len; 
-} SEQDB_STATS;
-
-
 typedef enum {MEMORY, RNDM, SEQUENTIAL} access_type_t;
 
 typedef struct
@@ -119,16 +106,6 @@ int fastadb_get_next_seq(SEQUENCE_DB *s_db, BIOSEQ **seq);
 /* Offset <--> char pter conversion functions (as macros) */
 char *fastadb_data_pter(SEQUENCE_DB *s_db, ULINT offset);
 ULINT fastadb_data_offset(SEQUENCE_DB *s_db, char *s);
-
-/* Fragment functions */
-int fastadb_init_frags(SEQUENCE_DB *s_db, ULINT min_len, 
-		       ULINT max_len);
-int fastadb_clear_frags(SEQUENCE_DB *s_db);
-
-int fastadb_get_nofrags(SEQUENCE_DB *s_db, ULINT *no_frags, 
-			ULINT min_len, ULINT max_len);
-int fastadb_get_frag(SEQUENCE_DB *s_db, BIOSEQ *frag, ULINT frag_no,
-		     ULINT min_len, ULINT max_len);
 
 /* Ffragment functions */
 MY_INLINE
