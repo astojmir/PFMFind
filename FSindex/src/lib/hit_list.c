@@ -160,9 +160,11 @@ void init_HL_data(HIT_LIST_t *HL, BIOSEQ *query,
   HL->db_path = strdup(s_db->db_name);
   HL->db_length = s_db->length;
   HL->db_no_seq = s_db->no_seq;
-  HL->db_min_frag_len = s_db->min_len;
-  HL->db_max_frag_len = s_db->max_len;
-  HL->db_no_frags = s_db->no_frags;
+
+  /* TO DO: remove these */
+  HL->db_min_frag_len = 0;
+  HL->db_max_frag_len = 0;
+  HL->db_no_frags = s_db->length;
 
   HL->query.len = query->len;
   HL->query.id.defline = strdup(query->id.defline);
@@ -287,7 +289,6 @@ void HIT_LIST_print(HIT_LIST_t *HL, FILE *stream,
   int i;
   ULINT no_frags;
 
-  fastadb_init_Ffrags(HL->s_db, HL->query.len);
   no_frags = fastadb_count_Ffrags(HL->s_db,
 				  HL->query.len); 
 

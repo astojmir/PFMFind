@@ -67,8 +67,6 @@ int main(int argc, char **argv)
   ULINT N;
   BIOSEQ *seq;
   int no_args = 2;
-  fastadb_arg fastadb_argt[3];
-  fastadb_argv_t fastadb_argv[3];
   SEQUENCE_DB *s_db;
   int i;
   struct rndix *p;
@@ -83,12 +81,7 @@ int main(int argc, char **argv)
     }
 
   Try {
-    fastadb_argt[0] = ACCESS_TYPE;
-    fastadb_argt[1] = RETREIVE_DEFLINES;
-    fastadb_argt[2] = NONE;
-    fastadb_argv[0].access_type = MEMORY;
-    fastadb_argv[1].retrieve_deflines = YES;
-    s_db = fastadb_open(db_name, fastadb_argt, fastadb_argv); 
+    s_db = fastadb_open(db_name); 
     N = s_db->no_seq;
     n = n > N ? N : n;
     p = mallocec(N*sizeof(struct rndix));

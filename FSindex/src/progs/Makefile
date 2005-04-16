@@ -4,50 +4,19 @@ FSLIB=libFSindex.a libsarray.a
 VPATH=../lib:../sarray
 all: $(FSLIB) \
      test_smatrix \
-     fragdist \
      count_frags \
      FSindex_create \
      FSindex_rng_perf \
      FSindex_rng_perf_thr \
      FSindex_kNN_perf \
      FSindex_ball_size \
-     MVPT2_create \
-     MVPT_test \
-     FSindex_delta2 
-#     FSindex_rand_perf \
-#     FSindex_rand_queries \
-#     fastadb_sample \
+     FSindex_delta2 \
+     fastadb_test
 #     FSindex_stats 
 #     partition_test \
 
 
 
-#     FSindex_search \
-#     FSindex_bin_size \
-#     SS_search \
-#     count_letters \
-#     Sscan_eps_net \
-#     print_matrices \
-#     QD_ddist \
-#     Zdist \
-#     split_db \
-#     check_db \
-#     FSindex_show_bin \
-#     KWindex_create
-#     print_doublets \
-#     FSindex_self_sim \
-#     FSindex_cluster \
-#     cluster_test \
-#     FSindex_rand_perf \
-#     FSindex_benchmark \
-#     FSindex_eps_net1 \
-#     distances \
-#    FSindex_delta \
-#    FSindex_delta1 \
-#    FSindex_rand_perf \
-#    FSindex_rand_perf1 \
-#    FSindex_rand_perf2 \
-#    FSindex_eps_net1 \
 
 distances:
 
@@ -84,8 +53,6 @@ SS_search:
 Sscan_eps_net:  
 
 count_letters:  
-
-fragdist:
 
 fastadb_sample: 
 
