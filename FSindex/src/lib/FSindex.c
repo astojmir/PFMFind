@@ -153,8 +153,6 @@ FSINDX *FS_INDEX_create(const char *database, uint32_t len, const char **sepn, i
   char *s;
   FS_SEQ_t FS_seq;
 
-  fastadb_arg fastadb_argt[3];
-  fastadb_argv_t fastadb_argv[3];
   uint32_t bs = 0;
 
   uint32_t no_bins = 0;
@@ -179,12 +177,7 @@ FSINDX *FS_INDEX_create(const char *database, uint32_t len, const char **sepn, i
     FSI->use_sa = use_sa;
 
     /* Load database */
-    fastadb_argt[0] = ACCESS_TYPE;
-    fastadb_argt[1] = RETREIVE_DEFLINES;
-    fastadb_argt[2] = NONE;
-    fastadb_argv[0].access_type = MEMORY;
-    fastadb_argv[1].retrieve_deflines = YES;
-    FSI->s_db = fastadb_open(database, fastadb_argt, fastadb_argv); 
+    FSI->s_db = fastadb_open(database); 
  
     /* Global variables */
     _base_ = fastadb_data_pter(FSI->s_db, 0);  
@@ -426,18 +419,10 @@ FSINDX *FS_INDEX_load(const char *filename)
   FSINDX *FSI = callocec(1, sizeof(FSINDX));
 
   FILE *fp = fopen(filename, "rb");
-  fastadb_arg fastadb_argt[3];
-  fastadb_argv_t fastadb_argv[3];
   char *basename;
   char *dirname;
   char *full_dbname;
   int i;
-
-  fastadb_argt[0] = ACCESS_TYPE;
-  fastadb_argt[1] = RETREIVE_DEFLINES;
-  fastadb_argt[2] = NONE;
-  fastadb_argv[0].access_type = MEMORY;
-  fastadb_argv[1].retrieve_deflines = YES;
 
   Try {
     if(fp == NULL)
@@ -453,7 +438,7 @@ FSINDX *FS_INDEX_load(const char *filename)
 
     split_base_dir(filename, &basename, &dirname);
     cat_base_dir(&full_dbname, FSI->db_name, dirname);
-    FSI->s_db = fastadb_open(full_dbname, fastadb_argt, fastadb_argv); 
+    FSI->s_db = fastadb_open(full_dbname); 
 
     fread(&FSI->m, sizeof(int), 1, fp);
     fread(&(FSI->dtime), sizeof(double), 1, fp);
@@ -710,7 +695,7 @@ void FSSRCH_insert_queue(FSSRCH *FSS, uint32_t offset, int dist)
 }
 
 /********************************************************************/ 
-/*      Recursive tree traversal functions                          */
+/*      Recursive tree traversal function                          */
 /********************************************************************/ 
 static
 void check_bins(FSSRCH *FSS, FS_SEQ_t cbin, int dist, int i)
@@ -720,7 +705,6 @@ void check_bins(FSSRCH *FSS, FS_SEQ_t cbin, int dist, int i)
   int dist1;
   FS_SEQ_t bin1;
 
-  //  for (k=i; k < FSS->len; k++) {
   for (k=FSS->len-1; k >= i; k--) {
     if (dist + FSS->nbpt_closest[k] > FSS->eps) continue;      
     for (j=0; j < FSS->nbpt[k]; j++) {
@@ -751,7 +735,7 @@ int eval_dist(int **M, char *s, int qlen)
 }
 
 
-/* Scan all without taking account of suffix array structure */
+/* Scan all without taking account of 'suffix array' structure */
 static
 void process_bin_all(FSSRCH *FSS, FS_SEQ_t bin)
 {
@@ -780,7 +764,7 @@ void process_bin_all(FSSRCH *FSS, FS_SEQ_t bin)
   HIT_LIST_count_seq_visited(FSS->HL, n);
 }
 
-
+/* Avoid scanning duplicates */
 static
 void process_bin_dups(FSSRCH *FSS, FS_SEQ_t bin)
 {
@@ -824,6 +808,7 @@ void process_bin_dups(FSSRCH *FSS, FS_SEQ_t bin)
   HIT_LIST_count_seq_visited(FSS->HL, n);
 }
 
+/* Scan making full use of 'suffix array'-like structure */
 static inline
 void traverse_sarray(FSSRCH *FSS, uint32_t offset, uint32_t n)
 
@@ -960,30 +945,26 @@ void sarray_search(FSSRCH *FSS, void *ptr)
 static
 void seq_scan_search(FSSRCH *FSS, void *ptr)
 {
-  int j=0;
+  /* Straight copy of bin scanning function where
+     the whole dataset is in one bin */
   int dist;
+  int i;
 
+  ULINT n = FSS->FSI->no_seqs;
+  int *a = FSS->FSI->oa;
   int **M = FSS->M;
   int qlen = FSS->qlen;
   char *base = FSS->base;
 
-  char *sseq;
-  ULINT slen;
-  MIXED_ITER *f_iter;
-
-  /* Database iterator */
-  f_iter = MIXED_ITER_init(FSS->FSI->s_db, qlen, qlen, 1);
-
-  /* Sequential scan */
-  while ((sseq = MIXED_ITER_next(f_iter, &slen))) {
-    j++;
-    dist = eval_dist(M, sseq, qlen);
+  for (i=0; i < n; i++, a++) {
+    dist = eval_dist(M, base + *a, qlen);
     if (dist > FSS->eps) continue;
-    FSS->ifunc(FSS, sseq-base, dist);
+    FSS->ifunc(FSS, *a, dist);
     HIT_LIST_count_seq_hit(FSS->HL, 1);
+    HIT_LIST_count_useq_hit(FSS->HL, qlen);
   }
-  HIT_LIST_count_seq_visited(FSS->HL, j);
-  MIXED_ITER_del(f_iter);
+  HIT_LIST_count_useq_visited(FSS->HL, n * qlen);
+  HIT_LIST_count_seq_visited(FSS->HL, n);
 }
 
 static
@@ -1266,6 +1247,7 @@ HIT_LIST_t *FSINDX_threaded_srch(FSINDX *FSI, SRCH_ARGS *args, int n)
 }
 #endif /* #if THREADS > 1 */
 
+
 /********************************************************************/ 
 /*      Access functions with error checking                        */
 /********************************************************************/ 
@@ -1287,66 +1269,4 @@ uint32_t FS_INDEX_get_unique_bin_size(FSINDX *FSI, FS_SEQ_t bin)
   else
     return get_unique_size(FSI, FSI->m, bin);
 }
-#if 0 
-BIOSEQ *FS_INDEX_get_seq(FSINDX *FSI, uint32_t bin, uint32_t seq)
-{
-  BIOSEQ *subject = mallocec(sizeof(BIOSEQ));
-  ULINT frag_offset;
-  ULINT id;
-  ULINT from;
 
-  if (bin >= FSI->no_bins || seq >= FSI->bin_size[bin])
-    Throw FSexcept(INDEX_OUT_OF_RANGE,
-		   "FS_INDEX_get_bin_size(): Index out of range.");
-
-  frag_offset = FSI->bin[bin][seq];
-  fastadb_get_Ffrag(FSI->s_db, FSI->m, subject, frag_offset);
-  fastadb_find_Ffrag_seq(FSI->s_db, subject, &id, &from); 
-  subject->id.defline = FSI->s_db->seq[id].id.defline;
-
-  return subject;
-}
-
-
-
-
-static 
-void pull_duplicates(FSINDX *FSI, HIT_LIST_t *HL)
-{
-  ULINT n;
-  ULINT N;
-  ULINT frag_offset;
-  BIOSEQ subject;
-  ULINT i;
-  ULINT j;
-  ULINT k;
-  ULINT M = HL->actual_seqs_hits;
-  SEQ_HIT_t *h;
-  ULINT bin0;
-  float val;
-
-  for (k=0; k < M; k++)
-    {
-      h = HIT_LIST_get_hit(HL, k);
-      bin0 = h->bin;
-      i = h->pos;
-      val = h->value;
-      n = FSI->u_size[bin0];
-      N = FSI->bin_size[bin0];
-
-      j = FSI->u[bin0][i] + 1;
-      while ((j < N && i == n-1) || j < FSI->u[bin0][i+1])
-	{
-	  HIT_LIST_count_seq_hit(HL, 1);
-	  frag_offset = FSI->bin[bin0][j];
-	  fastadb_get_Ffrag(FSI->s_db, FSI->m, &subject, 
-			    frag_offset);
-	  
-	  HIT_LIST_insert_seq_hit(HL, &subject, val); 
-	  j++;
-	}
-    }
-}
-
-
-#endif
