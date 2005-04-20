@@ -57,6 +57,7 @@ def _get_ix_data(I):
 
 class FSIndex(object):
     def __init__(self, filename, sepn=None, use_sa=1, print_flag=0):
+        self.thisown = 0
         if sepn == None:
             sepn = []
         self.this = FS.new_Index(filename, sepn, use_sa, print_flag)
@@ -64,7 +65,8 @@ class FSIndex(object):
         self.__dict__.update(FS.Index_get_data(self))
 
     def __del__(self):
-        FS.delete_Index(self)
+        if self.thisown:
+            FS.delete_Index(self)
 
     def save(self, filename):
         return FS.Index_save(self, filename)

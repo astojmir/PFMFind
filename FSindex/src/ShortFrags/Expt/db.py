@@ -2,6 +2,7 @@ import FS
 
 class db(object):
     def __init__(self, db_name, new=True, own=True):
+        self.thisown = 0
         if new == True:
             self.this = FS.new_db(db_name)
             self.thisown = 1

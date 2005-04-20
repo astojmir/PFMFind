@@ -89,7 +89,8 @@ class ProfileColumn(MatrixColumn):
 
 class Smatrix(object): # Base class for matrices
     def __del__(self):
-        FS.delete_Smatrix(self)
+        if self.thisown:
+            FS.delete_Smatrix(self)
 
     def __str__(self):
         return FS.Smatrix___str__(self)
@@ -137,6 +138,7 @@ class Smatrix(object): # Base class for matrices
 
 class ScoreMatrix(Smatrix):
     def __init__(self, inarg, Stype=FS.SIMILARITY, new=True):
+        self.thisown = 0
         if type(inarg) is types.StringType:
             if new == True:
                 # Load from file 
@@ -236,6 +238,7 @@ class ScoreMatrix(Smatrix):
 
 class ProfileMatrix(Smatrix):
     def __init__(self, inarg, Stype=FS.SIMILARITY, new=True):
+        self.thisown = 0
         if type(inarg) is types.StringType:
             # SWIG string
             self.this = inarg
