@@ -241,34 +241,3 @@ char *FS_SEQ_print(FS_TABLE *ptable, FS_SEQ_t FSseq)
   free(p);
   return s;
 }
-
-int *FS_TABLE_order_convert_heap(FS_TABLE *ptable, const char *s, int len)
-{
-  int i, k;
-  int *r;
-  int amap[A_SIZE];
-  int freq[A_SIZE];
-  int ainv[A_SIZE];
-  const char *t = s;
-
-  r= mallocec(len*sizeof(int));
-  memset(freq, 0, A_SIZE*sizeof(int));
-
-  /* Must scan the whole dataset to determine what letters are used
-     so we don't have any 'holes' in order. This is a requirement
-     of sarray function */
-  for (i=0; i < A_SIZE; i++) 
-    ainv[ptable->rank[0][i]] = i;
-  
-  for (i=0; i < len; i++, t++)
-    freq[*t & A_SIZE_MASK]++;
-
-  for (k=0, i=0; i < A_SIZE; i++) {
-    if (freq[ainv[i]]) amap[ainv[i]] = k++;
-    else amap[ainv[i]] = -1;
-  }
-
-  for (i=0; i < len; i++, s++)
-    r[i] = amap[*s & A_SIZE_MASK];
-  return r;
-} 
