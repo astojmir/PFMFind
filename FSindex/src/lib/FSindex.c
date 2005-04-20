@@ -166,7 +166,7 @@ FSINDX *FS_INDEX_create(const char *database, uint32_t len, const char **sepn, i
     /* Initialise FS_index */
     FSI = callocec(1, sizeof(FSINDX));
     FSI->ptable = ptable;
-    split_base_dir(database, &db_base, &db_dir);
+    path_split(database, &db_dir, &db_base);
     FSI->db_name = strdup(db_base);
     FSI->index_name = strdup("New Index");
     FSI->m = len;
@@ -392,8 +392,8 @@ FSINDX *FS_INDEX_load(const char *filename)
       Throw FSexcept(BAD_ARGS, 
 		     "FS_INDEX_load(): Could not init ptable.");
 
-    split_base_dir(filename, &basename, &dirname);
-    cat_base_dir(&full_dbname, FSI->db_name, dirname);
+    path_split(filename, &dirname, &basename);
+    full_dbname = path_join(dirname, FSI->db_name);
     FSI->s_db = fastadb_open(full_dbname); 
 
     fread(&FSI->m, sizeof(int), 1, fp);

@@ -71,72 +71,60 @@ void *reallocec(void *pt, long int size)
 /*                                                                  */
 /********************************************************************/ 
 
-
-int split_base_dir(const char *full_name, char **basename, 
-		   char **dirname)
+void path_split(const char *p, char **h, char **t)
 {
-  int len = strlen(full_name);
-  
-  int i;
+  /* Equivalent to Python os.path.split except that we don't strip 
+     multiple '/' 
+  */
 
-  for (i = len-1; i > 0 && full_name[i] != '/'; i--);
+  int L = strlen(p);
+  const char *s = p + L - 1;
 
-  if (i == 0)
-    {
-      *basename = mallocec(len);
-      *dirname = mallocec(2);
-      if (full_name[i] == '/')
-	{
-	  (*dirname)[0] = '/';
-	  (*dirname)[1] = '\0';
-	  strncpy(*basename, full_name+1, len);
-	}
-      else 
-	{
-	  (*dirname)[0] = '\0';
-	  strncpy(*basename, full_name, len);
-	}
+  while (*s != '/' && s >= p) s--;
+
+  if (s >= p) {
+    /* Using calloc thus guaranteeing null-termination */
+    *t = callocec(1, p + L - s);
+    memcpy(*t, s+1, p + L - s - 1);
+
+    if (s == p) { /* path starts with '/' */
+      *h = callocec(1, 2);
+      **h = '/';
     }
-  else
-    {
-      *basename = mallocec(len-i+1);
-      *dirname = mallocec(i+1);
-      strncpy(*basename, full_name+i+1, len-i+1);
-      strncpy(*dirname, full_name, i);
-      (*dirname)[i] = '\0';
-    }      
-  return 1;      
+    else {
+      *h = callocec(1, s - p + 1);
+      memcpy(*h, p, s - p);
+    }
+  }
+  else if (s < p) {
+    *t = strdup(p);
+    *h = callocec(1, 1);
+  }
 }
 
-int cat_base_dir(char **full_name, const char *basename, 
-		 const char *dirname)
+char *path_join(const char *h, const char *t)
 {
-  int base_len = strlen(basename);
-  int dir_len = strlen(dirname);
+  /* Equivalent to Python os.path.join */
 
-  if (dir_len == 1 && dirname[0] == '/')
-    {
-      *full_name = callocec(base_len + 2, 1);
-      *full_name[0] = '/';
-      memcpy(*full_name+1, basename, base_len);
-    }
-  else if (dir_len > 0)
-    {
-      *full_name = callocec(dir_len + base_len + 2, 1);
-      memcpy(*full_name, dirname, dir_len);
-      (*full_name)[dir_len] = '/';
-      memcpy(*full_name + dir_len + 1, basename, base_len);
-      (*full_name)[dir_len + base_len + 1] = '\0';
-    }
-  else
-    {
-      *full_name = callocec(base_len + 1, 1);
-      memcpy(*full_name, basename, base_len);
-    }
+  char *p;
+  int m = strlen(h);
+  int n = strlen(t);
 
-  return 1;
+  if (*t == '/')
+    p = strdup(t);
+  else if (m == 0 || *(h+m-1) == '/') {
+    p = callocec(1, m+n+1);
+    memcpy(p, h, m);
+    memcpy(p+m, t, n);
+  }
+  else {
+    p = callocec(1, m+n+2);
+    memcpy(p, h, m);
+    *(p+m) = '/';
+    memcpy(p+m+1, t, n);
+  }
+  return p;
 }
-
 
 /********************************************************************/ 
 /*                                                                  */

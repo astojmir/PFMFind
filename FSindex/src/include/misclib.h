@@ -95,12 +95,13 @@ int compare_dbl(const void *M1, const void *M2);
 int check_word_alphabet(const char *word, int word_len,
 			const char *alphabet, int alphabet_len);
 
-/* Directory names */
-int split_base_dir(const char *full_name, char **basename, 
-		   char **dirname);
-int cat_base_dir(char **full_name, const char *basename, 
-		 const char *dirname);
- 
+/* Directory names - almost equivalent to corresponding Python
+   os.path functions */
+
+void path_split(const char *path, char **head, char **tail);
+char *path_join(const char *head, const char *tail);
+
+
 
 /********************************************************************/    
 /********************************************************************/    
