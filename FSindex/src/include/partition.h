@@ -1,8 +1,3 @@
-/********************************************************************/    
-/*                                                                  */
-/*                    FS_TABLE module                               */ 
-/*                                                                  */
-/********************************************************************/    
 #ifndef _FS_TABLE_H
 #define _FS_TABLE_H
 
@@ -12,11 +7,9 @@
 #include "misclib.h"
 
 /********************************************************************/    
-/********************************************************************/    
-/***                                                              ***/
-/***               PROTOTYPES                                     ***/ 
-/***                                                              ***/
-/********************************************************************/    
+/*                                                                  */
+/*                    FS_TABLE module                               */ 
+/*                                                                  */
 /********************************************************************/    
 
 /* Predefined sizes - powers of two:
@@ -82,9 +75,6 @@ char *FS_SEQ_print(FS_TABLE *ptable, FS_SEQ_t FSseq);
 char *FS_TABLE_sprint(FS_TABLE *ptable);
 void FS_TABLE_fprint(FS_TABLE *ptable, FILE *fp);
 
-/* Sequence database (heap) conversion into array of ints */
-int *FS_TABLE_order_convert_heap(FS_TABLE *ptable, const char *s, int len);
-
 /* Access macros - we will access it directly for indexing.
    No bounds checking either. */
 
@@ -107,12 +97,6 @@ int FS_TABLE_get_hash(FS_TABLE *ptable, int pos, int pttn);
 /***               INLINE FUNCTION DEFINITIONS                    ***/ 
 /***                                                              ***/
 /********************************************************************/    
-/********************************************************************/    
-
-/********************************************************************/    
-/*                                                                  */
-/*                    FS_TABLE module                               */ 
-/*                                                                  */
 /********************************************************************/    
 
 #define FS_TABLE_get_len(ptable) ((ptable)->len)
