@@ -8,14 +8,9 @@
 #include "misclib.h"
 
 #define MERGE_DUPLICATES
-/********************************************************************/ 
-/*                                                                  */
-/*                     FSSRCH object                                */ 
-/*                                                                  */
-/********************************************************************/ 
+
 
 #define MAX_HITS 100
-
 #define PQDATUM HIT 
 #define PQPRIO(p) (p.dist) 
 
@@ -28,7 +23,9 @@
 /********************************************************************/ 
 
 /* Allocate search specific arrays */
-static
+
+extern void alloc_FSSRCH(FSSRCH *FSS, int m, int *nbpt);
+
 void alloc_FSSRCH(FSSRCH *FSS, int m, int *nbpt)
 {
   int i;
@@ -174,7 +171,6 @@ FSINDX *FS_INDEX_create(const char *database, uint32_t len, const char **sepn, i
     FSI->index_name = strdup("New Index");
     FSI->m = len;
     FSI->no_bins = no_bins = ptable->bins;
-    FSI->use_sa = use_sa;
 
     /* Load database */
     FSI->s_db = fastadb_open(database); 
@@ -185,36 +181,6 @@ FSINDX *FS_INDEX_create(const char *database, uint32_t len, const char **sepn, i
     _len_ = len; 
     _rank_ = ptable->rank;
     
-
-    if (use_sa) {
-      *_end_ = '_';
-      FSI->sa_size = _end_ - _base_ + 1;
-      if (print_flag) {
-	printf("***** Suffix Array *****\n");
-	printf("Converting sequences ...\n");
-      }
-      FSI->sa = FS_TABLE_order_convert_heap(FSI->ptable, _base_,
-				       FSI->sa_size);
-      if (print_flag) {
-	printf("Creating suffix array ...\n");
-      }
-      if (sarray(FSI->sa, FSI->sa_size) == -1)
-	Throw FSexcept(RUNTIME_ERR, "FS_INDEX_create():"
-		       " Could not create suffix array.\n");
-      if (print_flag) {
-	printf("Creating lcp array ...\n");
-      }
-      tmp_lcpx = lcp(FSI->sa, _base_, FSI->sa_size); 
-      if (!tmp_lcpx)
-	Throw FSexcept(RUNTIME_ERR, "FS_INDEX_create():"
-		       " Could not create lcp array.\n");
-      FSI->lcpx = mallocec(FSI->sa_size);
-      for (i=0; i < FSI->sa_size; i++)
-	FSI->lcpx[i] = min(tmp_lcpx[i], 255);
-      free(tmp_lcpx);
-      *_end_='\0';
-    }
-
     if (print_flag) {
       printf("***** FSindex bins *****\n");
       printf("Counting fragments ...\n");
@@ -349,6 +315,7 @@ void FS_INDEX_destroy(FSINDX *FSI)
     }
   }
 
+  /* Free the rest of FSI */
   free(FSI->db_name);
   free(FSI->index_name);
   if (FSI->s_db != NULL)
@@ -358,10 +325,6 @@ void FS_INDEX_destroy(FSINDX *FSI)
   free(FSI->shist);
   free(FSI->uhist);
 
-  if (FSI->sa) {
-    free(FSI->sa);
-    free(FSI->lcpx);
-  }
   free(FSI->bins);
   free(FSI->oa);
   free(FSI->lcpb);
@@ -389,7 +352,6 @@ int FS_INDEX_save(FSINDX *FSI, const char *filename)
   fwrite(&(FSI->no_bins), sizeof(uint32_t), 1, fp);
 
   fwrite(&(FSI->no_seqs), sizeof(uint32_t), 1, fp);
-  fwrite(&(FSI->use_sa), sizeof(int), 1, fp);
 
   fwrite(&(FSI->binL), sizeof(SEQ_index_t), 1, fp);
   fwrite(&(FSI->uL), sizeof(SEQ_index_t), 1, fp);
@@ -402,12 +364,6 @@ int FS_INDEX_save(FSINDX *FSI, const char *filename)
   fwrite(FSI->bins, sizeof(uint32_t), FSI->no_bins+1, fp);  
   fwrite(FSI->oa, sizeof(int), FSI->no_seqs, fp);
   fwrite(FSI->lcpb, sizeof(char), FSI->no_seqs, fp);
-
-  if (FSI->use_sa) {
-    fwrite(&(FSI->sa_size), sizeof(int), 1, fp);
-    fwrite(FSI->sa, sizeof(int), FSI->sa_size, fp); 
-    fwrite(FSI->lcpx, sizeof(char), FSI->sa_size, fp); 
-  }
 
   fclose(fp);
   return 1;
@@ -446,7 +402,6 @@ FSINDX *FS_INDEX_load(const char *filename)
     fread(&(FSI->no_bins), sizeof(uint32_t), 1, fp);
 
     fread(&(FSI->no_seqs), sizeof(uint32_t), 1, fp);
-    fread(&(FSI->use_sa), sizeof(int), 1, fp);
 
     fread(&(FSI->binL), sizeof(SEQ_index_t), 1, fp);
     fread(&(FSI->uL), sizeof(SEQ_index_t), 1, fp);
@@ -464,14 +419,6 @@ FSINDX *FS_INDEX_load(const char *filename)
     fread(FSI->bins, sizeof(uint32_t), FSI->no_bins+1, fp);
     fread(FSI->oa, sizeof(int), FSI->no_seqs, fp);
     fread(FSI->lcpb, sizeof(char), FSI->no_seqs, fp);
-
-    if (FSI->use_sa) {
-      fread(&(FSI->sa_size), sizeof(int), 1, fp);
-      FSI->sa = mallocec(FSI->sa_size * sizeof(int)); 
-      FSI->lcpx = mallocec(FSI->sa_size); 
-      fread(FSI->sa, sizeof(int), FSI->sa_size, fp); 
-      fread(FSI->lcpx, sizeof(char), FSI->sa_size, fp); 
-    }
 
     fclose(fp);
     free(basename);
@@ -875,7 +822,7 @@ void process_bin_sarray(FSSRCH *FSS, FS_SEQ_t bin)
 }
 
 /********************************************************************/ 
-/*      Main Search functions                                       */
+/*      Main Search function                                        */
 /********************************************************************/ 
 
 static 
@@ -930,23 +877,30 @@ void FS_search(FSSRCH *FSS, void *qseq0)
   check_bins(FSS, FSS->qbin, 0, 0); 
 }
 
+/********************************************************************/ 
+/*      Testing Search functions (not meant for general use)        */
+/********************************************************************/ 
 
 static
 void sarray_search(FSSRCH *FSS, void *ptr)
 {
-  ULINT n = FSS->FSI->bins[FSS->FSI->no_bins] 
-    - FSS->FSI->bins[1];
-  FSS->sa = FSS->FSI->sa;
-  FSS->lcpx = FSS->FSI->lcpx;
-  if (FSS->FSI->use_sa)
-    traverse_sarray(FSS, 1, n);
+  /* Sequential scan of the whole array 
+     making only use of 'suffix array'-like 
+     structure. The sa array need not be a true 
+     suffix array */
+
+  FSS->sa = FSS->FSI->oa;
+  FSS->lcpx = FSS->FSI->lcpb;
+  traverse_sarray(FSS, 0, FSS->FSI->no_seqs);
 }
 
 static
 void seq_scan_search(FSSRCH *FSS, void *ptr)
 {
-  /* Straight copy of bin scanning function where
+  /* Sequentially scans the whole dataset.
+     Straight copy of bin scanning function where
      the whole dataset is in one bin */
+
   int dist;
   int i;
 
@@ -966,6 +920,7 @@ void seq_scan_search(FSSRCH *FSS, void *ptr)
   HIT_LIST_count_useq_visited(FSS->HL, n * qlen);
   HIT_LIST_count_seq_visited(FSS->HL, n);
 }
+
 
 static
 HIT_LIST_t *run_search(FSINDX *FSI, int thread, SCORE_MATRIX *M, 
@@ -1212,7 +1167,6 @@ HIT_LIST_t *FSINDX_threaded_srch(FSINDX *FSI, SRCH_ARGS *args, int n)
   struct THREAD_ARGS_s targs[THREADS];
   HIT_LIST_t *HL = callocec(n, sizeof(HIT_LIST_t));
   pthread_attr_t attr;
-  int status;
 
   pthread_mutex_init(&mutexnext, NULL);  
   next_avail_srch = 0;
@@ -1233,7 +1187,7 @@ HIT_LIST_t *FSINDX_threaded_srch(FSINDX *FSI, SRCH_ARGS *args, int n)
 
   /* Wait on remaining threads */
   for (i=0; i < THREADS; i++) 
-    pthread_join(callThd[i], (void **)&status);
+    pthread_join(callThd[i], NULL);
 
   /* Destroy mutex and attribute */
   pthread_attr_destroy(&attr);
