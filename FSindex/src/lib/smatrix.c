@@ -415,18 +415,6 @@ char *SCORE_MATRIX_sprint(SCORE_MATRIX *S)
 	absprintf(&buf, &size, &len, "%4d ", S->M[i][*a & A_SIZE_MASK]);
       absprintf(&buf, &size, &len, "\n");
     }
-#if 0
-    absprintf(&buf, &size, &len, "%3.3s ", "");
-    for (a=S->alphabet; *a; a++) 
-      absprintf(&buf, &size, &len, "  %c ", *a);
-    absprintf(&buf, &size, &len, "\n");
-    for (i=0; i < S->len; i++) {
-      absprintf(&buf, &size, &len, "%3d ", i);
-      for (a=S->alphabet; *a; a++)
-	absprintf(&buf, &size, &len, "%3d ", S->M[i][*a & A_SIZE_MASK]);
-      absprintf(&buf, &size, &len, "\n");
-    }
-#endif
   }
   else {
     absprintf(&buf, &size, &len, "%3.3s ", "");
