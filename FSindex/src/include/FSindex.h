@@ -7,37 +7,10 @@
 #include <inttypes.h>
 #include "fastadb.h"
 #include "partition.h"
-
 #include "smatrix.h"
 #include "hit_list.h"
 #include "misclib.h"
 
-
-/********************************************************************/    
-/********************************************************************/    
-/***                                                              ***/
-/***               PROTOTYPES                                     ***/ 
-/***                                                              ***/
-/********************************************************************/    
-/********************************************************************/    
-
-/********************************************************************/    
-/*                                                                  */
-/*                     UFRAG                                        */ 
-/*                                                                  */
-/********************************************************************/    
-
-typedef union
-{
-  SEQ_index_t *p; /* Pointer to the array of fragments */
-  SEQ_index_t s;  /* Only fragment */
-} FRAG_HNDL; 
-
-typedef struct
-{
-  int n;
-  FRAG_HNDL frag; 
-} UFRAG;
 
 typedef struct 
 {
@@ -82,6 +55,7 @@ typedef struct FSSRCH_s
   struct pqueue *p_queue;  /* Priority queue                        */
 } FSSRCH; 
 
+
 /********************************************************************/    
 /*                                                                  */
 /*                     FS_INDEX module                              */ 
@@ -92,7 +66,7 @@ typedef struct FSSRCH_s
 #endif
 
 #ifndef THREADS
-#define THREADS 1
+#define THREADS 4
 #endif
 
 typedef enum {FS_BINS, SUFFIX_ARRAY, SEQ_SCAN} SFUNC_TYPE;
@@ -124,12 +98,6 @@ typedef struct FSINDX_s
 
   /* FSSRCH - search specific variables (one per thread) */
   FSSRCH FSS[THREADS];
-
-  /* Suffix and lcp array */ 
-  int *sa;               /* Suffix array of the sequence database */
-  uint8_t *lcpx;   /* Longest common prefix                 */
-  uint32_t sa_size;           /* Size of sa                            */
-  int use_sa;
 
   /* Bins and its lcp */
   int *oa;               /* Offset array - bin order              */
