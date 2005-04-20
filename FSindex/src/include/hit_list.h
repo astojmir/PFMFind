@@ -9,14 +9,6 @@
 #include "misclib.h"
 
 /********************************************************************/    
-/********************************************************************/    
-/***                                                              ***/
-/***               PROTOTYPES                                     ***/ 
-/***                                                              ***/
-/********************************************************************/    
-/********************************************************************/    
-
-/********************************************************************/    
 /*                                                                  */
 /*                    SEQ_HIT module                                */ 
 /*                                                                  */
@@ -39,10 +31,6 @@ typedef int SEQ_HIT_PRINT_OPT_t;
 
 void SEQ_HIT_print(SEQ_HIT_t *hit, FILE *stream, 
 		   SEQ_HIT_PRINT_OPT_t options);
-
-void 
-SEQ_HIT_xml(SEQ_HIT_t *hit, FILE *fp, int i,
-	    SEQ_HIT_PRINT_OPT_t options);
 
 /********************************************************************/    
 /*                                                                  */
@@ -137,57 +125,6 @@ void HIT_LIST_stop_timer(HIT_LIST_t *HL);
 /* Printing */
 void HIT_LIST_print(HIT_LIST_t *HL, FILE *stream, 
 		    HIT_LIST_PRINT_OPT_t *options);
-
-#if 0
-/* XML routines */
-#define MAX_CHILDREN 15
-typedef enum {NOVAL, CHAR, SHORT, LONG, FLOAT, DOUBLE} val_type;
-typedef enum {NOOBJ, HIT_LIST, LIST} obj_type;
-
-struct valid_tag
-{
-  const char *tag;
-  int children;
-  int child[MAX_CHILDREN];
-  int parent;
-  val_type vtype;
-  obj_type otype;
-  size_t offset;
-};
-
-typedef struct valid_tag VALID_TAG;
-
-typedef struct
-{
-  const VALID_TAG *tags;
-  const VALID_TAG *top;
-  char *buffer;
-  int bufsize;
-  int max_bufsize;
-  HIT_LIST_t *HL;
-  int skip;
-  int opentag;
-} XML_PARSE_DATA;
-
-void HIT_LIST_xml(HIT_LIST_t *HL, FILE *fp, 
-		  HIT_LIST_PRINT_OPT_t *options);
-
-XML_PARSE_DATA *init_parse_data(void);
-void destroy_parse_data(XML_PARSE_DATA *PD);
-
-void
-HIT_LIST_XML_StartElementHandler(void *userData,
-				 const XML_Char *name,
-				 const XML_Char **atts);
-void
-HIT_LIST_XML_EndElementHandler(void *userData,
-			       const XML_Char *name);
-void HIT_LIST_XML_CharacterDataHandler(void *userData,
-				       const XML_Char *s,
-				       int len);
-
-HIT_LIST_t *HIT_LIST_parse_xml(FILE *stream);
-#endif
 
 /* Element Access */
 ULINT HIT_LIST_get_seqs_hits(HIT_LIST_t *HL);
