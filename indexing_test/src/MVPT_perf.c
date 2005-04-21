@@ -3,6 +3,7 @@
 #include <string.h>
 #include "fastadb.h"
 #include "FSindex.h"
+#include "SAindex.h"
 #include "hit_list.h"
 #include "misclib.h"
 #include "mvptree.h"
@@ -24,6 +25,7 @@ int main(int argc, char **argv)
   char **queries = NULL;
 
   FSINDX *I;
+  SAINDX *A;
   UFRAG_DB *udb;
   SCORE_MATRIX *D;
   HIT_LIST_t *HL = NULL;
@@ -34,21 +36,23 @@ int main(int argc, char **argv)
 
   char *mvpt_file;
   char *FSindex_file;
+  char *SAindex_file;
   char *query_file;
   int radius= 15;
   int kNN = 1;
 
-  int no_args = 4;
+  int no_args = 5;
   if (argc < no_args+1) {
     fprintf(stderr,"Insufficient arguments \n");
-    fprintf(stderr,"Usage: %s mvpt_file FSindex_file query_file kNN\n", argv[0]);  
+    fprintf(stderr,"Usage: %s mvpt_file FSindex_file SAindex_file query_file kNN\n", argv[0]);  
     exit(EXIT_FAILURE);
   }
 
   mvpt_file = argv[1];
   FSindex_file = argv[2];
-  query_file = argv[3];
-  kNN = atoi(argv[4]);
+  SAindex_file = argv[3];
+  query_file = argv[4];
+  kNN = atoi(argv[5]);
 
 
   Try {
@@ -59,6 +63,7 @@ int main(int argc, char **argv)
     udb = (UFRAG_DB *) MVPT2->db;
 
     I = FS_INDEX_load(FSindex_file);
+    A = SA_INDEX_load(SAindex_file);
 
     queries = mallocec(MAX_RUNS * sizeof(char *));
     i=0;
@@ -126,7 +131,7 @@ int main(int argc, char **argv)
 	     HL->useqs_visited, HL->useqs_hits);
 
       /* FSindex suffix array run */
-      HL = FSINDX_rng_srch(I, &query, D, radius, MAX, HL, SUFFIX_ARRAY, SARRAY);
+      HL = SAINDX_rng_srch(A, &query, D, radius, MAX, HL);
       printf("%5ld %9ld %9ld %9ld %9ld %12ld %12ld ",
 	     HL->actual_seqs_hits,
 	     HL->FS_seqs_visited, HL->FS_seqs_hits,
