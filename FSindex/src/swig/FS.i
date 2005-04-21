@@ -233,7 +233,6 @@ typedef signed short SSINT;
 /********************************************************************/ 
 /*         db                                                       */
 /********************************************************************/ 
-/* ONLY BARE DATABASE - NO ITERATORS NOW */
 
 typedef struct
 {
@@ -246,16 +245,7 @@ typedef struct
 
 %extend db {
   db(const char *db_name) {
-    fastadb_arg fastadb_argt[3];
-    fastadb_argv_t fastadb_argv[3];
-
-    fastadb_argt[0] = ACCESS_TYPE;
-    fastadb_argt[1] = RETREIVE_DEFLINES;
-    fastadb_argt[2] = NONE;
-    fastadb_argv[0].access_type = MEMORY;
-    fastadb_argv[1].retrieve_deflines = YES;
-
-    return fastadb_open(db_name, fastadb_argt, fastadb_argv);
+    return fastadb_open(db_name);
   }
   ~db() {
     fastadb_close(self);
@@ -661,11 +651,7 @@ typedef enum {SARRAY, DUPS_ONLY, FULL_SCAN} PFUNC_TYPE;
 			 PyInt_FromLong(sdb->length));
     PyDict_SetItemString(dict, "db_no_seq", 
 			 PyInt_FromLong(sdb->no_seq));
-    PyDict_SetItemString(dict, "db_min_frag_len",
-			 PyInt_FromLong(sdb->min_len));
-    PyDict_SetItemString(dict, "db_min_frag_len",
-			 PyInt_FromLong(sdb->max_len));
-    
+
     /* Index data */
     PyDict_SetItemString(dict, "index_name",
 			 PyString_FromString(self->index_name));
