@@ -336,6 +336,7 @@ void FS_INDEX_destroy(FSINDX *FSI)
 int FS_INDEX_save(FSINDX *FSI, const char *filename)
 { 
   FILE *fp = fopen(filename, "wb");
+  int tmp = 0; /* For compatibility with previous versions */
 
   if (fp == NULL)
     Throw FSexcept(FOPEN_ERR, 
@@ -352,6 +353,7 @@ int FS_INDEX_save(FSINDX *FSI, const char *filename)
   fwrite(&(FSI->no_bins), sizeof(uint32_t), 1, fp);
 
   fwrite(&(FSI->no_seqs), sizeof(uint32_t), 1, fp);
+  fwrite(&tmp, sizeof(int), 1, fp);
 
   fwrite(&(FSI->binL), sizeof(SEQ_index_t), 1, fp);
   fwrite(&(FSI->uL), sizeof(SEQ_index_t), 1, fp);
@@ -379,6 +381,7 @@ FSINDX *FS_INDEX_load(const char *filename)
   char *dirname;
   char *full_dbname;
   int i;
+  int tmp = 0; /* For compatibility with previous versions */
 
   Try {
     if(fp == NULL)
@@ -402,6 +405,7 @@ FSINDX *FS_INDEX_load(const char *filename)
     fread(&(FSI->no_bins), sizeof(uint32_t), 1, fp);
 
     fread(&(FSI->no_seqs), sizeof(uint32_t), 1, fp);
+    fread(&tmp, sizeof(int), 1, fp);
 
     fread(&(FSI->binL), sizeof(SEQ_index_t), 1, fp);
     fread(&(FSI->uL), sizeof(SEQ_index_t), 1, fp);
@@ -891,6 +895,8 @@ void sarray_search(FSSRCH *FSS, void *ptr)
 
   FSS->sa = FSS->FSI->oa;
   FSS->lcpx = FSS->FSI->lcpb;
+  HIT_LIST_count_FS_seq_visited(FSS->HL, 1);
+  HIT_LIST_count_FS_seq_hit(FSS->HL, 1);
   traverse_sarray(FSS, 0, FSS->FSI->no_seqs);
 }
 
@@ -921,6 +927,10 @@ void seq_scan_search(FSSRCH *FSS, void *ptr)
   HIT_LIST_count_seq_visited(FSS->HL, n);
 }
 
+
+/********************************************************************/ 
+/*                   Main Search function                           */
+/********************************************************************/ 
 
 static
 HIT_LIST_t *run_search(FSINDX *FSI, int thread, SCORE_MATRIX *M, 
