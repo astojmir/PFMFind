@@ -38,7 +38,7 @@ FS_TABLE *FS_TABLE_init(const char **sepn, int len)
   }
 
   /* Get alphabet at the first position */
-  abet = callocec(l, 1);
+  abet = callocec(l+1, 1);
   for (c = sepn[0], l=0; *c; c++)
     if (*c != '#') abet[l++] = *c;
   /* Sort */
