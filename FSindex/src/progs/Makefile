@@ -1,10 +1,9 @@
 SHELL=/bin/sh
 
-FSLIB=libFSindex.a libsarray.a
-VPATH=../lib:../sarray
+FSLIB=libFSindex.a
+VPATH=../lib
 all: $(FSLIB) \
      test_smatrix \
-     count_frags \
      FSindex_create \
      FSindex_rng_perf \
      FSindex_rng_perf_thr \
@@ -12,6 +11,7 @@ all: $(FSLIB) \
      FSindex_ball_size \
      FSindex_delta2 \
      fastadb_test
+#     count_frags \  NEEDS SUFFIX ARRAY
 #     FSindex_stats 
 #     partition_test \
 

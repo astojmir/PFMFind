@@ -1,5 +1,5 @@
 SHELL=/bin/sh
-VPATH = ../lib:../sarray
+VPATH = ../lib
 all: _FS.so
 
 FS_wrap.c: FS.i
@@ -9,7 +9,7 @@ FS_wrap.c: FS.i
 FS_wrap.o: FS_wrap.c
 	$(CC) $(CFLAGS) -fPIC -c FS_wrap.c -I$(PYDIR)
 
-_FS.so: FS_wrap.o libFSindex.a libsarray.a
+_FS.so: FS_wrap.o libFSindex.a
 	$(CC) -shared -g FS_wrap.o $(LDFLAGS) $(LDLIBS) -o FS.so
 
 clean_wrap:
