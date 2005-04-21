@@ -541,8 +541,8 @@ void get_pt(void *udb0, ULINT i, BIOSEQ *seq)
 {
   UFRAG_DB *udb = (UFRAG_DB *) udb0;
   int offset = ufragdb_get_ufrag(udb, i);
-  fastadb_get_Ffrag(udb->sdb, udb->frag_len, 
-		    seq, offset);  
+  seq->start = fastadb_data_pter(udb->sdb, offset);
+  seq->len = udb->frag_len;
 } 
 
 static
@@ -658,7 +658,7 @@ MVP_TREE *MVP_TREE_load2(const char *filename)
 		   "MVP_TREE_load2(): Could not open the file %s.",
 		   filename);
   
-  split_base_dir(filename, &db_base, &db_dir);
+  path_split(filename, &db_dir, &db_base);
 
   D = SCORE_MATRIX_read(fp);
   ufragdb_read(udb, fp, db_dir);
@@ -714,7 +714,8 @@ HIT_LIST_t *MVP_TREE_rng_srch2(MVP_TREE *MVPT2, BIOSEQ *query, int range,
     ufragdb_get_dfrags2(udb, MVPT2->hits[j], &dfrags, &dsize);
     MVPT2->seqs_hit += dsize;
     for (k=0; k < dsize; k++) {
-      fastadb_get_Ffrag(udb->sdb, udb->frag_len, &dupl, dfrags[k]);
+      dupl.start = fastadb_data_pter(udb->sdb, dfrags[k]);
+      dupl.len = udb->frag_len;
       HIT_LIST_insert_hit(HL, &dupl, d0, 0); 
     }
   }

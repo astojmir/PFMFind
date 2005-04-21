@@ -92,6 +92,9 @@ struct avl_table *load_fragment_tree(SEQUENCE_DB *s_db, ULINT m,
   FS_TABLE *ptable = 
     FS_TABLE_init(&sepn, 1); 
 
+  char *_base_;
+  char *_end_;
+
   /* Load tree */
   *total_frags = 0;
   tree = avl_create(compare_frags, NULL, NULL);
@@ -99,33 +102,34 @@ struct avl_table *load_fragment_tree(SEQUENCE_DB *s_db, ULINT m,
 
   no_frags = fastadb_count_Ffrags(s_db, m);
   one_percent_fragments = (ULINT) (((double) no_frags) / 100);
-  fastadb_init_Ffrags(s_db, m);
+
+  _base_ = fastadb_data_pter(s_db, 0);  
+  _end_ = fastadb_end_heap(s_db);
+
   j = 0;
-
-  while (fastadb_get_next_Ffrag(s_db, m, bfrag, &i, 1))  
-    {
-      j++;
-      valid_frag = 1;
-      for (c=bfrag->start, c1=c+m; c < c1; c++)
-	if (FS_TABLE_get_pttn(ptable, 0, *c) == -1)
-	  valid_frag = 0;
-
-      if (valid_frag)
-	{
-	  (*total_frags)++;
-	  frag->seq = bfrag->start;
-	  frag->len = m;
-	  frag->counter = 0;
-	  tree_item = (struct unique_fragment **) 
-	    avl_probe (tree, frag);	  
-	  (*tree_item)->counter++;
-	  if ((*tree_item) == frag)
-	    frag = mallocec(sizeof(struct unique_fragment));	  
-	}
-
-      /* Print progress bar */
-      printbar(stdout, j+1, one_percent_fragments, 50);  
-    } 
+  for (bfrag->start=_base_; bfrag->start <= _end_; bfrag->start++) {
+    j++;
+    valid_frag = 1;
+    for (c=bfrag->start, c1=c+m; c < c1; c++)
+      if (FS_TABLE_get_pttn(ptable, 0, *c) == -1)
+	valid_frag = 0;
+    
+    if (valid_frag) {
+      i = bfrag->start - _base_;
+      (*total_frags)++;
+      frag->seq = bfrag->start;
+      frag->len = m;
+      frag->counter = 0;
+      tree_item = (struct unique_fragment **) 
+	avl_probe (tree, frag);	  
+      (*tree_item)->counter++;
+      if ((*tree_item) == frag)
+	frag = mallocec(sizeof(struct unique_fragment));	  
+    }
+    
+    /* Print progress bar */
+    printbar(stdout, j+1, one_percent_fragments, 50);  
+  } 
   free(bfrag);
   return tree;
 }
@@ -259,15 +263,6 @@ int main(int argc, char **argv)
   ULINT bins;
   ULINT *freq;
 
-  fastadb_arg fastadb_argt[5];
-  fastadb_argv_t fastadb_argv[5];
-
-  fastadb_argt[0] = ACCESS_TYPE;
-  fastadb_argt[1] = RETREIVE_DEFLINES;
-  fastadb_argt[2] = NONE;
-  fastadb_argv[0].access_type = MEMORY;
-  fastadb_argv[1].retrieve_deflines = YES;
-
   /* Process command line options */
 
   if (argc >= 2)
@@ -294,7 +289,7 @@ int main(int argc, char **argv)
 
     /* Load the sequence database */
     fprintf(stdout, "  Loading Sequence Database\n");
-    s_db = fastadb_open(db_file, fastadb_argt, fastadb_argv); 
+    s_db = fastadb_open(db_file); 
     
     /* Load tree */
     fprintf(stdout, "  Loading Search Tree\n");

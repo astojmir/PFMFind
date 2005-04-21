@@ -72,10 +72,7 @@ void ufragdb_create(UFRAG_DB *udb, const char *db_name,
 		    ULINT frag_len, int skip)
 {
   EXCEPTION *except;
-  fastadb_arg fastadb_argt[3];
-  fastadb_argv_t fastadb_argv[3];
 
-  BIOSEQ frag;
   char *seqstr;
   char **tree_item;
   struct avl_table *AVLtree = NULL;
@@ -91,30 +88,25 @@ void ufragdb_create(UFRAG_DB *udb, const char *db_name,
   char *db_dir = NULL;
   char *db_base = NULL;
 
+  char *_base_;
+  char *_end_;
 
   /* We want to start in clean state in case something fails */
   if (udb->frag_len > 0)
     return;
   
   Try {
-    split_base_dir(db_name, &db_base, &db_dir);
+    path_split(db_name, &db_dir, &db_base);
 
     udb->db_name_len = strlen(db_base);
     udb->db_name = strdup(db_base);
     udb->frag_len = frag_len;
     udb->skip = skip;
  
-    fastadb_argt[0] = ACCESS_TYPE;
-    fastadb_argt[1] = RETREIVE_DEFLINES;
-    fastadb_argt[2] = NONE;
-    fastadb_argv[0].access_type = MEMORY;
-    fastadb_argv[1].retrieve_deflines = YES;
-    udb->sdb = fastadb_open(db_name, fastadb_argt, fastadb_argv); 
+    udb->sdb = fastadb_open(db_name); 
 
     no_frags = fastadb_count_Ffrags(udb->sdb, frag_len);
     one_percent_fragments = (ULINT) (((double) no_frags/skip) / 100);
-    fastadb_init_Ffrags(udb->sdb, frag_len);
-
 
     /* Allocate to maximum possible number so we don't have to
        grow the array later */
@@ -124,15 +116,17 @@ void ufragdb_create(UFRAG_DB *udb, const char *db_name,
 
     AVLtree = avl_create(compare_seqstr, &frag_len, NULL);
 
+    _base_ = fastadb_data_pter(udb->sdb, 0);  
+    _end_ = fastadb_end_heap(udb->sdb);
+
     j=0;
     fprintf(stdout, "Sorting fragments.\n");
-    while (fastadb_get_next_Ffrag(udb->sdb, frag_len, &frag, &i, skip)) {
+    for (seqstr=_base_; seqstr <= _end_; seqstr++) {
       j++;
 
       /* Check if the fragment is valid */
-      seqstr = frag.start;
       valid = 1;
-      for (l=0; l < frag.len; l++, seqstr++) {
+      for (l=0; l < frag_len; l++, seqstr++) {
 	if (*seqstr == '\0' || *seqstr == 'B' || 
 	    *seqstr == 'Z' || *seqstr == 'X' )
 	  valid = 0;
@@ -140,6 +134,7 @@ void ufragdb_create(UFRAG_DB *udb, const char *db_name,
       } 
 
       if (valid) {
+	i = seqstr - _base_;
 	tree_item = (char **)avl_probe(AVLtree, seqstr);	  
 
 	if ((*tree_item) == seqstr) {
@@ -226,8 +221,6 @@ void ufragdb_create(UFRAG_DB *udb, const char *db_name,
 
 void ufragdb_read(UFRAG_DB *udb, FILE *fp, char *db_dir)
 {
-  fastadb_arg fastadb_argt[3];
-  fastadb_argv_t fastadb_argv[3];
   char *db_full;
 
   fprintf(stdout, "Loading fragments.\n");
@@ -248,12 +241,6 @@ void ufragdb_read(UFRAG_DB *udb, FILE *fp, char *db_dir)
 
   fread(udb->db_name, 1, udb->db_name_len, udb->fptr);
 
-  fastadb_argt[0] = ACCESS_TYPE;
-  fastadb_argt[1] = RETREIVE_DEFLINES;
-  fastadb_argt[2] = NONE;
-  fastadb_argv[0].access_type = MEMORY;
-  fastadb_argv[1].retrieve_deflines = YES;
-    
   if (db_dir != NULL) {
     db_full = mallocec(strlen(db_dir)+strlen(udb->db_name)+2);
     strcpy(db_full, db_dir);
@@ -263,7 +250,7 @@ void ufragdb_read(UFRAG_DB *udb, FILE *fp, char *db_dir)
   else
     db_full = udb->db_name; 
 
-  udb->sdb = fastadb_open(db_full, fastadb_argt, fastadb_argv); 
+  udb->sdb = fastadb_open(db_full); 
 
   udb->pts = mallocec(udb->pts_size * sizeof(ULINT));
   udb->dup_offset = mallocec(udb->dpts_size * sizeof(ULINT));
@@ -318,7 +305,7 @@ void ufragdb_load(UFRAG_DB *udb, const char *udb_name,
 		   "ufragdb_load(): Could not open the file %s.",
 		   udb_name);
 
-  split_base_dir(udb_name, &db_base, &db_dir);
+  path_split(udb_name, &db_dir, &db_base);
 
   ufragdb_read(udb, fp, db_dir);
 
