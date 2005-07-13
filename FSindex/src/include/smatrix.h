@@ -121,4 +121,7 @@ char *SCORE_MATRIX_sprint(SCORE_MATRIX *S);
 void SCORE_MATRIX_write(SCORE_MATRIX *S, FILE *fp);
 SCORE_MATRIX *SCORE_MATRIX_read(FILE *fp);
 
+unsigned char *SCORE_MATRIX_swrite(SCORE_MATRIX *S, int *size);
+SCORE_MATRIX *SCORE_MATRIX_sread(unsigned char *s);
+
 #endif /* #ifndef _SMATRIX_H */

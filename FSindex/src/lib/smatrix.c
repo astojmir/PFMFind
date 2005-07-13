@@ -484,3 +484,99 @@ SCORE_MATRIX *SCORE_MATRIX_read(FILE *fp)
 }
 
 
+unsigned char *SCORE_MATRIX_swrite(SCORE_MATRIX *S, int *size)
+{
+  /* Use byte-order-independent functions to write the matrix as a
+     byte stream. All ints are 32 bits. */ 
+
+  int i, msize, x, k;
+  unsigned char *s;
+  char *c, *d;
+
+  msize = S->Mtype == SCORE ? S->alen*S->alen : S->len*S->alen;
+ 
+  *size = 4 + 4 + 4 + msize*4 + S->alen+1;
+  s = mallocec(*size);
+
+  k = 0;
+  x = (int) S->Mtype;
+  swrite_int32(&x, 1, s+k);
+  k += 4;
+  x = (int) S->Stype;
+  swrite_int32(&x, 1, s+k);
+  k += 4;
+  swrite_int32(&S->len, 1, s+k);
+  k += 4;
+  strncpy(s+k, S->alphabet, S->alen+1);
+  k += S->alen+1;
+
+
+  if (S->Mtype == SCORE) {
+    for (d=S->alphabet; *d; d++)
+      for (c=S->alphabet; *c; c++) {
+	swrite_int32(S->M[*d & A_SIZE_MASK] + (*c & A_SIZE_MASK), 1, s+k); 
+	k += 4;
+      }
+  }
+  else {
+    for (i=0; i < S->len; i++)
+      for (c=S->alphabet; *c; c++) {
+	swrite_int32(S->M[i] + (*c & A_SIZE_MASK), 1, s+k);
+	k += 4;
+      }
+  }
+
+  printf("%d %d\n", *size, k);
+  return s;
+}
+
+SCORE_MATRIX *SCORE_MATRIX_sread(unsigned char *s)
+{
+  /* Use byte-order-independent functions to write the matrix as a
+     byte stream. All ints are 32 bits. */ 
+
+  int i, x, k;
+  char *c, *d;
+
+  MATRIX_TYPE Mtype;
+  SCORE_TYPE Stype;
+  int len;
+  int **NM;
+  char *alphabet;
+
+
+  k = 0;
+
+  sread_int32(&x, 1, s+k);
+  Mtype = x;
+  k += 4;
+  sread_int32(&x, 1, s+k);
+  Stype = x;
+  k += 4;
+  sread_int32(&len, 1, s+k);
+  k += 4;
+  alphabet = strdup(s+k);
+  k += strlen(alphabet)+1;
+
+  if (Mtype == SCORE) {
+    NM = mallocec(A_SIZE * sizeof(int *));
+    for (i=0; i < A_SIZE; i++)
+      NM[i] = mallocec(A_SIZE * sizeof(int));
+    for (d=alphabet; *d; d++)
+      for (c=alphabet; *c; c++) {
+	sread_int32(NM[*d & A_SIZE_MASK] + (*c & A_SIZE_MASK), 1, s+k); 
+	k += 4;
+      }
+  }
+  else {
+    NM = mallocec(len * sizeof(int *));
+    for (i=0; i < len; i++)
+      NM[i] = mallocec(A_SIZE * sizeof(int));
+      for (c=alphabet; *c; c++) {
+	sread_int32(NM[i] + (*c & A_SIZE_MASK), 1, s+k);
+	k += 4;
+      }
+  }
+
+  return SCORE_MATRIX_init(NM, len, Mtype, Stype, alphabet);
+}
