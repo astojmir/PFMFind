@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE PFMF_index_setup SYSTEM "PFMFix.dtd">
+<PFMF_index_setup>
+  <Database driver="psycopg" host="130.195.61.31" port="5432" user="aleksander" password="sasa" db="PFMFind"/>
+  <Index_dir>/home/aleksander/data/uniprot-3.5/FSindex</Index_dir>
+  <Dataset name="sprot" schema="PFMFind02" namespace="SwissProt" max_residues="80000000">
+    <Index length="10">
+      <Partition>STAN#ILVM#KRDEQ#WFYH#GPC</Partition>
+    </Index>
+    <Index length="12">
+      <Partition>STAN#ILVM#KRDEQ#WFYHGPC</Partition>
+    </Index>
+  </Dataset>
+</PFMF_index_setup>
