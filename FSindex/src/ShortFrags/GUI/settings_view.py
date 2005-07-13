@@ -357,7 +357,7 @@ class SettingsView(Tkinter.Frame, View):
                                parent = self.parent,
                                title = 'Choose Settings File',
                                initialdir=os.getcwd())
-        if path == (): return
+        if not len(path): return
         fp = file(path, 'r')
         self.PFMF_client.read_config(fp)
         fp.close()
