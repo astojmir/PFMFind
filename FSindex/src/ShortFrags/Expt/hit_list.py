@@ -68,9 +68,8 @@ class Hit(object):
 	"""
         self.__dict__ = dict
 
-    defline = property(fget=lambda hit : hit.accession)
-    cluster = property(fget=lambda hit : hit.accession)
     keywords = property(fget=lambda hit : [])
+#    defline = property(fget=lambda hit : hit.accession)
 
 
 # Functions for printing hits (as dictionaries) and
@@ -127,7 +126,7 @@ def summary(hits, show_rank=0, defline_width=57,
         if len(hits) > 1: file_str.write('\n')
     return file_str.getvalue()
 
-def description(hits, query_seq, qs=0):
+def description(hits, query_seq, qs=0, get_offsets=False):
     """
     Return a printable string providing full details for a 
     list of hits.
@@ -140,29 +139,28 @@ def description(hits, query_seq, qs=0):
     @return: String providing details of hits.
     """
     file_str = StringIO()
+    lines = 0
+    offsets = []
 
-    for ht in hits:
+    for i,ht in enumerate(hits):
+        offsets.append(lines)
         defline = ht.defline
         a = qs
         b = qs + len(query_seq)
         file_str.write('%s\n' % defline)
+        lines += 1
 
-        K = ht.keywords
+        if hasattr(ht, 'taxon'):
+            file_str.write('  Taxon: %s\n' % ht.taxon)
+            lines += 1
 
-        file_str.write('Keywords: ')
-        for k in K[0:4]:
-            file_str.write('%s; ' % k)
-        file_str.write('\n')
-
-        file_str.write('          ')
-        for k in K[4:8]:
-            file_str.write('%s; ' % k)
-        file_str.write('\n')
-
-        file_str.write('          ')
-        for k in K[8:]:
-            file_str.write('%s; ' % k)
-        file_str.write('\n')
+        if hasattr(ht, 'features'):
+            for ft, kws in ht.features.iteritems():
+                file_str.write('  %s:' % ft)
+                for k in kws[:-1]:
+                    file_str.write(' %s,' % k)
+                file_str.write(' %s\n' % kws[-1])
+                lines += 1
 
         file_str.write('dist = %d  sim = %d\n' % (ht.dist,
                                                     ht.sim))
@@ -172,9 +170,13 @@ def description(hits, query_seq, qs=0):
                                                 ht.seq_to,
                                                 ))
         file_str.write('\n')
-        
-    return file_str.getvalue()
+        lines += 4
 
+    if get_offsets:
+        return file_str.getvalue(), offsets
+    else:
+        return file_str.getvalue()
+    
 class HitList(list):
 
     """
@@ -228,23 +230,18 @@ class HitList(list):
         self.__dict__ = dict
 	
     def __str__(self):
-        """
-        Call B{print_str} and return the string generated.
-        """
         return self.print_str()
 
     def header_str(self):
         """
-        Return a printable string with header information.
-	
-	@return: String with header information.
+        Returns a printable string with header information.
         """
 
         file_str = StringIO()
         file_str.write("***** Query Parameters *****\n")
         file_str.write("Query fragment: %s\n" % self.query_seq)
         file_str.write("Query decription: %s\n" % self.query_def)
-        if 'matrix_name' in self.__dict__:
+        if hasattr(self, 'matrix_name'):
             file_str.write("Score matrix: %s\n" % self.matrix_name)
         file_str.write("Matrix conversion type: %s\n" % self.conv_type)
         file_str.write("Distance range: %d\n" % self.dist_range)
@@ -255,9 +252,7 @@ class HitList(list):
 
     def summary_str(self):
         """
-        Return a printable string with full summary.
-	
-	@return: String with summary information.
+        Returns a printable string with full summary.
         """
 
         file_str = StringIO()
@@ -266,9 +261,9 @@ class HitList(list):
         file_str.write('\n')
         return file_str.getvalue()
 
-    def full_str(self, qs=0):
+    def full_str(self, qs=0, get_offsets=False):
         """
-        Return a printable string with full details for all hits.
+        Returns a printable string with full details for all hits.
 	
 	@param qs:  Starting offset of query fragment in B{query_seq}. The 
         length of the query fragment is the same as the length of the hit.
@@ -277,59 +272,84 @@ class HitList(list):
 
         file_str = StringIO()
         file_str.write("***** Full Details *****\n")
-        file_str.write(description(self, self.query_seq, qs))
+        if get_offsets:
+            ds, offsets = description(self, self.query_seq, qs, get_offsets)
+            file_str.write(ds)
+        else:
+            file_str.write(description(self, self.query_seq, qs))
         file_str.write('\n')
-        return file_str.getvalue()
+        if get_offsets:
+            return file_str.getvalue(), offsets
+        else:
+            return file_str.getvalue()
 
     def perf_str(self):
         """
-        Return a printable string with performance statistics.
-        @return: String providing performance statistics.
+        Returns a printable string with performance statistics.
         """
+
+        has_bins = hasattr(self, 'bins_visited') and hasattr(self, 'bins_hit')
+        has_frags = hasattr(self, 'frags_visited') and hasattr(self, 'frags_hit')
+        has_ufrags =  hasattr(self, 'unique_frags_visited') and \
+                     hasattr(self, 'unique_frags_hit')
+        has_time = hasattr(self, 'search_time')
+
+        if not (has_bins or has_frags or has_ufrags): return ""
 
         file_str = StringIO()
-
         file_str.write("***** Index Performance *****\n")
-        file_str.write("Number of checked bins : %d\n" % self.bins_visited)
-        file_str.write("Number of accepted bins : %d\n" % self.bins_hit)
-        if self.bins_visited != 0:
-            file_str.write("Accepted out of generated bins:  %.2f %%\n\n" \
-                           % (100.0 * self.bins_hit / self.bins_visited))
-        
-        file_str.write("Number of checked fragments : %d\n" % self.frags_visited)
-        file_str.write("Number of accepted fragments : %d\n" % self.frags_hit)
-        if self.frags_visited != 0:
-            file_str.write("Accepted out of generated fragments:  %.2f %%\n\n" \
-                           % (100.0 * self.frags_hit / self.frags_visited))
 
-#         if self.unique_frags_visited:
-#              file_str.write("Number of checked distinct fragments : %d\n" %\
-#                             self.unique_frags_visited)
-#              file_str.write("Number of accepted distinct fragments : %d\n" %\
-#                             self.unique_frags_hit)
-#              file_str.write("Accepted out of generated distinct fragments:  %.2f %%\n\n" \
-#                             % (100.0 * self.unique_frags_hit / self.unique_frags_visited))
+        if has_bins:
+            file_str.write("Number of checked bins : %d\n" % self.bins_visited)
+            file_str.write("Number of accepted bins : %d\n" % self.bins_hit)
+            if self.bins_visited != 0:
+                file_str.write("Accepted out of generated bins:  %.2f %%\n\n" \
+                               % (100.0 * self.bins_hit / self.bins_visited))
 
-        file_str.write("Search time: %.2f sec.\n" % self.search_time)
+        if has_frags:
+            file_str.write("Number of checked fragments : %d\n" % self.frags_visited)
+            file_str.write("Number of accepted fragments : %d\n" % self.frags_hit)
+            if self.frags_visited != 0:
+                file_str.write("Accepted out of generated fragments:  %.2f %%\n\n" \
+                               % (100.0 * self.frags_hit / self.frags_visited))
+
+        if has_ufrags:
+            if self.unique_frags_visited:
+                file_str.write("Number of checked distinct fragments : %d\n" %\
+                               self.unique_frags_visited)
+                file_str.write("Number of accepted distinct fragments : %d\n" %\
+                               self.unique_frags_hit)
+                file_str.write("Accepted out of generated distinct fragments:  %.2f %%\n\n" \
+                               % (100.0 * self.unique_frags_hit / self.unique_frags_visited))
+
+        if has_time:
+            file_str.write("Search time: %.2f sec.\n" % self.search_time)
+
         return file_str.getvalue()
     
-    def print_str(self, qs=0):
+    def print_str(self, qs=0, get_offsets=False):
         """
-	Return a printable string with the header, summary, full details, 
+	Returns a printable string with the header, summary, full details, 
 	and performance statistics.
 	
 	@param qs: Starting offset of query fragment in B{query_seq}. The 
         length of the query fragment is the same as the length of the hit.
-	
-	@return:  String providing header, summary, full details and 
-	performance statistics.
 	"""
+
         file_str = StringIO()
         file_str.write(self.header_str())
         file_str.write(self.summary_str())
-        file_str.write(self.full_str(qs))
+        if get_offsets:
+            ds, offsets = self.full_str(qs, get_offsets)
+            file_str.write(ds)
+        else:
+            file_str.write(self.full_str(qs))
         file_str.write(self.perf_str())
-        return file_str.getvalue()
+
+        if get_offsets:
+            return file_str.getvalue(), offsets
+        else:
+            return file_str.getvalue()
         
     
     def _sort_hits(self, incr, attribs):
@@ -402,17 +422,6 @@ class HitList(list):
                    ]
         self._sort_hits(incr, attribs)
 
-    def sort_by_cluster(self, incr=True):
-        """
-        Sort hits by sequence id.
-        """
-        
-        attribs = ['accession',
-                   'seq_from',
-                   'seq_to',
-                   ]
-        self._sort_hits(incr, attribs)
-
     def get_seqs(self):
         """
 	Extract sequences of all hits from the dictionary.
@@ -431,6 +440,63 @@ class HitList(list):
         deflines = [ht.defline for ht in self]
         return deflines
 
-    def get_clusters(self):
-        clusters = [ht.cluster for ht in self]
-        return clusters
+
+
+
+def _compare_dicts(d1, d2, skip_attribs=[]):
+    attribs = {}
+    
+    for k in d1.keys():
+        if k in skip_attribs:
+            continue
+        if k in d2: 
+            if d1[k] != d2[k]:
+                attribs[k] = (d1[k], d2[k])
+        else:
+            attribs[k] = (d1[k], None)
+
+    for k in d2.keys():
+        if k in skip_attribs:
+            continue
+        if k in d1: 
+            if d1[k] != d2[k]:
+                attribs[k] = (d1[k], d2[k])
+        else:
+            attribs[k] = (None, d2[k])
+
+    return attribs
+    
+
+
+def compare_hit_lists(HL1, HL2):
+    HL1.sort_by_distance()
+##    HL2.sort_by_distance()
+
+    # Check attributes
+    d1 = HL1.__dict__
+    d2 = HL2.__dict__
+    skip_attribs = ['search_time', 'frags_visited',
+               'query_def', 'frags_hit',
+               'unique_frags_hit', 'unique_frags_visited',
+               'bins_visited', 'bins_hit', 'matrix']
+
+    # Floats never compare equal and its too tedious
+    # to round and then compare
+    skip_attribs1 = ['defline', 'pvalue', 'Evalue']
+
+    attribs = _compare_dicts(d1, d2, skip_attribs)
+
+    if len(HL1) != len(HL2): return (False, (attribs, None))
+
+    htdiffs = []
+    all_ok = True
+    for i in xrange(len(HL1)):
+        d1 = HL1[i].__dict__
+        d2 = HL2[i].__dict__
+        ha = _compare_dicts(d1, d2, skip_attribs1)
+        if len(ha) > 0: all_ok = False
+        htdiffs.append(ha)
+
+    all_ok =  all_ok and (len(attribs) == 0) 
+
+    return (all_ok, (attribs, htdiffs))
