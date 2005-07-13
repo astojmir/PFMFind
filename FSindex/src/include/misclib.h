@@ -74,11 +74,15 @@ void *reallocec(void *pt, long int size);
 int max(int a, int b);
 int min(int a, int b);
 
-/* String I/O */
+/* I/O */
 
 void fwrite_string(char *s, FILE *fp);
 void fread_string(char **s, FILE *fp);
 
+void swrite_int32(void *ptr, size_t nmemb, unsigned char *s);
+void sread_int32(void *ptr, size_t nmemb, unsigned char *s);
+void fwrite_int32(void *ptr, size_t nmemb, FILE *stream);
+void fwrite_int32(void *ptr, size_t nmemb, FILE *stream);
 
 /* Progress bar */
 

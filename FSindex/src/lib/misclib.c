@@ -128,7 +128,7 @@ char *path_join(const char *h, const char *t)
 
 /********************************************************************/ 
 /*                                                                  */
-/*                    String I/O                                    */ 
+/*                    I/O                                           */ 
 /*                                                                  */
 /********************************************************************/ 
 
@@ -145,6 +145,60 @@ void fread_string(char **s, FILE *fp)
   fread(&len, sizeof(int), 1, fp);            
   *s = mallocec(len);                         
   fread(*s, sizeof(char), len, fp);           
+}
+
+
+/* Byte-order-independent I/O of binary arrays */
+
+void swrite_int32(void *ptr, size_t nmemb, unsigned char *s)
+{
+  int *x = ptr;
+  int *y = x + nmemb;
+  for (; x < y; x++) {
+    *s++ = (unsigned char) *x & 0xFF;
+    *s++ = (unsigned char) (*x >> 8) & 0xFF;
+    *s++ = (unsigned char) (*x >> 16) & 0xFF;
+    *s++ = (unsigned char) (*x >> 24) & 0xFF;
+  }
+}
+
+void sread_int32(void *ptr, size_t nmemb, unsigned char *s)
+{
+  int *x = ptr;
+  int *y = x + nmemb;
+  for (; x < y; x++) {
+    *x = ((int) *s++);
+    *x |= ((int) *s++) << 8;
+    *x |= ((int) *s++) << 16;
+    *x |= ((int) *s++) << 24;
+  }
+}
+
+
+void fwrite_int32(void *ptr, size_t nmemb, FILE *stream)
+{
+  int *x = ptr;
+  int *y = x + nmemb;
+
+  for (; x < y; x++) {
+    fputc(*x & 0xFF, stream);            /* write lowest byte */
+    fputc((*x >> 8) & 0xFF, stream);     /* write 2nd byte */
+    fputc((*x >> 16) & 0xFF, stream);    /* write 3rd byte */
+    fputc((*x >> 24) & 0xFF, stream);    /* write highest byte */
+  }
+}
+
+void fread_int32(void *ptr, size_t nmemb, FILE *stream)
+{
+  int *x = ptr;
+  int *y = x + nmemb;
+
+  for (; x < y; x++) {
+    *x = fgetc(stream) & 0xFF;            /* read lowest byte */
+    *x |= (fgetc(stream) & 0xFF) << 8;    /* read 2nd byte */
+    *x |= (fgetc(stream) & 0xFF) << 16;   /* read 3rd byte */
+    *x |= (fgetc(stream) & 0xFF) << 24;   /* read highest byte */
+  }
 }
 
 
