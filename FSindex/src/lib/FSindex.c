@@ -3,7 +3,6 @@
 #include <string.h>
 #include <time.h>
 #include <limits.h>
-#include "sarray.h"
 #include "FSindex.h"
 #include "misclib.h"
 
