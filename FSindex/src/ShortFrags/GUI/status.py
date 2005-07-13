@@ -1,113 +1,105 @@
-import Tkinter
-import Pmw
+import Tkinter, Pmw
 
+def _null_func(*args, **kwargs):
+    pass
                     
 class StatusShow(Tkinter.Frame):
-    def __init__(self, parent=None, lrange=(5,15),
-                 seqlen = 99, iter_func = lambda l,f: 0,
-                 ufunc=lambda : 0, rqseq=""):
-        Tkinter.Frame.__init__(self,parent)
+    def __init__(self, parent, PFMF_client, ufunc=_null_func,
+                 set_func=_null_func, unset_func=_null_func):
 
-        self.seqlen = seqlen
-        self.max_iter_func = iter_func
+        Tkinter.Frame.__init__(self, parent, bd=2, relief='groove')
+
+        self.PC = PFMF_client
         self.update_func = ufunc
-        self.rqseq = rqseq
-        
-        self.ranges = [lrange,
-                       (0, seqlen - lrange[0]+1),
-                       (0, iter_func(lrange[0],0)+1)]
-        self.true_lrange = lrange
-        
+        self.set_func = set_func
+        self.unset_func = unset_func
+
         self.wFrame = Tkinter.Frame(self)
-        self.wFrame.pack(anchor='w', pady=2)
-        self.wLabel = Tkinter.Label(self.wFrame, text="Query Frag:")
+        self.wFrame.pack(side='left', anchor='w', pady=2)
+        self.wLabel = Tkinter.Label(self.wFrame, text="Query Fragment")
         self.wLabel.grid(row=0, column=0, sticky='w')
         self.wSeqLabel = Tkinter.Label(self.wFrame, text="",
                                        font=Pmw.logicalfont('Fixed'))
         self.wSeqLabel.grid(row=0, column=1, sticky='w')
                                             
-        self.frag_len = Pmw.Counter(self,
+        self.wFragLen = Pmw.Counter(self,
                                     labelpos = 'w',
-                                    label_text = 'Fragment Length',
-                                    entry_width = 6,
-                                    entryfield_value = lrange[0],
-                                    entryfield_validate =
-                                    lambda t: self._validate(t,0),
-                                    entryfield_modifiedcommand =
-                                    self._len_changed)
-        self.frag_len.pack(anchor='w', pady=2)
-
-        self.cur_frag = Pmw.Counter(self,
-                                    labelpos = 'w',
-                                    label_text = 'Current Fragment',
-                                    entry_width = 6,
-                                    entryfield_value = 0,
-                                    entryfield_modifiedcommand =
-                                    self._frag_changed,
-                                    entryfield_validate =
-                                    lambda t: self._validate(t,1),
+                                    label_text = 'Fragment\nLength',
+                                    entry_width = 3,
+                                    entryfield_value = ' ',
                                     )
-        self.cur_frag.pack(anchor='w', pady=2)
-        self.cur_iter = Pmw.Counter(self,
+        self.wCurFrag = Pmw.Counter(self,
                                     labelpos = 'w',
-                                    label_text = 'Current Iteration',
-                                    entry_width = 6,
-                                    entryfield_value = 0,
-                                    entryfield_modifiedcommand =
-                                    self._iter_changed,
-                                    entryfield_validate =
-                                    self._validate_iter,
+                                    label_text = 'Current\nFragment',
+                                    entry_width = 5,
+                                    entryfield_value = ' ',
                                     )
-        self.cur_iter.pack(anchor='w', pady=2)
+        self.wCurIter = Pmw.Counter(self,
+                                    labelpos = 'w',
+                                    label_text = 'Current\nIteration',
+                                    entry_width = 3,
+                                    entryfield_value = ' ',
+                                    )
+        for w in [self.wFragLen, self.wCurIter, self.wCurFrag]: 
+            w.pack(side='right', anchor='w', padx=5)
+        self.reset(init=True)
 
-    def reset_params(self, lrange, seqlen, iter_func, ufunc, rqseq):
-        self.seqlen = seqlen
-        self.max_iter_func = iter_func
-        self.update_func = ufunc
-        
-        self.ranges = [lrange,
-                       (0, seqlen - lrange[0]+1),
-                       (0, iter_func(lrange[0],0)+1)]
-        self.true_lrange = lrange
-        self.rqseq = rqseq
-        self.reset_values()
-
-
-    def reset_values(self):
-        self.set_values(self.ranges[0][0],
-                        0, self.ranges[2][1]-1)
-
-    def set_values(self, len, frag, itr=None):
-        self.frag_len.setvalue(str(len))
-        self.cur_frag.setvalue(str(frag))
-        if itr == None:
-            itr = self.max_iter_func(len,frag)
-        self.cur_iter.setvalue(str(itr))
+    def set_values(self, length, fragment, iteration=None):
+        self.wFragLen.setvalue(str(length))
+        self.wCurFrag.setvalue(str(fragment))
+        if iteration == None:
+            iteration = self._max_iters(length, fragment)
+        self.wCurIter.setvalue(str(iteration))
         
     def get_values(self):
-        l = int(self.frag_len.getvalue())
-        f = int(self.cur_frag.getvalue())
-        i = int(self.cur_iter.getvalue())
+        l = int(self.wFragLen.getvalue())
+        f = int(self.wCurFrag.getvalue())
+        i = int(self.wCurIter.getvalue())
         return (l,f,i)
 
-    def _validate(self, text, which):
+
+    def _max_iters(self, l, f):
+        if f in self.PC.max_iters:
+            return self.PC.max_iters[f].get(l, -1) + 1
+        else:
+            return 0
+
+
+    def _set_qseq(self):
+        l = int(self.wFragLen.getvalue())
+        f = int(self.wCurFrag.getvalue())
+        s = self.PC.query_sequence[f:f+l]
+        self.wSeqLabel.configure(text=s)  
+
+    def _validate_none(self, text):
+        print "validate_none", text
+        if text == '':
+            return Pmw.OK
+        else:
+            return Pmw.ERROR
+
+    def _validate_len(self, text):
+        try:
+            v = int(text)
+        except ValueError:
+            return Pmw.ERROR
+        
+        if v >= self.PC.min_len and v < self.PC.max_len:
+            return Pmw.OK
+        else:
+            return Pmw.ERROR
+
+    def _validate_frag(self, text):
         try:
             v = int(text)
         except ValueError:
             return Pmw.ERROR
 
-        a = self.ranges[which][0]
-        b = self.ranges[which][1]
-        if v >= a and v < b:
+        l = int(self.wFragLen.getvalue())
+        if v >= 0 and v <= len(self.PC.query_sequence) - l:
             return Pmw.OK
         else:
             return Pmw.ERROR
-
-    def _set_qseq(self):
-        l = int(self.frag_len.getvalue())
-        f = int(self.cur_frag.getvalue())
-        s = self.rqseq[f:f+l]
-        self.wSeqLabel.configure(text=s)  
 
     def _validate_iter(self, text):
         try:
@@ -115,44 +107,73 @@ class StatusShow(Tkinter.Frame):
         except ValueError:
             return Pmw.ERROR
         
-        l = int(self.frag_len.getvalue())
-        f = int(self.cur_frag.getvalue())
-        if v >= 0 and v <= self.max_iter_func(l,f):
+        l = int(self.wFragLen.getvalue())
+        f = int(self.wCurFrag.getvalue())
+        if v >= 0 and v <= self._max_iters(l, f):
             return Pmw.OK
         else:
             return Pmw.ERROR
 
     def _len_changed(self):
-        l = int(self.frag_len.getvalue())
-        self.ranges[1] = (0, self.seqlen - l+1)
-        f = int(self.cur_frag.getvalue())
-        if f >= self.ranges[1][1]:
-            f = self.ranges[1][1] - 1
-            self.cur_frag.setvalue(str(f))
+        l = int(self.wFragLen.getvalue())
+        f = int(self.wCurFrag.getvalue())
+        if f > len(self.PC.query_sequence) - l:
+            f = len(self.PC.query_sequence) - l
+            self.wCurFrag.setvalue(str(f))
         else:
-            self._set_qseq()
-            self.update_func()
+            self._frag_changed()
 
     def _frag_changed(self):
-        l = int(self.frag_len.getvalue())
-        f = int(self.cur_frag.getvalue())
-        self.ranges[2] = (0, self.max_iter_func(l,f)+1) 
-        i = int(self.cur_iter.getvalue())
-        if i >= self.ranges[2][1]:
-            i = self.ranges[2][1] - 1
-            self.cur_iter.setvalue(str(i))
+        l = int(self.wFragLen.getvalue())
+        f = int(self.wCurFrag.getvalue())
+        i = int(self.wCurIter.getvalue())
+        if i > self._max_iters(l, f):
+            i = self._max_iters(l, f)
+            self.wCurIter.setvalue(str(i))
         else:
             self._set_qseq()
-            self.update_func()
+            self.update_func(l, f, i)
             
     def _iter_changed(self):
         self._set_qseq()
-        self.update_func()
+        self.update_func(*self.get_values())
 
-    def disable_length(self):
-        (l,f,i) = self.get_values()
-        self.ranges[0] = (l, l+1)
-
-    def enable_length(self):
-        self.ranges[0] = self.true_lrange
-    
+    def reset(self, init=False):
+        if self.PC.cur_expt:
+            self.set_values(self.PC.min_len, 0, 0)
+            self.wFragLen.configure(entryfield_validate =
+                                    self._validate_len, 
+                                    entryfield_entry_state = 'normal',
+                                    entryfield_modifiedcommand =
+                                    self._len_changed,
+                                    downarrow_state = 'normal',
+                                    uparrow_state = 'normal')
+            self.wCurFrag.configure(entryfield_validate =
+                                    self._validate_frag, 
+                                    entryfield_entry_state = 'normal',
+                                    entryfield_modifiedcommand =
+                                    self._frag_changed,
+                                    downarrow_state = 'normal',
+                                    uparrow_state = 'normal')
+            self.wCurIter.configure(entryfield_validate =
+                                    self._validate_iter, 
+                                    entryfield_entry_state = 'normal',
+                                    entryfield_modifiedcommand =
+                                    self._iter_changed,
+                                    downarrow_state = 'normal',
+                                    uparrow_state = 'normal')
+            self._set_qseq()
+            if not init:
+                self.update_func(*self.get_values())
+                self.set_func()
+        else:
+            for w in [self.wFragLen, self.wCurFrag, self.wCurIter]:  
+                w.configure(entryfield_modifiedcommand = None,
+                            entryfield_validate = None,
+                            entryfield_entry_state = 'disabled',
+                            downarrow_state = 'disabled',
+                            uparrow_state = 'disabled')
+                w.setvalue(' ')
+            self.wSeqLabel.configure(text='')  
+            if not init:
+                self.unset_func()
