@@ -1,0 +1,59 @@
+<!-- Root element -->
+<!ELEMENT PFMF_db_setup (Database, Schema?, Sql_dir?, Sql_scripts?, Taxonomy?, Uniprot_file*,Uniref_file*, InterPro_file*)>
+
+<!ELEMENT Database EMPTY>
+<!ATTLIST Database
+	driver CDATA #REQUIRED
+	db CDATA #REQUIRED
+	user CDATA #IMPLIED
+	password CDATA #IMPLIED
+	host CDATA #IMPLIED
+	port CDATA #IMPLIED
+>
+
+<!ELEMENT Schema EMPTY>
+<!ATTLIST Schema
+	name CDATA #REQUIRED
+	create CDATA #IMPLIED
+>
+
+<!ELEMENT Sql_dir (#PCDATA)>
+
+<!ELEMENT Sql_scripts EMPTY>
+<!ATTLIST Sql_scripts
+	sql_start CDATA #IMPLIED
+	sql_end CDATA #IMPLIED
+>
+
+<!ELEMENT Taxonomy (Taxon_dir, Script_dir?)>
+<!ATTLIST Taxonomy
+	copy CDATA #IMPLIED
+	download CDATA #IMPLIED
+	perl_driver CDATA #IMPLIED
+>
+
+<!ELEMENT Taxon_dir (#PCDATA)>
+
+<!ELEMENT Script_dir (#PCDATA)>
+
+<!ELEMENT Uniprot_file (#PCDATA)>
+<!ATTLIST Uniprot_file
+	namespace CDATA #REQUIRED
+	sql_start CDATA #IMPLIED
+	sql_end CDATA #IMPLIED
+>
+
+<!ELEMENT Uniref_file (#PCDATA)>
+<!ATTLIST Uniref_file
+	namespace CDATA #REQUIRED
+	sql_start CDATA #IMPLIED
+	sql_end CDATA #IMPLIED
+>
+
+<!ELEMENT InterPro_file (#PCDATA)>
+<!ATTLIST InterPro_file
+	namespace CDATA #REQUIRED
+	sql_start CDATA #IMPLIED
+	sql_end CDATA #IMPLIED
+>
+

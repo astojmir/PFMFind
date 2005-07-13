@@ -1,0 +1,42 @@
+<!-- Root element -->
+<!ELEMENT PFMF_config (Database_config, Index_config?, Plugin_config?)>
+
+
+<!ELEMENT Database_config (Database, DbSchema?, PFMFSchema?)>
+
+<!ELEMENT Database EMPTY>
+<!ATTLIST Database
+	driver CDATA #REQUIRED
+	db CDATA #REQUIRED
+	user CDATA #IMPLIED
+	password CDATA #IMPLIED
+	host CDATA #IMPLIED
+	port CDATA #IMPLIED
+>
+
+<!ELEMENT DbSchema EMPTY>
+<!ATTLIST DbSchema
+	name CDATA #REQUIRED
+>
+
+<!ELEMENT PFMFSchema EMPTY>
+<!ATTLIST PFMFSchema
+	name CDATA #REQUIRED
+>
+
+
+<!ELEMENT Index_config (Connection)>
+
+<!ELEMENT Connection EMPTY>
+<!ATTLIST Connection
+	host CDATA #IMPLIED
+	port CDATA #IMPLIED
+>
+
+
+<!ELEMENT Plugin_config (Plugin_dir)>
+
+<!ELEMENT Plugin_dir (#PCDATA)>
+
+
+

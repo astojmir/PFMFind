@@ -1,0 +1,30 @@
+<!-- Root element -->
+<!ELEMENT PFMF_index_setup (Database, Index_dir?, Dataset*)>
+
+<!ELEMENT Database EMPTY>
+<!ATTLIST Database
+	driver CDATA #REQUIRED
+	db CDATA #REQUIRED
+	user CDATA #IMPLIED
+	password CDATA #IMPLIED
+	host CDATA #IMPLIED
+	port CDATA #IMPLIED
+>
+
+
+<!ELEMENT Index_dir (#PCDATA)>
+
+<!ELEMENT Dataset (Index*)>
+<!ATTLIST Dataset
+        name CDATA #REQUIRED
+	schema CDATA #IMPLIED
+	namespace CDATA #IMPLIED
+	max_residues CDATA #IMPLIED
+>
+
+<!ELEMENT Index (Partition*)>
+<!ATTLIST Index
+        length CDATA #REQUIRED
+>
+
+<!ELEMENT Partition (#PCDATA)>
