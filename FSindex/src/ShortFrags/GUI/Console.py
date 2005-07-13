@@ -19,7 +19,7 @@ from Tkinter import *
 import sys, string, traceback, types, __builtin__
 from ShortFrags.GUI.view import View
 
-REVISION = "$Revision: 1.1 $"
+REVISION = "$Revision: 1.2 $"
 VERSION = string.split(REVISION)[1]
 
 class OutputPipe:
@@ -43,7 +43,7 @@ class OutputPipe:
 
 
 class Console(Frame, View):
-    def __init__(self, parent=None, dict={}, **options):
+    def __init__(self, parent, PFMF_client, dict={}, **options):
         """Construct from a parent widget, an optional dictionary to use
         as the namespace for execution, and any configuration options."""
         Frame.__init__(self, parent)
