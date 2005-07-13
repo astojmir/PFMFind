@@ -10,7 +10,6 @@ BINDIR = bin/
 # All subdirs of $(SRCDIR) are relative to $(SRCDIR)
 PROGSDIR = src/progs/
 LIBSDIR = src/lib/
-SARRAYDIR = src/sarray/
 SWIGDIR = src/swig
 SCRIPTDIR = src/scripts
 LIBDIR = ../lib
@@ -35,7 +34,7 @@ else
   endif
 endif
 
-LDFLAGS = "-L ../lib -L ../sarray"
+LDFLAGS = "-L ../lib"
 
 ifneq ($(COMPILER), sun)
 # gcc flags 
@@ -45,7 +44,7 @@ CWARNINGS = -pipe -Wall -Wno-char-subscripts -Wshadow \
           -Wwrite-strings -Wstrict-prototypes \
           -Wformat -Wmissing-prototypes -funsigned-char #-Werror
 COPTIM=-O3 -fomit-frame-pointer -finline-functions -funroll-loops -D GCC_INLINE
-LDLIBS = "-lFSindex -lsarray -lgcc -lm -lpthread"# -ldmalloc"
+LDLIBS = "-lFSindex -lgcc -lm -lpthread"# -ldmalloc"
 else
 # Solaris cc flags 
 GPROF = -xpg
@@ -53,7 +52,7 @@ GPROF = -xpg
 CC = cc
 CWARNINGS =  -errwarn -v
 COPTIM = -xO5 -fast -xipo -s
-LDLIBS = "-lFSindex -lsarray"
+LDLIBS = "-lFSindex"
 endif
 
 
@@ -64,7 +63,7 @@ CFLAGS = $(DEBUG) $(INCS) -fPIC # -D USE_DMALLOC -D THREADS=4
 
 all: progs
 
-progs: libFSindex libsarray swig
+progs: libFSindex swig
 	if [ ! -d  $(BINDIR) ]; then \
 	   mkdir $(BINDIR); \
 	fi 
@@ -74,7 +73,7 @@ progs: libFSindex libsarray swig
 	then mv $$x "../../$(BINDIR)"; fi done; \
 	cd ..; \
 
-swig:	libFSindex libsarray
+swig:	libFSindex
 	cd $(SWIGDIR); \
 	$(MAKE) CC=$(CC) CFLAGS="$(CFLAGS)" LDFLAGS=$(LDFLAGS) \
 	LDLIBS=$(LDLIBS) PYDIR=$(PYDIR); \
@@ -83,19 +82,12 @@ libFSindex:
 	cd $(LIBSDIR); \
 	$(MAKE) CC=$(CC) CFLAGS="$(CFLAGS) $(CWARNINGS)"\
 
-libsarray:
-	cd $(SARRAYDIR); \
-	$(MAKE) CC=$(CC) CFLAGS="$(CFLAGS)" \
-
 clean:
 	rm -f core; \
 	cd $(PROGSDIR); \
 	$(MAKE) clean; \
 	cd ../..; \
 	cd $(LIBSDIR); \
-	$(MAKE) clean; \
-	cd ../..; \
-	cd $(SARRAYDIR); \
 	$(MAKE) clean; \
 	cd ../..; \
 	cd $(SWIGDIR); \
@@ -132,9 +124,6 @@ tarball:
 	tar -rvf FSindex.tar $(LIBSDIR)*.c; \
 	tar -rvf FSindex.tar $(LIBSDIR)Makefile; \
 	tar -rvf FSindex.tar $(INCLUDEDIR)*.h; \
-	tar -rvf FSindex.tar $(SARRAYDIR)*.c; \
-	tar -rvf FSindex.tar $(SARRAYDIR)Makefile; \
-	tar -rvf FSindex.tar $(SARRAYDIR)*.h; \
 	tar -rvf FSindex.tar Makefile; \
 	tar -rvf FSindex.tar $(SWIGDIR)/*.i; \
 	tar -rvf FSindex.tar $(SWIGDIR)/Makefile; \
