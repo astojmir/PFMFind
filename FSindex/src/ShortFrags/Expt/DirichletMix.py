@@ -186,7 +186,7 @@ class DirichletMix:
 
     def _pos_log_odds(self, _pos_probs, bkgrnd, scale=1.0):
         n = len(_pos_probs)
-        return [scale * log(_pos_probs[i]/bkgrnd[i]) / log(2.0) for i in range(n)]
+        return [int(scale * log(_pos_probs[i]/bkgrnd[i]) / log(2.0)) for i in range(n)]
 
     def block_probs(self, block_counts):
         return [self._pos_probs(counts) for counts in block_counts]
