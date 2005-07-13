@@ -10,5 +10,5 @@ class View:
     def set_size(self, height=400, width=300):
         self.configure(height=height, width=width)
         
-    def reset(self, state={}):
+    def reset(self, state=(None, None, None)):
         pass
