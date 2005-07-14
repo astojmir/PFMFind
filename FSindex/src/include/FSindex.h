@@ -66,7 +66,7 @@ typedef struct FSSRCH_s
 #endif
 
 #ifndef THREADS
-#define THREADS 4
+#define THREADS 1
 #endif
 
 typedef enum {FS_BINS, SUFFIX_ARRAY, SEQ_SCAN} SFUNC_TYPE;
