@@ -9,11 +9,14 @@ python setup.py install
 
 from distutils.core import setup, Extension
 import sys
+from os.path import join
 
 PACKAGES = [
     'ShortFrags',
     'ShortFrags.GUI',
     'ShortFrags.Expt',
+    'ShortFrags.Setup',
+    'ShortFrags.plugins',
     ]
 
 libs=["gcc"]
@@ -30,15 +33,10 @@ EXTENSIONS = [
                'lib/misclib.c',
                'lib/smatrix.c',
                'lib/partition.c',
-               'lib/avl.c',
-               'sarray/lcp.c',
-               'sarray/sarray.c',
-               'sarray/scode.c',
-               'sarray/ssarray.c',
                ],
               include_dirs=['include'],
               define_macros=[('GCC_INLINE', None),
-                             ('THREADS', 4)
+                             ('THREADS', 1)
                              ],
               libraries=libs,
               extra_compile_args=['-O3'],
@@ -46,18 +44,47 @@ EXTENSIONS = [
     ]
 
 SCRIPTS = [
-    'ShortFrags/frag_toolbox.pyw',
-    'ShortFrags/FSsearchd.py'
+    'ShortFrags/scripts/FSsearchd.py',
+    'ShortFrags/scripts/PFMFind.py',
+    'ShortFrags/scripts/PFMFsetupdb.py',
+    'ShortFrags/scripts/PFMFsetupix.py',
+    'ShortFrags/scripts/killslaves.py',
+    'ShortFrags/scripts/searchclient.py',
     ]
+
+from ShortFrags import CONFIG_DATA_DIR, SQL_DATA_DIR
+
+cfg_files = ['PFMFcf.dtd', 'PFMFdb.dtd', 'PFMFix.dtd',
+             'dbsetup_sample01.xml', 'ixsetup_sample01.xml',
+             ]
+full_cfg_files = [join('ShortFrags/data/setup_config', f) \
+                  for f in cfg_files] 
+
+sql_files = ['biosqldb-pg-cnstr.sql',
+             'biosqldb-pg-fk.sql',
+             'biosqldb-pg-ix.sql',
+             'biosqldb-pg-nocnstr.sql',
+             'biosqldb-pg-nofk.sql',
+             'biosqldb-pg-plain.sql',
+             'biosqldb-pg.sql',
+             ]
+full_sql_files = [join('ShortFrags/data/sql-schema', f) \
+                  for f in sql_files] 
+
+DATA_FILES = [
+    (CONFIG_DATA_DIR, full_cfg_files),
+    (SQL_DATA_DIR, full_sql_files),
+    ]
+
 
 setup(
     name='ShortFrags',
-    version='0.43',
+    version='0.45',
     author='Aleksandar Stojmirovic',
     author_email='aleksand@mcs.vuw.ac.nz',
     url='http://www.mcs.vuw.ac.nz/~aleksand',
     packages=PACKAGES,
     scripts=SCRIPTS,
     ext_modules=EXTENSIONS,
-#    data_files=DATA_FILES,
+    data_files=DATA_FILES,
     )

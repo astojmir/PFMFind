@@ -164,8 +164,7 @@ class PFMFindClient(SearchClient, DatabaseClient):
 
         fp.write("""<?xml version="1.0" encoding="UTF-8"?>\n""")
         fp.write("""<!DOCTYPE PFMF_config SYSTEM "%s">\n""" %\
-             os.path.join(ShortFrags.__path__[0], 'data',
-                          'setup_config', 'PFMFcf.dtd' )) 
+             os.path.join(ShortFrags.CONFIG_DATA_DIR, 'PFMFcf.dtd' )) 
         i = 0
         _write_xml_tag(fp, "<PFMF_config>\n", i)
         i += 1

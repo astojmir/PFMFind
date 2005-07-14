@@ -1,3 +1,4 @@
 include include/*.h
-include ShortFrags/frag_toolbox.pyw
-include ShortFrags/FSsearchd.py
+include ShortFrags/scripts/*.py
+include ShortFrags/data/setup_config/*
+include ShortFrags/data/sql-schema/*
