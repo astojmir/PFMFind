@@ -177,6 +177,11 @@ class DatabaseClient(object):
         if not PFMF_schema:
             PFMF_schema = self.dbargs['user']
 
+        # PostgreSQL is case-insensitive so we need to covert schema
+        # names to lower case
+        db_schema = db_schema.lower()
+        PFMF_schema = PFMF_schema.lower()
+
         sql = "SELECT schema_name FROM information_schema.schemata"
         self.crs.execute(sql)
         schemata = [s[0] for s in self.crs.fetchall()]
