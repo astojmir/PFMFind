@@ -20,7 +20,9 @@ class UnirefParser(object):
         elif name == 'name':
             self._def_flag = True
             self._fs = StringIO()
-        elif name == 'property' and attrs['type'] == "UniProt accession": 
+        elif name == 'property' and \
+                 (attrs['type'] == "UniProt accession" or \
+                  attrs['type'] == "UniProtKB accession"): 
             self.accessions.append(str(attrs['value']))
 
     def _end_element(self, name):
