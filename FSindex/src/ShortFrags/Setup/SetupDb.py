@@ -3,6 +3,7 @@ from cStringIO import StringIO
 
 from BioSQL import BioSeqDatabase
 
+from ShortFrags.Setup.TaxonLoader import TaxonLoader
 from ShortFrags.Setup.UniprotLoader import load_Uniprot
 from ShortFrags.Setup.UnirefLoader import UnirefParser
 from ShortFrags.Setup.UnirefLoader import UnirefLoader
@@ -20,11 +21,8 @@ class PFMF_DatabaseLoader(object):
         self.initial_sql = None
         self.final_sql = None
 
-        self.download_taxonomy = 0
         self.copy_taxonomy = 0
-        self.perl_driver = None
         self.taxon_dir = None
-        self.script_dir = './'
 
         self.uniprot = []
         self.uniref = []
@@ -46,8 +44,7 @@ class PFMF_DatabaseLoader(object):
             self._fs = StringIO()
             self._sql_start = attrs.get('sql_start', None)
             self._sql_end = attrs.get('sql_end', None)
-        elif name == 'Sql_dir' or name == 'Taxon_dir' \
-                 or name == 'Script_dir':
+        elif name == 'Sql_dir' or name == 'Taxon_dir':
             self._sflag = True
             self._fs = StringIO()
         elif name == 'Sql_scripts':
@@ -57,8 +54,6 @@ class PFMF_DatabaseLoader(object):
             self.schema_name = attrs.get('name', None)
             self.schema_create = int(attrs.get('create', '0'))
         elif name == 'Taxonomy':
-            self.download_taxonomy = int(attrs.get('download', '0'))
-            self.perl_driver = attrs.get('perl_driver', None)
             self.copy_taxonomy = int(attrs.get('copy', '0'))
             
     def _end_element(self, name):
@@ -86,9 +81,6 @@ class PFMF_DatabaseLoader(object):
         elif name == 'Taxon_dir':
             self._sflag = False
             self.taxon_dir = self._fs.getvalue()
-        elif name == 'Script_dir':
-            self._sflag = False
-            self.script_dir = self._fs.getvalue()
 
     def _char_data(self, data):
 
@@ -131,10 +123,7 @@ class PFMF_DatabaseLoader(object):
         # Taxonomy
         if self.taxon_dir:
             print "Loading taxonomy."
-            if self.copy_taxonomy:
-                self._copy_taxonomy()
-            else:
-                self._load_taxonomy()
+            self._load_taxonomy()
             
         # Uniprot
         for filename, namespace, sql0, sql1 in self.uniprot:
@@ -241,64 +230,13 @@ class PFMF_DatabaseLoader(object):
 
         self.server.adaptor.commit()
 
-    def _copy_taxonomy(self):
-        """
-        Loads taxonomy tables from tab-separeted files (PostgreSQL only).
-        """
-        cur = self.server.adaptor.cursor
-        taxon_tbl = os.path.join(self.taxon_dir, 'taxon.tbl')
-        taxon_name_tbl = os.path.join(self.taxon_dir, 'taxon_name.tbl')
-        
-        cur.execute("COPY taxon FROM %s", (taxon_tbl,))
-        cur.execute("COPY taxon_name FROM %s", (taxon_name_tbl,))
-        self.server.adaptor.commit()
-
     def _load_taxonomy(self):
         """
-        Loads taxonomy tables using the load_ncbi_taxonomy.pl script.
+        Loads taxonomy tables using NCBI taxonomy data.
         """
-
-        # Set search path to schema - PostgreSQL only
-        if self.schema_name != None:
-            cur = self.server.adaptor.cursor
-            cur.execute('SHOW search_path')
-            old_db_path = cur.fetchone()[0]
-            cur.execute('SELECT SESSION_USER')
-            user = cur.fetchone()[0]
-
-            cur.execute('ALTER USER %s SET search_path TO %s' \
-                        % (user, self.schema_name))
-            
-            self.server.adaptor.commit()
-
-        script = os.path.join(self.script_dir, 'load_ncbi_taxonomy.pl')
-        args = [script,
-                '--driver=%s' % self.perl_driver,
-                '--dbname=%s' % self.dbargs['db'],
-                '--verbose=2']
-
-        if 'host' in self.dbargs:
-            args.append('--host=%s' % self.dbargs['host'])
-        if 'port' in self.dbargs:
-            args.append('--port=%s' % self.dbargs['port'])
-        if 'user' in self.dbargs:
-            args.append('--dbuser=%s' % self.dbargs['user'])
-        if 'password' in self.dbargs:
-            args.append('--dbpass=%s' % self.dbargs['password'])
-        if self.taxon_dir:
-            args.append('--directory=%s' % self.taxon_dir)
-        if self.download_taxonomy:
-            args.append('--download')
-    
-        os.spawnv(os.P_WAIT, script, args)
-    
-        # Reset the search path
-        if self.schema_name != None:
-            cur.execute('ALTER USER %s SET search_path TO %s',
-                        (user, old_db_path))
-
-            self.server.adaptor.commit()
-
+        TL = TaxonLoader(self.server.adaptor, self.taxon_dir,
+                         self.copy_taxonomy) 
+        TL.load_ncbi_taxonomy()
 
     def _get_namespace(self, namespace):
         if namespace in self.server.keys():

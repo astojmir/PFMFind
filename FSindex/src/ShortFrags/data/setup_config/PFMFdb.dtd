@@ -28,13 +28,9 @@
 <!ELEMENT Taxonomy (Taxon_dir, Script_dir?)>
 <!ATTLIST Taxonomy
 	copy CDATA #IMPLIED
-	download CDATA #IMPLIED
-	perl_driver CDATA #IMPLIED
 >
 
 <!ELEMENT Taxon_dir (#PCDATA)>
-
-<!ELEMENT Script_dir (#PCDATA)>
 
 <!ELEMENT Uniprot_file (#PCDATA)>
 <!ATTLIST Uniprot_file
