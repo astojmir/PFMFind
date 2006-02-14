@@ -25,7 +25,7 @@
 	sql_end CDATA #IMPLIED
 >
 
-<!ELEMENT Taxonomy (Taxon_dir, Script_dir?)>
+<!ELEMENT Taxonomy (Taxon_dir)>
 <!ATTLIST Taxonomy
 	copy CDATA #IMPLIED
 >
