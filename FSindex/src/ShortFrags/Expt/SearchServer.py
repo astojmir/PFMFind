@@ -133,18 +133,25 @@ def now():
 
 class SearchServer(object):
     def __init__(self, port, indexfile):
-        print "Starting at %s" % now()
-        sys.stdout.flush()
 
         self.port = int(port)
         self.indexfile = indexfile
 
-        # Check if indexfile is in fact a config file
-        if os.path.splitext(indexfile)[1] == '.cfg':
-            self.create_subservers(indexfile)
+
+    def start(self):
+        """
+        Starts the daemon main loop.
+        """
+
+        print "Starting at %s" % now()
+        sys.stdout.flush()
+
+                # Check if indexfile is in fact a config file
+        if os.path.splitext(self.indexfile)[1] == '.cfg':
+            self.create_subservers(self.indexfile)
         else:
             self.servers = []
-            self.load_index(indexfile)
+            self.load_index(self.indexfile)
         
         self.sp_acc = re.compile('\((\w+)\)')
 
@@ -159,6 +166,32 @@ class SearchServer(object):
             (clsock, address) = sock.accept()
             ct = threading.Thread(target=self.answer_request, args=(clsock,))
             ct.start()
+
+    def terminate(self, terminate_subservers=True, signal=False):
+        """
+        Terminates cleanly (writes to log, terminates subservers).
+        """
+
+        if signal: # SIGTERM received.
+            print "Received termination signal. Exiting."
+            sys.stdout.flush()
+
+        if terminate_subservers:
+            print "Terminating all subservers at %s" % now()
+            sys.stdout.flush()
+            for srvr in self.servers:
+                try:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.connect((srvr[0], srvr[1]))
+                    send_obj(sock, (opcode, data))
+                except Exception, inst:
+                    print "Response error: ", srvr, inst
+                    sys.stdout.flush()
+
+        print "Terminating at %s" % now()
+        sys.stdout.flush()
+        os._exit(0)
+
 
     def load_index(self, indexfile):
         print "Loading Index at %s" % now()
@@ -233,20 +266,8 @@ class SearchServer(object):
 
     def dispatch_request(self, clsock, opcode, data):
         if opcode == DIE:
-            print "Terminating all subservers at %s" % now() 
-            sys.stdout.flush()
-            for srvr in self.servers:
-                try:
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    sock.connect((srvr[0], srvr[1]))
-                    send_obj(sock, (opcode, data))
-                except Exception, inst:
-                    print "Response error: ", srvr, inst
-                    sys.stdout.flush()
-            print "Terminating at %s" % now()
-            sys.stdout.flush()
             clsock.close()
-            os._exit(0)
+            self.terminate()
         elif opcode == GET_INDEX_DATA:
             results = []
             for srvr in self.servers:
@@ -377,10 +398,8 @@ class SearchServer(object):
         
     def process_request(self, clsock, opcode, data):
         if opcode == DIE:
-            print "Terminating at %s" % now()
-            sys.stdout.flush()
             clsock.close()
-            os._exit(0)
+            self.terminate(False)
         elif opcode == GET_INDEX_DATA:
             results = [self.I.ix_data]
         elif opcode == GET_SERVERS:
