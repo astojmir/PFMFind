@@ -20,15 +20,46 @@
 # Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #
 
+"""
+Starts the FSsearch daemon that loads an instance of FSindex into memory
+and waits for search requests.
+
+SYNOPSIS:
+
+    FSsearchd.py daemonid port workpath indexfile [pythonpath] 
+
+
+DESCRIPTION:
+
+This script starts a daemon that loads indexfile into memory and then
+listens at a given port for search requests. The logfiles are written in
+the workpath. The daemonid is an arbitrary identifier that is appended
+to the logfiles written by each daemon. The optional argument pythonpath
+can be used to add a directory to the default python path.
+
+If the inxdexfile ends with .cfg it is treated as a configuration file
+for slaves. Each line should be in the following format:
+host port workpath indexfile [pythonpath [binpath]].
+The fields should be separated by blanks.
+
+"""
 
 
 import sys, os, signal, os.path, string, resource, socket
 
+__version__ = "$Revision: 1.1 $"
+__date__ = "$Date$"
+__author__ = "Aleksandar Stojmirovic"
+__credits__ = "Chad J. Schroeder, ActiveState Programming Network"
 
 
 # Based on Chad J. Schroeder's recipe: http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/278731 
 
+SrchS = None
 
+def signal_handler(signum, frame):
+    global SrchS
+    SrchS.terminate(signal=True)
 
 class Log:
     """file like for writes with auto flush after each write
@@ -155,8 +186,17 @@ def create_daemon(daemonid, port, workpath, indexfile, pythonpath=None):
 
     # Start the SearchServer 
     from ShortFrags.Expt import SearchServer
+    global SrchS
     SrchS = SearchServer.SearchServer(port, indexfile)
 
+    # Catch termination signal so we can write the log and kill all slaves
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    SrchS.start()
+
 if __name__ == "__main__":
+    if len(sys.argv) < 5:
+        print __doc__
+        sys.exit()
     args = tuple(sys.argv[1:])
     create_daemon(*args)
