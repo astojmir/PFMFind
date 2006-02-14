@@ -39,6 +39,7 @@ class PFMF_DatabaseLoader(object):
         self.dbargs = {}
         self.schema_name = None
         self.schema_create = 0
+        self.sql_dir = '.'
         self.initial_sql = None
         self.final_sql = None
 
