@@ -112,6 +112,34 @@ def receive_obj(sock):
     return cPickle.loads(msg_str.getvalue())
 
 
+def parse_slaves_config(serverfile):
+    # File format: host port workpath indexfile [pythonpath [binpath]]
+    fp = file(serverfile, 'r')
+    servers = []
+    for line in fp:
+        sp_line = string.split(line)
+        sp_line[1] = int(sp_line[1])
+        servers.append(sp_line)
+    fp.close()
+    return servers
+
+
+def terminate_slaves(servers):
+    print "Terminating all subservers at %s" % now()
+    sys.stdout.flush()
+    for srvr in servers:
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect((srvr[0], srvr[1]))
+            send_obj(sock, (0, 0))
+        except Exception, inst:
+            print "Response error: ", srvr, inst
+            sys.stdout.flush()
+
+
+
+
+
 class DispatchedSearch(threading.Thread):
     def __init__(self, host, port, query, queue):
         self._host = host
@@ -136,7 +164,8 @@ class SearchServer(object):
 
         self.port = int(port)
         self.indexfile = indexfile
-
+        self.terminate_flag = False
+        self.ct = None
 
     def start(self):
         """
@@ -162,32 +191,33 @@ class SearchServer(object):
         sock.bind(('', self.port))
         sock.listen(5)
 
-        while 1:
+        while not self.terminate_flag:
             (clsock, address) = sock.accept()
-            ct = threading.Thread(target=self.answer_request, args=(clsock,))
-            ct.start()
+            self.ct = threading.Thread(target=self.answer_request, args=(clsock,))
+            self.ct.start()
+            # Should not run any requests concurrently - only one additional thread
+            self.ct.join()
+            self.ct = None
+
+        self.terminate()
 
     def terminate(self, terminate_subservers=True, signal=False):
         """
         Terminates cleanly (writes to log, terminates subservers).
         """
 
+
         if signal: # SIGTERM received.
             print "Received termination signal. Exiting."
             sys.stdout.flush()
 
-        if terminate_subservers:
-            print "Terminating all subservers at %s" % now()
-            sys.stdout.flush()
-            for srvr in self.servers:
-                try:
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    sock.connect((srvr[0], srvr[1]))
-                    send_obj(sock, (opcode, data))
-                except Exception, inst:
-                    print "Response error: ", srvr, inst
-                    sys.stdout.flush()
+        # Wait for working thread to finish
+        print "Waiting for working thread at %s" % now()
+        if self.ct:
+            self.ct.join()
 
+        if terminate_subservers:
+            terminate_slaves(self.servers)
         print "Terminating at %s" % now()
         sys.stdout.flush()
         os._exit(0)
@@ -203,14 +233,7 @@ class SearchServer(object):
         sys.stdout.flush()
 
         # Read the configuration file
-        # File format: host port workpath indexfile [pythonpath [binpath]]
-        fp = file(serverfile, 'r')
-        self.servers = []
-        for line in fp:
-            sp_line = string.split(line)
-            sp_line[1] = int(sp_line[1])
-            self.servers.append(sp_line)
-        fp.close()
+        self.servers = parse_slaves_config(serverfile)
 
         self.queue = Queue.Queue(len(self.servers))
 
@@ -266,8 +289,8 @@ class SearchServer(object):
 
     def dispatch_request(self, clsock, opcode, data):
         if opcode == DIE:
-            clsock.close()
-            self.terminate()
+            self.terminate_flag = True
+            return
         elif opcode == GET_INDEX_DATA:
             results = []
             for srvr in self.servers:
@@ -398,8 +421,8 @@ class SearchServer(object):
         
     def process_request(self, clsock, opcode, data):
         if opcode == DIE:
-            clsock.close()
-            self.terminate(False)
+            self.terminate_flag = True
+            return
         elif opcode == GET_INDEX_DATA:
             results = [self.I.ix_data]
         elif opcode == GET_SERVERS:
