@@ -78,13 +78,29 @@ DATA_FILES = [
 
 
 setup(
-    name='ShortFrags',
-    version='0.45',
+    name='PFMFind',
+    version='0.46.1',
     author='Aleksandar Stojmirovic',
-    author_email='aleksand@mcs.vuw.ac.nz',
-    url='http://www.mcs.vuw.ac.nz/~aleksand',
+    author_email='astojmir@uottawa.ca',
+    url='http://aix1.uottawa.ca/~astojmir',
     packages=PACKAGES,
     scripts=SCRIPTS,
     ext_modules=EXTENSIONS,
     data_files=DATA_FILES,
+    summary='System for discovery of peptide homology and function',
+    description='Set of routines/scripts supporting similarity search'\
+    ' of datasets of short protein fragments of fixed length.',
+    license='GNU GPL',
+    platform='POSIX, Windows',
+    classifiers = [
+      'Development Status :: 3 - Alpha',
+      'Environment :: X11 Applications',
+      'Environment :: No Input/Output (Daemon)',
+      'Intended Audience :: Science/Research',
+      'License :: OSI Approved :: GNU General Public License (GPL)',
+      'Operating System :: POSIX',
+      'Operating System :: Microsoft :: Windows',
+      'Programming Language :: Python',
+      'Topic :: Scientific/Engineering :: Bio-Informatics',
+    ]
     )
