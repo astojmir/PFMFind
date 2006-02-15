@@ -1,4 +1,11 @@
 include include/*.h
-include ShortFrags/scripts/*.py
+include ShortFrags/scripts/FSsearchd.py
+include ShortFrags/scripts/PFMFind.py
+include ShortFrags/scripts/PFMFsetupdb.py
+include ShortFrags/scripts/PFMFsetupix.py
 include ShortFrags/data/setup_config/*
 include ShortFrags/data/sql-schema/*
+include doc/*.tex
+include doc/*.pdf
+include doc/*.eps
+include COPYING
