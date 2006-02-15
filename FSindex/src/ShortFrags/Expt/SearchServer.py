@@ -160,8 +160,9 @@ def now():
     return time.ctime(time.time())
 
 class SearchServer(object):
-    def __init__(self, port, indexfile):
+    def __init__(self, daemonid, port, indexfile):
 
+        self.daemonid = daemonid
         self.port = int(port)
         self.indexfile = indexfile
         self.terminate_flag = False
@@ -252,7 +253,8 @@ class SearchServer(object):
                 print "Starting FSsearchd slave %2.2d on %s:%d" % (i, host, port)
                 sys.stdout.flush()
                 daemon_full = os.path.join(binpath, "FSsearchd.py")
-                daemon_args = 's%2.2d %d %s %s %s' % (i, port, workpath, indexfile, pythonpath)
+                daemon_args = '%s_s%2.2d %d %s %s %s' % (self.daemonid, i, port, workpath,
+                                                         indexfile, pythonpath)
                 command = 'ssh -x %s "%s %s >&/dev/null </dev/null &"'\
                           % (host, daemon_full, daemon_args)
                 os.system(command)

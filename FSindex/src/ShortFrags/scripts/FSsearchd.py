@@ -187,7 +187,7 @@ def create_daemon(daemonid, port, workpath, indexfile, pythonpath=None):
     # Start the SearchServer 
     from ShortFrags.Expt import SearchServer
     global SrchS
-    SrchS = SearchServer.SearchServer(port, indexfile)
+    SrchS = SearchServer.SearchServer(daemonid, port, indexfile)
 
     # Catch termination signal so we can write the log and kill all slaves
     signal.signal(signal.SIGTERM, signal_handler)
