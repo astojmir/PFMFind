@@ -1,4 +1,4 @@
-#! /usr/local/bin/python
+#!/usr/bin/env python
 
 #
 # Copyright (C) 2005-2006 Victoria University of Wellington
@@ -21,36 +21,49 @@
 #
 
 
-import socket, sys, time, string
-from ShortFrags.Expt.SearchServer import *
+"""
+Kills all subservers.
 
-def now():
-    return time.ctime(time.time())
+"""
 
-def kill_all_slaves(serverfile):
-    print "Terminating all subservers at %s" % now() 
-    sys.stdout.flush()
+## import socket, sys, time, string
 
-    # Read the configuration file
-    # File format: host port workpath indexfile [pythonpath [binpath]]
-    fp = file(serverfile, 'r')
-    servers = []
-    for line in fp:
-        sp_line = string.split(line)
-        sp_line[1] = int(sp_line[1])
-        servers.append(sp_line)
-    fp.close()
+from ShortFrags.Expt.SearchServer import parse_slaves_config
+from ShortFrags.Expt.SearchServer import terminate_slaves
 
-    for srvr in servers:
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((srvr[0], srvr[1]))
-            send_obj(sock, (0, 0))
-        except Exception, inst:
-            print "Response error: ", srvr, inst
-            sys.stdout.flush()
-        print "Terminating at %s" % now()
-        sys.stdout.flush()
+
+## def now():
+##     return time.ctime(time.time())
+
+## def kill_all_slaves(serverfile):
+##     print "Terminating all subservers at %s" % now() 
+##     sys.stdout.flush()
+
+##     # Read the configuration file
+##     # File format: host port workpath indexfile [pythonpath [binpath]]
+##     fp = file(serverfile, 'r')
+##     servers = []
+##     for line in fp:
+##         sp_line = string.split(line)
+##         sp_line[1] = int(sp_line[1])
+##         servers.append(sp_line)
+##     fp.close()
+
+##     for srvr in servers:
+##         try:
+##             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+##             sock.connect((srvr[0], srvr[1]))
+##             send_obj(sock, (0, 0))
+##         except Exception, inst:
+##             print "Response error: ", srvr, inst
+##             sys.stdout.flush()
+##         print "Terminating at %s" % now()
+##         sys.stdout.flush()
 
 if __name__ == "__main__":
-    kill_all_slaves(sys.argv[1])
+    import sys
+    if len(sys.argv) < 2:
+        print __doc__
+        sys.exit()
+
+    terminate_slaves(parse_slaves_config(sys.argv[1]))    
