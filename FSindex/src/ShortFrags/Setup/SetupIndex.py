@@ -19,11 +19,27 @@
 #
 
 
-import sys, os, os.path, xml.parsers.expat, resource, time
+import sys, os, os.path, xml.parsers.expat, time
 from cStringIO import StringIO
 from Bio import Fasta
 from BioSQL import BioSeqDatabase
 from ShortFrags.Expt.index import FSIndex
+
+
+_Create_Index_Script = \
+"""
+import os
+from ShortFrags.Expt.index import FSIndex
+
+index_dir = '%s'
+fasta_name = '%s'
+index_name = '%s'
+pttn = %s
+
+os.chdir(index_dir)
+I = FSIndex(fasta_name, pttn, 0, 0)
+I.save(index_name)
+"""
 
 
 class PFMF_IndexCreator(object):
@@ -104,6 +120,7 @@ class PFMF_IndexCreator(object):
 
         print "Creating FASTA datasets."
         print "  Opening database." 
+        print self.dbargs
         server = BioSeqDatabase.open_database(**self.dbargs)
         cur = server.adaptor.cursor
 
@@ -175,16 +192,19 @@ class PFMF_IndexCreator(object):
         old_path = os.getcwd()
         os.chdir(self.index_dir)
 
-        print "  Changing resource limits."
-        if 'RLIMIT_DATA' in dir(resource):
-            lim = resource.getrlimit(resource.RLIMIT_DATA)
-            resource.setrlimit(resource.RLIMIT_DATA, (lim[1],lim[1]))
-        if 'RLIMIT_RSS' in dir(resource):
-            lim = resource.getrlimit(resource.RLIMIT_RSS)
-            resource.setrlimit(resource.RLIMIT_RSS, (lim[1],lim[1]))
-        if 'RLIMIT_MEMLOCK' in dir(resource): 
-            lim = resource.getrlimit(resource.RLIMIT_MEMLOCK)
-            resource.setrlimit(resource.RLIMIT_MEMLOCK, (lim[1],lim[1]))
+        # Change resource limits (memory) - only if POSIX platform
+	if os.name == 'posix':	
+            print "  Changing resource limits."
+            import resource
+            if 'RLIMIT_DATA' in dir(resource):
+                lim = resource.getrlimit(resource.RLIMIT_DATA)
+                resource.setrlimit(resource.RLIMIT_DATA, (lim[1],lim[1]))
+            if 'RLIMIT_RSS' in dir(resource):
+                lim = resource.getrlimit(resource.RLIMIT_RSS)
+                resource.setrlimit(resource.RLIMIT_RSS, (lim[1],lim[1]))
+            if 'RLIMIT_MEMLOCK' in dir(resource): 
+                lim = resource.getrlimit(resource.RLIMIT_MEMLOCK)
+                resource.setrlimit(resource.RLIMIT_MEMLOCK, (lim[1],lim[1]))
 
         for indexes, name, schema, namespace, max_res in self.dataset:
             print "  Dataset %s." % name
@@ -200,12 +220,35 @@ class PFMF_IndexCreator(object):
                         j += 1
                         continue
                     print "    Creating index %s (%s)." % (index_name, now())
-                    pid = os.fork()
-                    if pid == 0:
-                        I = FSIndex(fasta_name, pttn, 0, 0)
-                        I.save(index_name)
-                        os._exit(0)
-                    os.wait()
+
+                    # It appears there is a memory leak if more than
+                    # one index is created in the same
+                    # process. Therefore, we create each index in a
+                    # separate process.
+
+                    # For UNIX, use the standard fork() way:
+                    if os.name == 'posix':	
+                        pid = os.fork()
+                        if pid == 0:
+                            I = FSIndex(fasta_name, pttn, 0, 0)
+                            I.save(index_name)
+                            os._exit(0)
+                        os.wait()
+
+                    # For other platforms (Windows), open a pipe to a
+                    # new python interpreter and send the code and
+                    # variables as stdin.
+                    else:
+                        args = (self.index_dir, fasta_name, index_name, pttn.__repr__())
+                        print _Create_Index_Script % args
+                        pipe_in, pipe_out = os.popen4(sys.executable)
+                        pipe_in.write(_Create_Index_Script % args)
+                        pipe_in.close()
+
+                        # Print the output in case there are errors.
+                        for line in pipe_out:
+                            print line
+                        pipe_out.close()
 
                     j += 1
                     
