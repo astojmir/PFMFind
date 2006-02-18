@@ -114,7 +114,9 @@ class DatabaseClient(object):
         self.module = None
         self.reset_current_experiment()
 
-        # Only one thread at the time should be able to write to the
+        self._views = {}
+         
+       # Only one thread at the time should be able to write to the
         # database. 
         self.db_write_lock = threading.Lock()
        
@@ -131,40 +133,6 @@ class DatabaseClient(object):
         self.server = BioSeqDatabase.open_database(driver=driver, **kwargs)
         self.conn = self.server.adaptor.conn
         self.crs = self.server.adaptor.cursor
-
-        
-        # Get available ontologies
-        self.crs.execute('SELECT name, ontology_id FROM ontology')
-        self._ontologies = dict(self.crs.fetchall())
-
-        # Get those ontologies that point to features
-        def filter_tags(tag):
-            return tag in ['Source Tags',
-                           'Uniprot Feature Qualifiers',
-                           'Annotation Tags',
-                           'Non Experimental Qualifiers',
-                           ]
-        self.feature_types = [tag for tag in \
-            ifilterfalse(filter_tags, self._ontologies.keys())]   
-
-        # Assign functions to retrieve features
-
-        self._views = {}
-        for k in self.feature_types:
-            if k == 'Uniprot Keywords':
-                self._views[k] = (_kw_view, "name",
-                                  _format_without_length)
-            elif k == 'Uniprot Feature Keys':
-                self._views[k] = (_dom_view, "name",
-                                  _format_with_length )
-            elif k == 'InterPro domain':
-                self._views[k] = (_dom_view,
-                                  "definition || ' (' || name || ')'",
-                                  _format_with_length)
-            else: #uniref cluster
-                self._views[k] = (_kw_view,
-                                  "definition || ' (' || name || ')'",
-                                  _format_without_length)  
                
     def close(self):
         """
@@ -182,6 +150,8 @@ class DatabaseClient(object):
         self.dbargs = {}
         self.db_schema = None
         self.PFMF_schema = None
+
+        self._views = {}
 
     # ************************************************************
     # ******* Schema *********************************************
@@ -234,7 +204,40 @@ class DatabaseClient(object):
 
         self.db_schema = db_schema
         self.PFMF_schema = PFMF_schema
-        
+
+
+        # Get available ontologies
+        self.crs.execute('SELECT name, ontology_id FROM ontology')
+        self._ontologies = dict(self.crs.fetchall())
+
+        # Get those ontologies that point to features
+        def filter_tags(tag):
+            return tag in ['Source Tags',
+                           'Uniprot Feature Qualifiers',
+                           'Annotation Tags',
+                           'Non Experimental Qualifiers',
+                           ]
+        self.feature_types = [tag for tag in \
+            ifilterfalse(filter_tags, self._ontologies.keys())]   
+
+        # Assign functions to retrieve features
+
+        for k in self.feature_types:
+            if k == 'Uniprot Keywords':
+                self._views[k] = (_kw_view, "name",
+                                  _format_without_length)
+            elif k == 'Uniprot Feature Keys':
+                self._views[k] = (_dom_view, "name",
+                                  _format_with_length )
+            elif k == 'InterPro domain':
+                self._views[k] = (_dom_view,
+                                  "definition || ' (' || name || ')'",
+                                  _format_with_length)
+            else: #uniref cluster
+                self._views[k] = (_kw_view,
+                                  "definition || ' (' || name || ')'",
+                                  _format_without_length)  
+
 
     def load_PFMF_schema(self):
         """
