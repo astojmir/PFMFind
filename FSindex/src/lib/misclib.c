@@ -296,7 +296,7 @@ int check_word_alphabet(const char *word, int word_len,
 void absprintf(char **buf, int *size, int *len, const char *fmt, ...)
 {
   va_list ap;
-  int r; 
+  int remaining_size; 
   int n;
 
   if (*buf == NULL) {
@@ -304,14 +304,23 @@ void absprintf(char **buf, int *size, int *len, const char *fmt, ...)
     *size = ABSPRINTF_BUF;
     *len = 0;
   }
-  r = *size - *len;
-  va_start(ap, fmt);
-  n = vsnprintf(*buf+*len, r, fmt, ap);
-  if (n >= r) {
-    *size += max(ABSPRINTF_BUF, n+1-r);
-    *buf = reallocec(*buf, *size);
-    vsnprintf(*buf+*len, n+1, fmt, ap);
+
+  while (1) {
+      /* Try to print in the allocated space. */
+      remaining_size = *size - *len;
+      va_start(ap, fmt);
+      n = vsnprintf (*buf+*len, remaining_size, fmt, ap);
+      va_end(ap);
+      /* If that worked, get out. */
+      if (n > -1 && n < remaining_size) {
+	  *len += n;
+	  break;
+      }
+      /* Else try again with more space. */
+      if (n > -1)    /* glibc 2.1 */
+	  *size += max(ABSPRINTF_BUF, n+1-remaining_size);
+      else           /* glibc 2.0 */
+	  *size += ABSPRINTF_BUF;
+      *buf = reallocec(*buf, *size);
   }
-  *len += n;
-  va_end(ap);
 } 
