@@ -177,7 +177,7 @@ class PFMF_IndexCreator(object):
                                               fasta_name)  
                     fp = file(fasta_path, 'w')
                 fp.write(R.__str__())
-                fp.write('\n')
+                fp.write(os.linesep)
                 n += len(R.sequence)
             fp.close()
 
