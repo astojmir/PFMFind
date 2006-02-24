@@ -143,7 +143,8 @@ class PFMF_IndexCreator(object):
             
             print "    Creating file %s." % fasta_name
             fasta_path = os.path.join(self.index_dir, fasta_name) 
-            fp = file(fasta_path, 'w')
+            # Open in binary because Bio.Fasta uses os.linesep instead of '\n'
+            fp = file(fasta_path, 'wb')
 
 
             if namespace:
@@ -240,7 +241,6 @@ class PFMF_IndexCreator(object):
                     # variables as stdin.
                     else:
                         args = (self.index_dir, fasta_name, index_name, pttn.__repr__())
-                        print _Create_Index_Script % args
                         pipe_in, pipe_out = os.popen4(sys.executable)
                         pipe_in.write(_Create_Index_Script % args)
                         pipe_in.close()
