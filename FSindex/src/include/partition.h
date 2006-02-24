@@ -154,6 +154,10 @@ FS_SEQ_t FS_SEQ(FS_TABLE *ptable, const char *seq, int len)
     }
     FSseq += ptable->hash[i][p];
   }
+
+  if (i == 0)
+    FSseq = -1;
+
   return FSseq;
 }
 

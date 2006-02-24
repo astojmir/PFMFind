@@ -84,27 +84,55 @@ int comp_frags(const void *fg1, const void *fg2)
   const uint32_t *f2 = fg2;
   char *s1 = _base_ + *f1;
   char *s2 = _base_ + *f2;
+
+
+  // printf("  **** %6ld %-*.*s, %6ld %-*.*s\n", *f1, _len_,  _len_, s1, *f2, _len_, _len_, s2);
+
   for (i=0; i < _len_; i++, r++, s1++, s2++) {
-    if ((*r)[*s1] < (*r)[*s2])
+    // printf("      (%d, %c, %d, %c, %d)\n", i, *s1, (*r)[*s1 & A_SIZE_MASK], *s2, (*r)[*s2 & A_SIZE_MASK]);
+    if ((*r)[*s1 & A_SIZE_MASK] < (*r)[*s2 & A_SIZE_MASK])
       return -1;
-    else if ((*r)[*s1] > (*r)[*s2])
+    else if ((*r)[*s1 & A_SIZE_MASK] > (*r)[*s2 & A_SIZE_MASK])
       return 1;
+    else if (!*s1 || !*s2)
+      break;
   }
-  return 0;
+
+  /* If the fragments are fully identical, compare the  
+     relative position in the database. */
+  if (*f1 < *f2)
+    return -1;
+  else if (*f1 > *f2) 
+    return 1;
+  else 
+    return 0;
 }
 
 static inline 
-int get_unique_size(FSINDX *FSI, uint32_t len, FS_SEQ_t j) 
+uint32_t get_unique_size(FSINDX *FSI, uint32_t len, FS_SEQ_t bin) 
 {
-  ULINT k;
-  ULINT c;
-  if (FSI->bins[j+1] - FSI->bins[j]) {
-    c = 1;
-    for (k=FSI->bins[j]+1; k < FSI->bins[j+1]; k++)
-      if (FSI->lcpb[k] < len) c++;
+  /* Gets the number of unique fragments in the bin */
+
+  uint32_t k;  /* Fragment index */
+  uint32_t count = 0;
+  const char *s;
+  int i;
+
+  if (FSI->bins[bin+1] - FSI->bins[bin]) {
+      for (k=FSI->bins[bin]+1; k < FSI->bins[bin+1]; k++) {
+
+	/* Get length (use this instead of strlen */
+	s = fastadb_data_pter(FSI->s_db, FSI->oa[k]);
+	i = 0;
+	while (*s && (i < len)) {
+	  s++;
+	  i++;
+	}
+	
+	if ((FSI->lcpb[k] < len) && i >= len) count++;
+      }
   }
-  else c = 0;
-  return c;
+  return count;
 }
 
 static 
@@ -112,26 +140,26 @@ uint32_t FS_INDEX_get_distinct_hist(FSINDX *FSI, uint32_t **h,
 				 uint32_t *size, uint32_t len,
 				 uint32_t *uL)
 {
-  ULINT j;
-  ULINT c;
-  ULINT M = 0;
-  ULINT N = 0;
-  ULINT L = 0;
+  FS_SEQ_t bin;
+  uint32_t count;
+  uint32_t max_bin_size = 0;
+  uint32_t total_count = 0;
+  uint32_t largest_bin = 0;
 
   *h = callocec(*size, sizeof(uint32_t)); 
-  for (j=0; j < FSI->no_bins; j++) {
-    c = get_unique_size(FSI, len, j); 
-    N += c;
-    if (M < c) {
-      M = c;
-      L = j;
-    }
-    (*h)[c]++;
+  for (bin=0; bin < FSI->no_bins; bin++) {
+      count = get_unique_size(FSI, len, bin); 
+      total_count += count;
+      if (max_bin_size < count) {
+	  max_bin_size = count;
+	  largest_bin = bin;
+      }
+      (*h)[count]++;
   }
-  *size = M+1;
-  *h = reallocec(*h, M*sizeof(uint32_t));
-  if(uL) *uL = L;
-  return N;
+  *size = max_bin_size+1;
+  *h = reallocec(*h, *size*sizeof(uint32_t));
+  if(uL) *uL = largest_bin;
+  return total_count;
 }
 
 static
@@ -144,7 +172,7 @@ unsigned char *compute_lcpb(int *a, const char *base, uint32_t n)
     int h = 0;
     const char *s = base + a[i-1];
     const char *t = base + a[i];
-    while (*s++ == *t++) h++;
+    while (*s && *t && (*s++ == *t++)) h++;
     lcpb[i] = min(h, 255);
   }
   return lcpb;
@@ -579,11 +607,27 @@ char *FS_INDEX_sprint_bin(FSINDX *FSI, FS_SEQ_t bin, int options)
     defline = FSI->s_db->seq[id].id.defline;
     if (options)
       absprintf(&buf, &size, &len, "%8ld %5ld ", id, from+1);
-    absprintf(&buf, &size, &len, "%*.*s ", (int) subject.len, (int) subject.len, 
+    absprintf(&buf, &size, &len, "%-*.*s ", (int) FSI->m, (int) subject.len, 
 	    subject.start);
+#if 1
     if (options)
       absprintf(&buf, &size, &len, "%5ld %.*s", from+subject.len, 
 	      58-(int)subject.len, defline);
+#else
+ {
+   /* DEBUGGING */
+   int comp_result = 0;
+    _base_ = fastadb_data_pter(FSI->s_db, 0);  
+    _end_ = fastadb_end_heap(FSI->s_db);
+    _len_ = FSI->m; 
+    _rank_ = FSI->ptable->rank;
+
+   if(j > 0) {
+     comp_result = comp_frags(FSI->oa+j, FSI->oa+j-1);     
+   }
+   absprintf(&buf, &size, &len, "%5d %4d", comp_result, (int) FSI->lcpb[j]);
+ }
+#endif
     absprintf(&buf, &size, &len, "\n");
   }
   free(s);
