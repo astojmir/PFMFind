@@ -28,7 +28,7 @@ from ShortFrags.Setup.TaxonLoader import TaxonLoader
 from ShortFrags.Setup.UniprotLoader import load_Uniprot
 from ShortFrags.Setup.UnirefLoader import UnirefParser
 from ShortFrags.Setup.UnirefLoader import UnirefLoader
-from ShortFrags.Setup.InterProLoader import Protein2InterProParser
+from ShortFrags.Setup.InterProLoader import Protein2IprParser
 from ShortFrags.Setup.InterProLoader import InterProLoader
 
 class PFMF_DatabaseLoader(object):
@@ -182,7 +182,7 @@ class PFMF_DatabaseLoader(object):
             if sql0:
                 print "    Running initial SQL script %s." % sql0
                 self._execute_sql(sql0)
-            print "    Loading protein2interpro file ..."
+            print "    Loading protein2ipr file ..."
             stats = self._load_interpro(filename, namespace)
             print "    Lines %s, Domains %s." % stats
             if sql1:
@@ -296,13 +296,13 @@ class PFMF_DatabaseLoader(object):
 
     def _load_interpro(self, filename, namespace):
         """
-        Loads InterPro domains from protein2interpro.dat file.
+        Loads InterPro domains from protein2ipr.dat file.
         """
 
         nsdb = self._get_namespace(namespace)
 
         IL = InterProLoader(nsdb.adaptor, nsdb.dbid)
-        IP = Protein2InterProParser(IL.load_domain)
+        IP = Protein2IprParser(IL.load_domain)
         fp = file(filename)
         IP.parse(fp)
         fp.close()

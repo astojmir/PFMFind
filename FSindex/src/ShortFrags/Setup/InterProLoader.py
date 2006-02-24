@@ -43,6 +43,31 @@ class Protein2InterProParser(object):
             self.handler(ac, start, end, name, ipid, desc)
             self.total_lines += 1
 
+# Apparently a new format was introduced, tab-separated:
+# protein_ac      IPR_ac  IPR_name        method_ac       pos_from        pos_to
+
+class Protein2IprParser(object):
+    def __init__(self, handler=default_handler):
+        self.handler = handler
+        self.total_lines = 0
+
+    def parse(self, fp):
+        for line in fp:
+            ls = line.split('\t', 5)
+            if len(ls) != 6: continue
+            ac, ipid, desc, name, start, end = ls 
+            desc = desc.rstrip()
+            try:
+                start = int(start)
+                end = int(end)
+            except ValueError:
+                continue
+            self.handler(ac, start, end, name, ipid, desc)
+            self.total_lines += 1
+
+
+
+
 
 class InterProLoader(object):
     def __init__(self, adaptor, dbid):
