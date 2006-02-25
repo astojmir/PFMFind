@@ -21,7 +21,6 @@
 
 import sys, os, os.path, xml.parsers.expat, time
 from cStringIO import StringIO
-from Bio import Fasta
 from BioSQL import BioSeqDatabase
 from ShortFrags.Expt.index import FSIndex
 
@@ -41,6 +40,7 @@ I = FSIndex(fasta_name, pttn, 0, 0)
 I.save(index_name)
 """
 
+_COL_WIDTH = 60
 
 class PFMF_IndexCreator(object):
     def __init__(self):
@@ -120,7 +120,6 @@ class PFMF_IndexCreator(object):
 
         print "Creating FASTA datasets."
         print "  Opening database." 
-        print self.dbargs
         server = BioSeqDatabase.open_database(**self.dbargs)
         cur = server.adaptor.cursor
 
@@ -133,20 +132,14 @@ class PFMF_IndexCreator(object):
                 cur.execute("SET search_path TO %s" % schema)
                 server.adaptor.commit()
 
-            R = Fasta.Record()
-            n = 0;  # record counter
-            j = 0;  # FASTA file counter
-            fasta_name = name + '%3.3d.fas' % j
+            # Skip the whole FASTA file creation if the first file
+            # already exists
+            fasta_name = name + '%3.3d.fas' % 0
             if fasta_name in os.listdir(self.index_dir):
                 print "    File %s present - skipping all." % fasta_name
                 continue
-            
-            print "    Creating file %s." % fasta_name
-            fasta_path = os.path.join(self.index_dir, fasta_name) 
-            # Open in binary because Bio.Fasta uses os.linesep instead of '\n'
-            fp = file(fasta_path, 'wb')
 
-
+            # Execute the SQL query (specific namespace or all sequences)
             if namespace:
                 dbid = server[namespace].dbid
                 sql = """SELECT e.name || ' (' || e.accession || ') '
@@ -163,23 +156,39 @@ class PFMF_IndexCreator(object):
                          ORDER BY e.name;"""
                 cur.execute(sql)
 
+
+            # Number of residues in the current file set so that new file is opened
+            num_residues = max_res + 1
+            # Counter and file are dummy
+            file_counter = -1
+            fp = StringIO() 
+
             while 1:
                 res = cur.fetchone()
                 if not res: break
-                R.title = res[0][:60]
-                R.sequence = res[1]
-                if n + len(R.sequence) > max_res:
-                    n = 0
-                    j += 1
+                title = res[0][:_COL_WIDTH-1]
+                sequence = res[1]
+
+                if num_residues + len(sequence) > max_res:
+                    num_residues = 0
+                    file_counter += 1
                     fp.close()
-                    fasta_name = name + '%3.3d.fas' % j
+                    fasta_name = name + '%3.3d.fas' % file_counter
                     print "    Creating file %s." % fasta_name
                     fasta_path = os.path.join(self.index_dir,
                                               fasta_name)  
-                    fp = file(fasta_path, 'w')
-                fp.write(R.__str__())
-                fp.write(os.linesep)
-                n += len(R.sequence)
+                    # Open file in binary mode:
+                    # We write in UNIX format with line separator '\n'
+                    fp = file(fasta_path, 'wb')
+
+                # Now write the sequence
+                fp.write('>%s\n' % title)
+                i = 0
+                while i < len(sequence):
+                    fp.write('%s\n' % sequence[i:i+_COL_WIDTH])
+                    i += _COL_WIDTH
+
+                num_residues += len(sequence)
             fp.close()
 
         server.adaptor.close()
@@ -222,8 +231,8 @@ class PFMF_IndexCreator(object):
                         continue
                     print "    Creating index %s (%s)." % (index_name, now())
 
-                    # It appears there is a memory leak if more than
-                    # one index is created in the same
+                    # It appears there is a memory leak (Python related)
+                    # if more than one index is created in the same
                     # process. Therefore, we create each index in a
                     # separate process.
 
