@@ -79,7 +79,7 @@ DATA_FILES = [
 
 setup(
     name='PFMFind',
-    version='0.46.4',
+    version='0.46.5',
     author='Aleksandar Stojmirovic',
     author_email='astojmir@uottawa.ca',
     url='http://aix1.uottawa.ca/~astojmir',
