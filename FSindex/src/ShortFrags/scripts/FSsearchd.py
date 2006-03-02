@@ -46,6 +46,7 @@ The fields should be separated by blanks.
 
 
 import sys, os, signal, os.path, string, resource, socket
+from ShortFrags.Expt import SearchServer
 
 __version__ = "$Revision: 1.1 $"
 __date__ = "$Date$"
@@ -59,17 +60,7 @@ SrchS = None
 
 def signal_handler(signum, frame):
     global SrchS
-    SrchS.terminate(signal=True)
-
-class Log:
-    """file like for writes with auto flush after each write
-    to ensure that everything is logged, even during an
-    unexpected exit."""
-    def __init__(self, f):
-        self.f = f
-    def write(self, s):
-        self.f.write(s)
-        self.f.flush()
+    SrchS.terminate_flag = SearchServer.SIGNAL
 
 def create_daemon(daemonid, port, workpath, indexfile, pythonpath=None):
     """Disk And Execution MONitor (Daemon)
@@ -185,7 +176,6 @@ def create_daemon(daemonid, port, workpath, indexfile, pythonpath=None):
         resource.setrlimit(resource.RLIMIT_MEMLOCK, (lim[1],lim[1]))
 
     # Start the SearchServer 
-    from ShortFrags.Expt import SearchServer
     global SrchS
     SrchS = SearchServer.SearchServer(daemonid, port, indexfile)
 
@@ -194,6 +184,8 @@ def create_daemon(daemonid, port, workpath, indexfile, pythonpath=None):
     
     SrchS.start()
 
+    os._exit(0)
+    
 if __name__ == "__main__":
     if len(sys.argv) < 5:
         print __doc__
