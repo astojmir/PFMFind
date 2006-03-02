@@ -295,7 +295,7 @@ class SearchServer(object):
                     daemon_full = os.path.join(binpath, "FSsearchd.py")
                     daemon_args = '%s_s%2.2d %d %s %s %s' % (self.daemonid, i, port, workpath,
                                                              indexfile, pythonpath)
-                    command = 'ssh -x %s "%s %s >&/dev/null </dev/null &"'\
+                    command = 'ssh -x %s "%s %s >&/dev/null </dev/null &" >&/dev/null'\
                               % (host, daemon_full, daemon_args)
                     os.system(command)
 
