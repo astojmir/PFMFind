@@ -26,8 +26,8 @@ and waits for search requests.
 
 SYNOPSIS:
 
-    FSsearchd.py daemonid port workpath indexfile [pythonpath] 
-
+    FSsearchd.py [--control-slaves] daemonid port workpath indexfile [pythonpath] 
+    FSsearchd.py -h|--help
 
 DESCRIPTION:
 
@@ -39,9 +39,18 @@ can be used to add a directory to the default python path.
 
 If the inxdexfile ends with .cfg it is treated as a configuration file
 for slaves. Each line should be in the following format:
+
 host port workpath indexfile [pythonpath [binpath]].
+
 The fields should be separated by blanks.
 
+OPTIONS:
+
+--help (-h)             Shows this message.
+--control-slaves (-c)   The server attempts to start its slaves if not already
+                          started (using ssh). On shutdown, it sends the
+                          termination signal to all slaves. Note that you need
+                          to have passwordless ssh setup for this to work.
 """
 
 
@@ -62,7 +71,7 @@ def signal_handler(signum, frame):
     global SrchS
     SrchS.terminate_flag = SearchServer.SIGNAL
 
-def create_daemon(daemonid, port, workpath, indexfile, pythonpath=None):
+def create_daemon(daemonid, port, workpath, indexfile, pythonpath=None, control_slaves = False):
     """Disk And Execution MONitor (Daemon)
 
     Default daemon behaviors (they can be modified):
@@ -177,7 +186,7 @@ def create_daemon(daemonid, port, workpath, indexfile, pythonpath=None):
 
     # Start the SearchServer 
     global SrchS
-    SrchS = SearchServer.SearchServer(daemonid, port, indexfile)
+    SrchS = SearchServer.SearchServer(daemonid, port, indexfile, control_slaves)
 
     # Catch termination signal so we can write the log and kill all slaves
     signal.signal(signal.SIGTERM, signal_handler)
@@ -187,8 +196,37 @@ def create_daemon(daemonid, port, workpath, indexfile, pythonpath=None):
     os._exit(0)
     
 if __name__ == "__main__":
-    if len(sys.argv) < 5:
+
+    import getopt
+    
+    control_slaves = False
+    pythonpath=None
+
+    options = 'hc'
+    long_options = ['help', 'control-slaves']
+    
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], options,
+                                   long_options)
+    except getopt.GetoptError:
+        # print help information and exit:
         print __doc__
-        sys.exit()
-    args = tuple(sys.argv[1:])
-    create_daemon(*args)
+        sys.exit(2)
+
+    for o, a in opts:
+        if o in ("-h", "--help"):
+            print __doc__
+            sys.exit()
+        elif o in ('-c', '--control-slaves'):
+            control_slaves = True
+
+    if len(args) < 4:
+        print __doc__
+        sys.exit(2)
+
+    daemonid, port, workpath, indexfile = args[:4]
+
+    if len(args) >= 5:
+        pythonpath = args[4]
+
+    create_daemon(daemonid, port, workpath, indexfile, pythonpath, control_slaves)
