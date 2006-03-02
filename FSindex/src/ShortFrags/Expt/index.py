@@ -26,7 +26,7 @@ Wrapper around FSindex library.
 from ShortFrags.Expt import FS
 from ShortFrags.Expt.db import db
 from ShortFrags.Expt.hit_list import HitList
-
+import os, os.path
 
 FS_BINS = FS.FS_BINS
 SUFFIX_ARRAY = FS.SUFFIX_ARRAY
@@ -47,7 +47,19 @@ class FSIndex(object):
         self.thisown = 0
         if sepn == None:
             sepn = []
-        self.this = FS.new_Index(filename, sepn, use_sa, print_flag)
+            
+        # Need to change directory because the C code works only on UNIX
+        old_workdir = os.getcwd()
+        new_workdir, new_filename = os.path.split(filename)
+        if len(new_workdir):
+            os.chdir(new_workdir)
+        
+        self.this = FS.new_Index(new_filename, sepn, use_sa, print_flag)
+
+        # Return to old working directory
+        if len(new_workdir):
+            os.chdir(old_workdir)
+
         self.thisown = 1
         self.__dict__.update(FS.Index_get_data(self))
 
