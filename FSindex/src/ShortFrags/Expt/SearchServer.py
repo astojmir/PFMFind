@@ -19,10 +19,12 @@
 #
 
 
-import types, cPickle, threading, sys, os, re, socket, Queue
+import types, cPickle, sys, os, re, socket, Queue, select
 import time, os.path, string
 from ShortFrags.Expt.index import FSIndex
 from cStringIO import StringIO
+from threading import Thread
+from errno import EINTR
 
 from ShortFrags.Expt.matrix import SCORE, POSITIONAL
 from ShortFrags.Expt.matrix import ScoreMatrix, ProfileMatrix
@@ -125,6 +127,8 @@ def parse_slaves_config(serverfile):
 
 
 def terminate_slaves(servers):
+    if not servers:
+        return
     print "Terminating all subservers at %s" % now()
     sys.stdout.flush()
     for srvr in servers:
@@ -140,13 +144,13 @@ def terminate_slaves(servers):
 
 
 
-class DispatchedSearch(threading.Thread):
+class DispatchedSearch(Thread):
     def __init__(self, host, port, query, queue):
         self._host = host
         self._port = port
         self._query = query
         self._queue = queue
-        threading.Thread.__init__(self)
+        Thread.__init__(self)
 
     def run(self):
         try:
@@ -159,14 +163,26 @@ class DispatchedSearch(threading.Thread):
 def now():
     return time.ctime(time.time())
 
+
+# Termination flag values:
+RUN = 0           # keep running
+REMOTE = 1        # remote termination - DIE request
+SIGNAL = 2        # received termination signal
+NO_SLAVES = 3     # could not reach a slave
+NO_INDEX = 4      # could not load index
+OTHER_ERROR = 99  # anything not numbered above
+
 class SearchServer(object):
-    def __init__(self, daemonid, port, indexfile):
+    def __init__(self, daemonid, port, indexfile, control_slaves=True):
 
         self.daemonid = daemonid
         self.port = int(port)
         self.indexfile = indexfile
-        self.terminate_flag = False
+
         self.ct = None
+
+        self.terminate_flag = RUN
+        self.control_slaves = control_slaves
 
     def start(self):
         """
@@ -176,58 +192,81 @@ class SearchServer(object):
         print "Starting at %s" % now()
         sys.stdout.flush()
 
-                # Check if indexfile is in fact a config file
+        # Check if indexfile is in fact a config file
         if os.path.splitext(self.indexfile)[1] == '.cfg':
             self.create_subservers(self.indexfile)
         else:
             self.servers = []
             self.load_index(self.indexfile)
         
-        self.sp_acc = re.compile('\((\w+)\)')
+        if not self.terminate_flag:
+            self.sp_acc = re.compile('\((\w+)\)')
 
-        print "Starting Main Loop at %s" % now()
-        sys.stdout.flush()
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        sock.bind(('', self.port))
-        sock.listen(5)
+            print "Starting Main Loop at %s" % now()
+            sys.stdout.flush()
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.bind(('', self.port))
+            sock.listen(5)
 
         while not self.terminate_flag:
-            (clsock, address) = sock.accept()
-            self.ct = threading.Thread(target=self.answer_request, args=(clsock,))
-            self.ct.start()
-            # Should not run any requests concurrently - only one additional thread
-            self.ct.join()
-            self.ct = None
+            try:
+                r, w, e = select.select([sock],[],[], 2.0)
+            except select.error, inst:
+                if inst[0] != EINTR:
+                    print "Select error in the main loop:" , inst.__class__, inst.__str__()
+                    sys.stdout.flush()
+                    self.terminate_flag = OTHER_ERROR
+                r = []
 
-        self.terminate()
+            if r:
+                (clsock, address) = sock.accept()
+                self.ct = Thread(target=self.answer_request, args=(clsock,))
+                self.ct.start()
+                # Should not run any requests concurrently - only one additional thread
+                # TO DO: make sure this thread always finishes.
+                self.ct.join()
+                self.ct = None
 
-    def terminate(self, terminate_subservers=True, signal=False):
+        self.terminate(terminate_subservers=self.control_slaves)
+
+    def terminate(self, terminate_subservers=True):
         """
         Terminates cleanly (writes to log, terminates subservers).
         """
 
+        if self.terminate_flag == REMOTE:
+            print "Exiting due to DIE request."
+        elif self.terminate_flag == SIGNAL:
+            print "Exiting due to termination signal."
+        elif self.terminate_flag == NO_SLAVES:
+            print "Exiting due to being unable to reach all slaves."
+        elif self.terminate_flag == NO_INDEX:
+            print "Exiting due to being unable to load index."
+            
 
-        if signal: # SIGTERM received.
-            print "Received termination signal. Exiting."
-            sys.stdout.flush()
+            
+        sys.stdout.flush()
 
         # Wait for working thread to finish
-        print "Waiting for working thread at %s" % now()
         if self.ct:
+            print "Waiting for working thread at %s" % now()
             self.ct.join()
 
         if terminate_subservers:
             terminate_slaves(self.servers)
         print "Terminating at %s" % now()
         sys.stdout.flush()
-        os._exit(0)
 
 
     def load_index(self, indexfile):
         print "Loading Index at %s" % now()
         sys.stdout.flush()
-        self.I = FSIndex(indexfile, [])
+        try:
+            self.I = FSIndex(indexfile, [])
+        except Exception, inst:
+            print "Error loading index:" , inst.__class__, inst.__str__()
+            sys.stdout.flush()
+            self.terminate_flag = NO_INDEX
 
     def create_subservers(self, serverfile):
         print "Creating subservers at %s" % now()
@@ -247,17 +286,26 @@ class SearchServer(object):
                     binpath = srvr[5]
             try: # Try to see if a daemon is already running
                 send_obj2(host, port, (1,0))
-                print "FSsearchd slave %2.2d already running on %s:%d" % (i, host, port)
+                print "Found FSsearch slave %2.2d running on %s:%d" % (i, host, port)
                 sys.stdout.flush()
-            except socket.error, inst: # Start the daemon 
-                print "Starting FSsearchd slave %2.2d on %s:%d" % (i, host, port)
-                sys.stdout.flush()
-                daemon_full = os.path.join(binpath, "FSsearchd.py")
-                daemon_args = '%s_s%2.2d %d %s %s %s' % (self.daemonid, i, port, workpath,
-                                                         indexfile, pythonpath)
-                command = 'ssh -x %s "%s %s >&/dev/null </dev/null &"'\
-                          % (host, daemon_full, daemon_args)
-                os.system(command)
+            except socket.error, inst:
+                if self.control_slaves: # Start the daemon 
+                    print "Starting FSsearch slave %2.2d on %s:%d using ssh." % (i, host, port)
+                    sys.stdout.flush()
+                    daemon_full = os.path.join(binpath, "FSsearchd.py")
+                    daemon_args = '%s_s%2.2d %d %s %s %s' % (self.daemonid, i, port, workpath,
+                                                             indexfile, pythonpath)
+                    command = 'ssh -x %s "%s %s >&/dev/null </dev/null &"'\
+                              % (host, daemon_full, daemon_args)
+                    os.system(command)
+
+                    # (TO DO:) We should probably loop here (or elsewhere) until all servers are
+                    # on line. On the other hand, clients check that before each search.
+
+                else: # We just exit
+                    print "Could not find FSsearch slave %2.2d running on %s:%d" % (i, host, port)
+                    sys.stdout.flush()
+                    self.terminate_flag = NO_SLAVES
 
     def check_request(self, clsock):
         obj = receive_obj(clsock)
@@ -286,12 +334,12 @@ class SearchServer(object):
             finally:
                 clsock.close()
         except Exception, inst:
-            print ("Failed request at %s: " % now()) , inst
+            print ("Failed request at %s: " % now()) , inst.__class__, inst.__str__()
             sys.stdout.flush()
 
     def dispatch_request(self, clsock, opcode, data):
         if opcode == DIE:
-            self.terminate_flag = True
+            self.terminate_flag = REMOTE
             return
         elif opcode == GET_INDEX_DATA:
             results = []
@@ -423,7 +471,7 @@ class SearchServer(object):
         
     def process_request(self, clsock, opcode, data):
         if opcode == DIE:
-            self.terminate_flag = True
+            self.terminate_flag = REMOTE
             return
         elif opcode == GET_INDEX_DATA:
             results = [self.I.ix_data]
