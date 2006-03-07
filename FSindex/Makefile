@@ -30,7 +30,7 @@ else
   ifeq ($(MACHINE), morava)
   PYDIR = /usr/include/python2.2
   else
-  PYDIR = /usr/include/python2.3
+  PYDIR = /usr/include/python2.4
   endif
 endif
 
