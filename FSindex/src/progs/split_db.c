@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2006 Victoria University of Wellington
+ * Copyright (C) 2004-2006 Victoria University of Wellington
  *
  * This file is part of the PFMFind module.
  *
