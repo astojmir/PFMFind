@@ -60,10 +60,10 @@ from ShortFrags.Expt import SearchServer
 __version__ = "$Revision: 1.1 $"
 __date__ = "$Date$"
 __author__ = "Aleksandar Stojmirovic"
-__credits__ = "Chad J. Schroeder, ActiveState Programming Network"
 
-
-# Based on Chad J. Schroeder's recipe: http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/278731 
+# Based on the recipies from the Active State Programming Network Python Cookbook:
+# http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/278731 (Chad J. Schroeder) and
+# http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/66012 (Jurgen Hermann)
 
 SrchS = None
 
@@ -72,90 +72,68 @@ def signal_handler(signum, frame):
     SrchS.terminate_flag = SearchServer.SIGNAL
 
 def create_daemon(daemonid, port, workpath, indexfile, pythonpath=None, control_slaves = False):
-    """Disk And Execution MONitor (Daemon)
-
-    Default daemon behaviors (they can be modified):
-    1.) Ignore SIGHUP signals.
-    2.) Default current working directory to the "/" directory.
-    3.) Set the current file creation mode mask to 0.
-    4.) Close all open files (0 to [SC_OPEN_MAX or 256]).
-    5.) Redirect standard I/O streams to "/dev/null".
-
-    Failed fork() calls will return a tuple: (errno, strerror).  This behavior
-    can be modified to meet your program's needs.
-
-    Resources:
-    Advanced Programming in the Unix Environment: W. Richard Stevens
-    Unix Network Programming (Volume 1): W. Richard Stevens
-    http://www.erlenstar.demon.co.uk/unix/faq_2.html#SEC16
+    """
+    Creates a daemon to run as PFMFind FSIndex server.
     """
     
     if pythonpath != None:
         sys.path.append(pythonpath)
     workpath = os.path.expanduser(workpath)
+    logfile = os.path.join(workpath, "FSsearchd_%s.log" % daemonid)
+    pidfile = os.path.join(workpath, "FSsearchd_%s.pid" % daemonid)
+
+    # First check if a daemon is already running, exit if so
 
     try:
-        # Fork a child process so the parent can exit.  This will return control
-        # to the command line or shell.  This is required so that the new process
-        # is guaranteed not to be a process group leader.  We have this guarantee
-        # because the process GID of the parent is inherited by the child, but
-        # the child gets a new PID, making it impossible for its PID to equal its
-        # PGID.
+        # Get pid from the pid file
+        fp = file(pidfile, 'r')
+        pid = int(fp.next().strip())
+        fp.close()
+        os.kill(pid, 0)
+        sys.stderr.write("Another instance of FSsearchd running - kill it first.\n")
+        os._exit(1)
+    except:
+        # Could not open file, could not find pid or the process itself - this is good
+        pass
+
+    try: # First fork
         pid = os.fork()
     except OSError, e:
-        return((e.errno, e.strerror))     # ERROR (return a tuple)
+        raise Exception, "%d (%s)" % (e.strerror, e.errno)
 
-    if (pid == 0):       # The first child.
-
-        # Next we call os.setsid() to become the session leader of this new
-        # session.  The process also becomes the process group leader of the
-        # new process group.  Since a controlling terminal is associated with a
-        # session, and this new session has not yet acquired a controlling
-        # terminal our process now has no controlling terminal.  This shouldn't
-        # fail, since we're guaranteed that the child is not a process group
-        # leader.
+    if (pid == 0):
+        # We are now in the first child.
         os.setsid()
-
-        # When the first child terminates, all processes in the second child
-        # are sent a SIGHUP, so it's ignored.
+        os.chdir("/")
+        os.umask(0)
         signal.signal(signal.SIGHUP, signal.SIG_IGN)
 
-        try:
-            # Fork a second child to prevent zombies.  Since the first child is
-            # a session leader without a controlling terminal, it's possible for
-            # it to acquire one by opening a terminal in the future.  This second
-            # fork guarantees that the child is no longer a session leader, thus
-            # preventing the daemon from ever acquiring a controlling terminal.
-            pid = os.fork()        # Fork a second child.
+        try:  # Fork a first child.
+            pid = os.fork()       
         except OSError, e:
-            return((e.errno, e.strerror))  # ERROR (return a tuple)
+            raise Exception, "%d (%s)" % (e.strerror, e.errno)
 
-        if (pid == 0):      # The second child.
-            # Ensure that the daemon doesn't keep any directory in use.  Failure
-            # to do this could make a filesystem unmountable.
-            os.chdir("/")
-            # Give the child complete control over permissions.
-            os.umask(0)
-        else:
-            pidfile = os.path.join(workpath, "FSsearchd_%s.pid" % daemonid)
+        if (pid > 0):      
+            # The parent (the first child) writes the pid of the daemon,
+            # the host and the command line, then exits
             pid_fp = file(pidfile,'w')
-            pid_fp.write("%d\n" % pid) # Write pid of the daemon
+            pid_fp.write("%d\n" % pid)
             pid_fp.write("%s\n" % socket.gethostname()) 
-            pid_fp.write("%s\n" % string.join(sys.argv, ' ')) # Write the command line
+            pid_fp.write("%s\n" % string.join(sys.argv, ' '))
             pid_fp.close()
-            os._exit(0)     # Exit parent (the first child) of the second child.
+            os._exit(0)     # Exit parent of the second child.
     else:
         os._exit(0)         # Exit parent of the first child.
 
 
+    # We are now in the second child.
 
     # Change to working directory
-    logfile = os.path.join(workpath, "FSsearchd_%s.log" % daemonid)
     os.chdir(workpath)
 
     # Close all open files.  Try the system configuration variable, SC_OPEN_MAX,
     # for the maximum number of open files to close.  If it doesn't exist, use
-    # the default value (configurable).
+    # the default value (256).
 
     try:
         maxfd = os.sysconf("SC_OPEN_MAX")
@@ -173,7 +151,7 @@ def create_daemon(daemonid, port, workpath, indexfile, pythonpath=None, control_
     os.open(logfile, os.O_CREAT|os.O_APPEND|os.O_RDWR) # standard output (1)
     os.open(logfile, os.O_CREAT|os.O_APPEND|os.O_RDWR) # standard error  (2)
 
-    # Set resource limits
+    # Set resource limits - FSIndex takes a lot of memory
     if 'RLIMIT_DATA' in dir(resource):
         lim = resource.getrlimit(resource.RLIMIT_DATA)
         resource.setrlimit(resource.RLIMIT_DATA, (lim[1],lim[1]))
@@ -193,6 +171,7 @@ def create_daemon(daemonid, port, workpath, indexfile, pythonpath=None, control_
     
     SrchS.start()
 
+    # Exit when the server is stopped
     os._exit(0)
     
 if __name__ == "__main__":
