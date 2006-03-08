@@ -20,8 +20,6 @@ PACKAGES = [
     ]
 
 libs=["gcc"]
-if sys.platform == 'win32':
-    libs.append("gw32c")
 
 EXTENSIONS = [
     Extension('ShortFrags.Expt.FS',
@@ -44,12 +42,10 @@ EXTENSIONS = [
     ]
 
 SCRIPTS = [
-    'ShortFrags/scripts/FSsearchd.py',
-    'ShortFrags/scripts/PFMFind.py',
+    'ShortFrags/scripts/FSsearchc.py',
+    'ShortFrags/scripts/PFMFind.pyw',
     'ShortFrags/scripts/PFMFsetupdb.py',
     'ShortFrags/scripts/PFMFsetupix.py',
-    'ShortFrags/scripts/killslaves.py',
-    'ShortFrags/scripts/searchclient.py',
     ]
 
 from ShortFrags import CONFIG_DATA_DIR, SQL_DATA_DIR
@@ -77,21 +73,29 @@ DATA_FILES = [
     ]
 
 
+# Windows specific things
+if sys.platform == 'win32':
+    libs.append("gw32c")
+    SCRIPTS.append('ShortFrags/scripts/FSsearchs.py')
+else:
+    SCRIPTS.append('ShortFrags/scripts/FSsearchd.py')
+    
+
 setup(
     name='PFMFind',
-    version='0.46.5',
+    version='0.47',
     author='Aleksandar Stojmirovic',
     author_email='astojmir@uottawa.ca',
-    url='http://aix1.uottawa.ca/~astojmir',
+    url='http://www.vuw.ac.nz/biodiscovery/publications/centre/pfmfind.aspx',
     packages=PACKAGES,
     scripts=SCRIPTS,
     ext_modules=EXTENSIONS,
     data_files=DATA_FILES,
-    summary='System for discovery of peptide homology and function',
-    description='Set of routines/scripts supporting similarity search'\
+    description='System for discovery of peptide homology and function',
+    long_description='Set of routines/scripts supporting similarity search'\
     ' of datasets of short protein fragments of fixed length.',
     license='GNU GPL',
-    platform='POSIX, Windows',
+    platforms='POSIX, Windows',
     classifiers = [
       'Development Status :: 3 - Alpha',
       'Environment :: X11 Applications',
