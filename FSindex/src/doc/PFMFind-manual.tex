@@ -18,7 +18,7 @@
 \newpage
 
 \section{Overview}
-Protein Fragment Motif Finder (PFMFind) is a system written mostly in Python enabling discovery of relationships between short fragments of protein sequences using similarity search. It supports queries based on score matrices and PSSMs obtained through an iterative pricedure similar to PSI-BLAST.
+Protein Fragment Motif Finder (PFMFind) is a system written mostly in Python enabling discovery of relationships between short fragments of protein sequences using similarity search. It supports queries based on score matrices and PSSMs obtained through an iterative procedure similar to PSI-BLAST.
 
 PFMFind system consists of three major components: a PFMFind GUI (graphical user interface) client, a search engine for fast similarity search of datasets of short peptide fragments called FSIndex and a relational database (Figure \ref{fig:PFMFind_struct}). PFMFind client takes user input, and communicates with FSIndex and the database through its components. It passes search parameters in batches to FSIndex and receives the results of searches that are then stored in the database. It also retrieves the results from the database and displays them, together with available annotations, to the user. The annotations are stored in a separate BioSQL schema in the database.
 
@@ -26,12 +26,12 @@ PFMFind components communicate using the standard TCP/IP socket interface and ca
 
 \begin{figure}[!tpb]
 \centerline{\includegraphics{PFMFind_struct.eps}}
-\caption{Sturucture of PFMFind system.}\label{fig:PFMFind_struct}
+\caption{Structure of PFMFind system.}\label{fig:PFMFind_struct}
 \end{figure}
 
 \section{Installation}
 
-Each machine that will be running the PFMFind client or FSIndex needs to have installed the PFMFind Python module. Any machine running the database needs to be have PostgreSQL installed. Here we only deal with the installation of the Python module; for PostgreSQL-related instruction please refer to the PostgreSQL manual (\url{http://www.postgresql.org/docs/8.0/interactive/index.html}).
+Each machine that will be running the PFMFind client or FSIndex needs to have installed the PFMFind Python module and its prerequisites. A machine running the database needs to be have PostgreSQL installed. Here we only deal with the installation of the Python module; for PostgreSQL-related instruction please refer to the appropriate PostgreSQL manual (\url{http://www.postgresql.org/docs/}).
 
 \subsection{Prerequisites}
 Before installing PFMFind you need to download and install the following Python modules (refer to the individual packages for the instructions on how to do so):
@@ -47,20 +47,43 @@ In turn, Biopython requires
 \item Pmw megawidgets toolkit (\url{http://pmw.sourceforge.net/})
 \item psycopg (\url{http://www.initd.org/projects/psycopg1})\footnote{Only version 1.1 was tested.} \footnote{You may experiment with replacing it by another PostgreSQL adapter.}
 \item transcendental (\url{http://bonsai.ims.u-tokyo.ac.jp/~mdehoon/software/python/statistics.html})
+\item Python for Windows extensions (pywin32) -- only if you wish to run FSIndex on Windows as a service (\url{http://sourceforge.net/projects/pywin32/})
 \end{itemize}
 
 \subsection{Installing on UNIX platforms}
 
-Standard distutils way: Extract the source distribution, go to the top distribution directory and type
+Standard distutils way (see \url{http://docs.python.org/inst/inst.html}): Extract the source distribution, go to the top distribution directory and type
 \begin{verbatim}
 $ python setup.py install
 \end{verbatim}
 Please read the `Installing Python Modules' page (\url{http://docs.python.org/inst/inst.html}) for 
-customization options.
+customisation options.
 
 \subsection{Installing on Windows}
 
-Use a binary distribution installer.
+Use a binary distribution installer provided -- just execute it and follow the instructions.
+
+\subsubsection{Installing from source}
+
+In case you really need to do so (binary version for your version of Python is unavailable, here is what you need to do):
+\begin{enumerate}
+\item Read the web pages showing how to do this. The primary reference is \url{http://sebsauvage.net/python/mingw.html} and it has many links to other pages. You will not need to do all that is described there, only steps 1. and 2. (briefly stated below);
+\item Install MinGW (\url{http://www.mingw.org/}), as well as MSys;
+\item Produce libpython23.a (or libpython24.a or whatever, depending on your version of Python) -- the page \url{http://www.mingw.org/MinGWiki/index.php/Python extensions} can be useful as well;
+\item Now that you have your system in place it is very easy to build and install the module:\\
+Open a DOS prompt, change to the top directory of the source package (the one containing \texttt{setup.py})
+and type
+\begin{verbatim}
+> python setup.py build -cmingw32
+\end{verbatim}
+After compiling is finished (ignore all warnings), type
+\begin{verbatim}
+> python setup.py bdist_wininst --skip-build
+\end{verbatim}
+You will find your binary installer in the subdirectory \texttt{dist}.
+\end{enumerate}
+
+There are other ways, involving the Microsoft Visual C++ compiler.
 
 \section{Database Setup}
 
@@ -74,7 +97,7 @@ Use a binary distribution installer.
 \begin{verbatim}
 $ PFMFsetupdb.py dbsetup.xml
 \end{verbatim}
-\item Wait until the database is filled. If you have several configuration files associated with different steps, repeat the step 4. as neeeded.
+\item Wait until the database is filled. If you have several configuration files associated with different steps, repeat the step 4. as needed.
 \end{enumerate}
 
 \subsection{PFMFsetupdb.py Script}
@@ -128,7 +151,7 @@ This is the compulsory element that is empty and that must start the configurati
 
 \subsubsection*{{\tt <Schema>}}
 
-An optional empty element (default PostgreSQL schema used if omitted) decsribing the schema the dataset (and annotations are to be stored in). Two attributes:
+An optional empty element (default PostgreSQL schema used if omitted) describing the schema the dataset (and annotations are to be stored in). Two attributes:
 \begin{enumerate}[(i)]
 \item {\tt name} -- compulsory: the name of the schema;
 \item {\tt create} -- optional: whether to create the schema, should be 1 if yes and 0 if the schema already exists. The default is 0.
@@ -142,13 +165,13 @@ An optional element whose value is the path to the SQL scripts specified by the 
 
 An optional (if the tables exist) element that indicates what SQL scripts to run in order to create the required tables. One script is run at the beginning and the other at the end of the run of {\it PFMFsetupdb.py}. The `recommended' scripts, all in some form descended from the standard BioSQL PostgreSQL-specific scripts are in the \verb|data\sql-schema| directory of the PFMFind package.
 
-It is possible to run just the standard BioSQL script {\it biosql-pg.sql} but the filling of the database  may take an enourmous amount of time due to foreign key constraints. The alternative is to use the {\it biosql-pg-nocnstr.sql} at the beginning and impose some constraints (but not foreign keys) at the end using {\it biosql-pg-cnstr.sql}. Foreign keys (take too long to load) are imposed by {\it biosql-pg-fk.sql}. 
+It is possible to run just the standard BioSQL script {\it biosql-pg.sql} but the filling of the database  may take an enormous amount of time due to foreign key constraints. The alternative is to use the {\it biosql-pg-nocnstr.sql} at the beginning and impose some constraints (but not foreign keys) at the end using {\it biosql-pg-cnstr.sql}. Foreign keys (take too long to load) are imposed by {\it biosql-pg-fk.sql}. 
 
 The attributes of {\tt <Sql\_scripts>} are {\tt sql\_start} and {\tt sql\_end}, which should be self-explanatory based on the above.
 
 \subsubsection*{{\tt <Taxonomy>}}
 
-Optional element with one optional attribute ({\tt copy}) containing the element {\tt <Taxon\_dir>} describing where the taxon data from NCBI is to be downloaded/kept. The {\tt copy} attribute can be set to 0 (default), 1 or 2. If it is 2, only the tab-separated tables will be loaded into database (this can be used to reuse the tables from several PostgreSQL schemas); if it is 1 the tables will in addition be creted from the NCBI taxon data; if it is 0 the taxon data will be downloaded from the NCBI ftp site. 
+Optional element with one optional attribute ({\tt copy}) containing the element {\tt <Taxon\_dir>} describing where the taxon data from NCBI is to be downloaded/kept. The {\tt copy} attribute can be set to 0 (default), 1 or 2. If it is 2, only the tab-separated tables will be loaded into database (this can be used to reuse the tables from several PostgreSQL schemas); if it is 1 the tables will in addition be created from the NCBI taxon data; if it is 0 the taxon data will be downloaded from the NCBI ftp site. 
 
 \subsubsection*{{\tt <Uniprot\_file>}, {\tt <Uniref\_file>} and {\tt <InterPro\_file>}}
 
@@ -182,7 +205,7 @@ Indexes should be setup once the database is loaded using the script {\it PFMFse
 
 \subsection{Configuration file}\label{sec:ixconfig}
 
-The index configuration file is very simiral to the database configuration file described above. All tags are under the {\tt <PFMF\_index\_setup>} tag and the specification is given in the file {\it PFMFix.dtd} located in the \verb|data\setup_config| directory of the PFMFind distribution. Below is the description of each element and its attributes.
+The index configuration file is very similar to the database configuration file described above. All tags are under the {\tt <PFMF\_index\_setup>} tag and the specification is given in the file {\it PFMFix.dtd} located in the \verb|data\setup_config| directory of the PFMFind distribution. Below is the description of each element and its attributes.
 
 \subsubsection*{{\tt <Database>}}
 
@@ -198,54 +221,94 @@ An element containing details about each dataset to be indexed. There can be mul
 
 It has four possible attributes:
 \begin{enumerate}[(i)]
-\item \texttt{name} -- compulsory: the dataset identifyier used as a prefix for all files related to this dataset;
+\item \texttt{name} -- compulsory: the dataset identifier used as a prefix for all files related to this dataset;
 \item \texttt{schema} -- optional: the schema containing the dataset. If omitted, the setup script attempts to use the schemas from the default PostgreSQL path.
 \item \texttt{namespace} -- optional: the namespace associated with the dataset (each schema can contain multiple dataset, each identified using the namespace identifier). If omitted, all sequences from the schema are retrieved.
 \item \texttt{max\_residues} -- optional: the maximum number of residues a single sequence file can contain. If the dataset contains more than that number of residues, multiple files and indexes will be created\footnote{Each part will probably contain slightly more residues because the full sequences are not broken up.}. These parts can then be loaded by slave index servers and the whole search distributed by a master server.
 \end{enumerate}
 
-Each \texttt{<Dataset>} can contain one or more \texttt{<Index>} elements, whose only (compulsory) element is \texttt{length}, giving the fragment lenght to be used to create the index. In turn, each \texttt{<Index>} element contains one or more \texttt{<Partition>} elements, having no attributes and containing a string specifying the amino acid alphabet partitions.
+Each \texttt{<Dataset>} can contain one or more \texttt{<Index>} elements, whose only (compulsory) element is \texttt{length}, giving the fragment length to be used to create the index. In turn, each \texttt{<Index>} element contains one or more \texttt{<Partition>} elements, having no attributes and containing a string specifying the amino acid alphabet partitions.
 
 Alphabet partitions are separated by \texttt{\#} (e.g. \texttt{STAN\#ILVM\#KRDEQ\#WFYH\#GPC}) and each \texttt{<Partition>} element specifies an alphabet partition for a single position in the fragment (up to the fragment length). If there are fewer \texttt{<Partition>} elements than the specified fragment length, the last \texttt{<Partition>} element is used for all remaining positions. Hence, in order to have the same alphabet partitions at all positions, it is sufficient to specify a single \texttt{<Partition>} element. 
 
+\section{FSIndex programs}
+
+There are two types of an FSIndex server: a slave, which actually loads an index and conducts searches and a master, which distributes and collects searches. They communicate between themselves and with clients using TCP/IP sockets.
+
+The master/slave configuration can be used in the case where indexes are located on different machines, even running different operating systems. If there is only one server, it runs under the slave configuration. This means that each slave can be queried individually and also that a more complicated tree-like structure, where inner nodes are master servers and leaves are slaves, can be constructed if needed.
+
+Three scripts can be used to run an FSIndex server: \textit{FSsearchd.py}, \textit{FSsearchs.py} and \textit{FSsearchc.py}. \textit{FSsearchd.py} runs as a UNIX daemon, \textit{FSsearchs.py} as a Windows service and \textit{FSsearchc.py} is a regular script for all platforms. Their arguments and options are very similar and are described in detail only for \textit{FSsearchd.py}.
+
 \subsection{FSsearchd.py Daemon}\label{sec:FSdaemon}
 
-\textit{FSsearchd.py} daemon loads an index into memory and awaits search requests. There are two types of \textit{FSsearchd.py} daemons: a slave, which actually loads an index and conducts searches and a master, which distributes and collects searches. They communicate between themselves and with clients using TCP/IP sockets.
-
-The master/slave configuration can be used in the case where indexes are located on different machines -- the master starts the slaves using ssh\footnote{Note that under the current version the ssh login is assumed to be using public key without a password.}. If there is only one server, it runs under the slave configuration. This means that each slave can be queried individually and also that a more complicated tree-like structure, where inner nodes are master servers and leaves are slaves, can be constructed if needed.
+\textit{FSsearchd.py} script starts an FSIndex server as a UNIX daemon -- it is not available for other operating systems. Unlike the other two scripts, the master slave can be passed an option to control its slaves, in which case it starts the slaves using ssh\footnote{Note that under the current version the ssh login is assumed to be using public key without a password.} on startup and shut them down when it terminates.
 
 \subsubsection{Starting}
 
 \textit{FSsearchd.py} daemon is started from the command line:
 \begin{verbatim}
-$ FSsearchd.py daemonid port workpath indexfile [pythonpath]
+$ FSsearchd.py [-c] serverid port workpath indexfile [pythonpath]
 \end{verbatim}
 where
 \begin{itemize}
-\item \texttt{daemonid} is a string identifier of a particular index (or set of indexes) being loaded;
+\item \texttt{serverid} is a string identifier of a particular index (or set of indexes) being loaded;
 \item \texttt{port} is the port the daemon should be listening to;
 \item \texttt{workpath} is the path to the directory where log files are to be written to;
 \item \texttt{indexfile} is the path to the index file \textit{FSsearchd.py} should load. If the file ends with \texttt{.cfg}, it is assumed to be a configuration file for the slaves;
 \item \texttt{pythonpath} (optional) is appended to the system's python path. This may help in the case that the proper path to Python modules needed by \textit{FSsearchd.py} is not set as an environment variable.
 \end{itemize}
 
-The slaves configuration file is a text file where each line gives parameters for a slave daemon to be started. The format of each line is:
+The option \texttt{-c} (long version \texttt{--control-slaves}) can be used to instruct a master server to attempt to start\footnote{Unless a slave is already running (due to an unexpected crash or whatever.)} and terminate its slaves using ssh. If this option is omitted, the master will only attempt to contact each slave and, if any one is unavailable, shut itself down. The slaves must be started in some other way.
+
+The slaves configuration file is a text file where each line gives parameters for a slave server to be started. The format of each line is:
 \begin{verbatim}
 host port workpath indexfile [pythonpath [binpath]]
 \end{verbatim}
-where the fields are separated by spaces. The fields \texttt{port}, \texttt{workpath}, \texttt{indexfile} and \texttt{pythonpath} are used directly to start the slave daemon (see above for full description). The field \texttt{host} specifies the address of the machine the slave should run on -- the master uses ssh to connect and start each slave\footnote{Unless the slave is already running (due to an unexpected crash or whatever.)}. The optional \texttt{binpath} gives the path to the \textit{FSsearchd.py} executable on the host the slave should run on.
+where the fields are separated by spaces. The fields \texttt{port}, \texttt{workpath}, \texttt{indexfile} and \texttt{pythonpath} are used directly to start the slave server (see above for full description). The field \texttt{host} specifies the address of the machine the slave is running on. The optional \texttt{binpath} gives the path to the \textit{FSsearchd.py} executable on the host the slave should run on. Only \texttt{host} and \texttt{port} fields are used if \texttt{-c} is not set\footnote{But at least two more fields should exist -- this will be fixed in some other version}.
 
-Each daemon produces two files: a log file and a pid file. The log file receives detailed messages about the run of the daemon while the pid file contains the UNIX process id of the daemon, the name of the host it is running on, as well as the command line used to start it. The name of the log file is generated from the \texttt{daemonid} passed as a command line argument. The master passes its own \texttt{daemonid} to the slaves, concatenated with the number of the slave. For example, a master server passed \texttt{TEST2} as \texttt{daemonid} will produce the logfile named \texttt{FSsearchd\_TEST2.log} and its second slave will produce \texttt{FSsearchd\_TEST2\_s01.log}.
+Each server produces two files: a log file and a pid file. The log file receives detailed messages about the running of the server while the pid file contains the UNIX process id of the daemon, the name of the host it is running on, as well as the command line used to start it. The name of the log file is generated from the \texttt{serverid} passed as a command line argument. If a master is starting its slaves, it passes its own \texttt{serverid} to them, concatenated with the number of the slave. For example, a master server passed \texttt{TEST2} as \texttt{serverid} will produce the logfile named \texttt{FSsearchd\_TEST2.log} and its second slave will produce \texttt{FSsearchd\_TEST2\_s01.log}.
 
 \subsubsection{Terminating}
 
-Since \textit{FSsearchd.py} is a daemon and hence not connected to any terminal, the best way to terminate it (and any of its slaves) is to send it a SIGTERM signal. To do so, lookup (from a pid file or the output of \textit{ps}) its process id (\texttt{pid} and type
+Since \textit{FSsearchd.py} is a daemon and hence not connected to any terminal, the best way to terminate it is to send it a SIGTERM signal. To do so, find out (from a pid file or the output of \textit{ps}) its process id (\texttt{pid} and type
 \begin{verbatim}
 $ kill pid 
 \end{verbatim}
-If the damon is a master, it will shutdhown all its slaves. 
+This is a clean way to shutdown an FSIndex server since the logs are written to and any pending requests are handled before shutdown.
 
-This is a clean way to shutdown the servers since the logs are written to and any pending requests are handled before shutdown.
+\subsection{FSsearchs.py Windows Service}\label{sec:FSservice}
+
+\textit{FSsearchs.py} script runs an FSIndex server as a Windows service -- clearly, it has no use on other operating systems. It runs from DOS prompt and a detailed help can be printed by running it without arguments. We outline here the most important commands.
+
+\subsubsection{Installing and Removing}
+To install the service, type
+\begin{verbatim}
+> FSsearchs.py install 
+\end{verbatim}
+You need to have appropriate privileges and \textit{FSsearchs.py} must be in your Path. If you wish to remove it as a service, type
+\begin{verbatim}
+> FSsearchs.py remove
+\end{verbatim}
+
+\subsubsection{Starting and Stopping}
+
+Once a service is installed, you can start it by typing 
+\begin{verbatim}
+> FSsearchs.py start workpath serverid port indexfile
+\end{verbatim}
+where the parameters are as described in Subsection \ref{sec:FSdaemon} above. Note that the order is slightly different. To stop, type
+\begin{verbatim}
+> FSsearchs.py stop
+\end{verbatim}
+You can also stop the FSIndex service through the Control Panel.
+
+\subsection{FSsearchc.py Script}\label{sec:FSscript}
+
+\textit{FSsearchc.py} script runs an FSIndex server from the command line, printing log to the standard output. It should run on all platforms and is started by 
+\begin{verbatim}
+$ FSsearchc.py port indexfile
+\end{verbatim}
+where the parameters are as described in Subsection \ref{sec:FSdaemon} above. It can be stopped by killing the server process.
 
 \section{GUI client}
 
