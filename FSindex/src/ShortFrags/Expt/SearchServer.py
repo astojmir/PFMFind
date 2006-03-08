@@ -199,34 +199,42 @@ class SearchServer(object):
             self.servers = []
             self.load_index(self.indexfile)
         
-        if not self.terminate_flag:
-            self.sp_acc = re.compile('\((\w+)\)')
 
-            print "Starting Main Loop at %s" % now()
+        try:
+            if not self.terminate_flag:
+                self.sp_acc = re.compile('\((\w+)\)')
+
+                print "Starting Main Loop at %s" % now()
+                sys.stdout.flush()
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.bind(('', self.port))
+                sock.listen(5)
+
+            # Main loop
+            while not self.terminate_flag:
+                try:
+                    r, w, e = select.select([sock],[],[], 2.0)
+                except select.error, inst:
+                    if inst[0] != EINTR:
+                        print "Select error in the main loop:" , inst.__class__, inst.__str__()
+                        sys.stdout.flush()
+                        self.terminate_flag = OTHER_ERROR
+                    r = []
+
+                if r:
+                    (clsock, address) = sock.accept()
+                    self.ct = Thread(target=self.answer_request, args=(clsock,))
+                    self.ct.start()
+                    # Should not run any requests concurrently - only one additional thread
+                    # TO DO: make sure this thread always finishes.
+                    self.ct.join()
+                    self.ct = None
+
+        except Exception, inst:
+            print "Error loading index:" , inst.__class__, inst.__str__()
             sys.stdout.flush()
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.bind(('', self.port))
-            sock.listen(5)
-
-        while not self.terminate_flag:
-            try:
-                r, w, e = select.select([sock],[],[], 2.0)
-            except select.error, inst:
-                if inst[0] != EINTR:
-                    print "Select error in the main loop:" , inst.__class__, inst.__str__()
-                    sys.stdout.flush()
-                    self.terminate_flag = OTHER_ERROR
-                r = []
-
-            if r:
-                (clsock, address) = sock.accept()
-                self.ct = Thread(target=self.answer_request, args=(clsock,))
-                self.ct.start()
-                # Should not run any requests concurrently - only one additional thread
-                # TO DO: make sure this thread always finishes.
-                self.ct.join()
-                self.ct = None
-
+            self.terminate_flag = OTHER_ERROR
+            
         self.terminate(terminate_subservers=self.control_slaves)
 
     def terminate(self, terminate_subservers=True):
