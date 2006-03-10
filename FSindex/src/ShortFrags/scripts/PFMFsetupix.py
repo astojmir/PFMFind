@@ -26,8 +26,8 @@ Creates FSindexes according to a configuration XML file.
 
 SYNOPSIS:
 
-    PFMFsetupix [config_file]
-    PFMFsetupix -h|--help
+    PFMFsetupix.py [-f|--fasta-only] [config_file]
+    PFMFsetupix.py -h|--help
 
 
 DESCRIPTION:
@@ -35,7 +35,22 @@ DESCRIPTION:
 This script creates instances of FSindex according to the alphabet partitions
 given in the configuration XML file. The XML file can be specified as the 
 command-line argument or entered through standard input.
+
+Creation of indexes is done in two stages. Firstly, the FASTA sequence files
+are created from the sequences in the PostgreSQL database. These are then
+used to create indexes for each partition scheme specified. If FASTA files
+already exist, the first step is skipped.
+
+OPTIONS:
+
+--help (-h)             Shows this message.
+--fasta-only (-f)       Produce only FASTA files, without creating indexes.
+                          Reruning this program with the same config file but
+                          without this option will then produce the indexes.
+                          This can be useful if the FASTA files are to be
+                          handled in some way, for example by running SEG.
 """
+
 
 import getopt, sys
 from ShortFrags.Setup.SetupIndex import PFMF_IndexCreator
@@ -47,8 +62,8 @@ __credits__ = "BioSQL project, Biopython project"
 
 
 if __name__ == "__main__":
-    options = 'h'
-    long_options = ['help']
+    options = 'hf'
+    long_options = ['help', 'fasta-only']
     
     try:
         opts, args = getopt.getopt(sys.argv[1:], options,
@@ -58,10 +73,13 @@ if __name__ == "__main__":
         print __doc__
         sys.exit(2)
 
+    make_indexes_flag = True
     for o, a in opts:
         if o in ("-h", "--help"):
             print __doc__
             sys.exit()
+        if o in ("-f", "--fasta-only"):
+            make_indexes_flag = False
 
     if len(args):
         fp = file(args[0])
@@ -73,4 +91,6 @@ if __name__ == "__main__":
     fp.close()
 
     IL.create_fasta_files()
-    IL.create_indexes()
+    
+    if make_indexes_flag:
+        IL.create_indexes()
