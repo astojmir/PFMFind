@@ -56,11 +56,18 @@ SEQUENCE_DB *fastadb_open(const char *db_name)
 {
   FILE *fp;
   SEQUENCE_DB *s_db;  
-  int c, l, i;
+  int l, i;
   static char buffer[BUF_SIZE+1];
   char *s1, *s2;
   ULINT data_size = ALLOC_BLOCK_SIZE;
   ULINT desc_size = ALLOC_BLOCK_SIZE;
+
+  /* Current variables */
+  char **heap_pter;
+  ULINT *heap_len; 
+  ULINT *heap_size;  
+  char *buff_pter;
+
 
   buffer[BUF_SIZE] = '\0'; /* just in case */
 
@@ -82,44 +89,58 @@ SEQUENCE_DB *fastadb_open(const char *db_name)
   s_db->seq_data = mallocec(data_size);
   s_db->deflines = mallocec(desc_size);
 
-  /* Load sequences into memory */
+  /* ***** Loading sequences into memory ***** */
+
+  /* We start in the sequence state */
+  heap_pter = &(s_db->seq_data);
+  heap_len = &(s_db->seq_data_len); 
+  heap_size = &data_size;  
+
   while(!feof(fp)) {
-    /* First character must be '>' because this is a new sequence. */
+    /* This ensures that the last sequence is loaded correctly */
+    buffer[0] = '\0';
 
-    /* Description */
-    while (1) {
-      fgets(buffer, BUF_SIZE, fp);
-      l = fastadb_put_line(buffer+1, &(s_db->deflines), 
-			   &(s_db->deflines_len),
-			   &desc_size);
-      if (buffer[l+1] == '\n') break;
-    }
-    s_db->deflines[s_db->deflines_len++] = '\0';
+    fgets(buffer, BUF_SIZE, fp);
+    buff_pter = buffer; 
+    if ((heap_pter == &(s_db->seq_data)) && (buffer[0] == '>')) { 
 
-    /* Sequence */
-    while (1) {
-      if ((c = fgetc(fp)) == EOF) break;
-      if (c == '>') { 
-	ungetc(c, fp);
-	break;
+      /* New sequence */
+      if (s_db->seq_data_len) {
+	s_db->seq_data[s_db->seq_data_len++] = '\0';
       }
+      s_db->no_seq++;
 
-      buffer[0] = c;
-      fgets(buffer+1, BUF_SIZE, fp);
-      l = fastadb_put_line(buffer, &(s_db->seq_data), 
-			   &(s_db->seq_data_len),
-			   &data_size); 
+      /* Switch to defline state */
+      heap_pter = &(s_db->deflines);
+      heap_len = &(s_db->deflines_len); 
+      heap_size = &desc_size;  
+      buff_pter = buffer+1;
     }
-    s_db->seq_data[s_db->seq_data_len++] = '\0';
 
-    s_db->no_seq++;
+    l = fastadb_put_line(buff_pter, heap_pter, heap_len, heap_size);
+      
+    if ((heap_pter == &(s_db->deflines)) && (buff_pter[l] == '\n')) {
+
+      s_db->deflines[s_db->deflines_len++] = '\0';
+
+      /* Switch to sequence state */
+      heap_pter = &(s_db->seq_data);
+      heap_len = &(s_db->seq_data_len); 
+      heap_size = &data_size;  
+    }
   }
 
   if (db_name != NULL) fclose(fp);
 
+  /* ***** End of loading sequences ***** */
+
+  /* Terminator for the last sequence */
+  s_db->seq_data[s_db->seq_data_len++] = '\0';
+
   /* Trim memory segments - we add 30 chars more to seq_data
      so that we can have fast fragment comparison near the end
   */
+  memset(s_db->seq_data+s_db->seq_data_len, 0, 30);
   s_db->seq_data = reallocec(s_db->seq_data, s_db->seq_data_len+30);
   s_db->deflines = reallocec(s_db->deflines, s_db->deflines_len);
 
