@@ -31,11 +31,12 @@ int main(int argc, char **argv)
   char *db_name;
   SEQUENCE_DB *sdb;
   int i;
+  FILE *fp;
 
   if (argc < 2)
     {
       fprintf(stderr,"Insufficient arguments \n");
-      fprintf(stderr,"Usage: %s database \n", argv[0]); 
+      fprintf(stderr,"Usage: %s database [binfile]\n", argv[0]); 
       exit(EXIT_FAILURE);
     }
   db_name = argv[1];
@@ -46,6 +47,18 @@ int main(int argc, char **argv)
     for (i=0; i < sdb->no_seq; i++) {
       printf("%12d %12ld %12d\n", fastadb_data_offset(sdb, sdb->seq[i].start),
 	     sdb->seq[i].len, (sdb->seq[i].id.defline - sdb->deflines));
+
+    }
+    if (argc >= 3) {
+      fp = fopen(argv[2], "wb");
+      if (fp == NULL)
+	Throw FSexcept(FOPEN_ERR, "Could not open the file %s.", argv[2]);
+
+      fwrite(&sdb->deflines_len, sizeof(ULINT), 1, fp);
+      fwrite(&sdb->seq_data_len, sizeof(ULINT), 1, fp);
+      fwrite(sdb->deflines, 1, sdb->deflines_len, fp);
+      fwrite(sdb->seq_data, 1, sdb->seq_data_len, fp);
+      fclose(fp);
     }
   }
   Catch(except) {
