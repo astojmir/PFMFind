@@ -209,7 +209,7 @@ class KeywordView(Tkinter.Frame, View):
 
     def _process_view(self, length, iteration, frag_rng):
         # Check if ready
-        if not self.VL:
+        if self.VL == None:
             self.after(100, self._process_view,
                        length, iteration, frag_rng) 
             return
