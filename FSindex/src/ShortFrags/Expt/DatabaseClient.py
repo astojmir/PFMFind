@@ -662,8 +662,13 @@ class DatabaseClient(object):
         sql = "SELECT term_id, fragment, bioentry_id FROM (%s) AS fttbl" \
               " ORDER BY term_id, fragment" % feature_table
         cursor.execute(sql)
-
+            
         view_list = []
+
+        if cursor.rowcount <= 0:
+            cursor.close()
+            return view_list
+
         old_tid = None
         while 1:
             res = cursor.fetchone()
