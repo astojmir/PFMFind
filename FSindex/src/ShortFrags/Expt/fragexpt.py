@@ -31,6 +31,9 @@ from ShortFrags.Expt.matrix import SCORE, POSITIONAL, ScoreMatrix,\
      ProfileMatrix 
 from ShortFrags.Expt.SearchClient import SearchClient
 from ShortFrags.Expt.DatabaseClient import DatabaseClient
+from ShortFrags.Expt.SearchServer import REL_SRCH
+
+_MAX_SUBMITTED_SEARCHES = 20
 
 def _write_xml_tag(fp, tag, indent=0):
     s = '  ' * indent
@@ -115,8 +118,100 @@ class PFMFindClient(SearchClient, DatabaseClient):
 
         return M.__str__()
 
-    def check_query_fragment(self, qseq):
-        pass
+    def is_valid_fragment(self, qseq):
+        """
+        Checks that a given sequence is non-empty and consists only of
+        letters from the standard amino acid alphabet.
+        """
+        
+        valid_alphabet = 'ACDEFGHIKLMNPQRSTVWY'
+        if not qseq or qseq.upper().translate('#'*256, valid_alphabet):
+            return False
+        return True
+
+
+    def _set_matrices_to_hit_lists(self, srch_args, results):
+        """
+        Assigns a query matrix to each hit list.
+        """
+        for i, HL in enumerate(results):
+            if HL == None: continue
+            results[i].matrix_name = None
+            results[i].matrix = None
+            
+##             PM = srch_args[i][2]
+##             print PM
+##             # This doesn't work yet so we set it to None
+##             # results[i].matrix_name = getattr(PM, 'name', None)
+##             results[i].matrix_name = None
+##             if srch_args[i][3] == POSITIONAL:
+##                 results[i].matrix = PM
+##             else:
+##                 results[i].matrix = None
+        
+
+    def _insert_results_single(self, jobs, srch_args, results,
+                               job_index): 
+        """
+        Inserts results into the database one by one.
+        """
+
+        self._set_matrices_to_hit_lists(srch_args, results)
+
+        for i, HL in enumerate(results):
+            key = job_index[i]
+            length, fragment = key
+            iteration, search_type, cutoff, plugin, plugin_args \
+                       = jobs[key]
+
+            if HL == None: continue
+
+            if fragment in self.max_iters and\
+                   iteration <= self.max_iters[fragment].get(length, -1): 
+                self.replace_search(length, iteration, fragment, HL)
+            else:
+                self.insert_search(length, iteration, fragment, HL) 
+
+
+    def _insert_results_batch(self, jobs, srch_args, results,
+                              job_index):
+        """
+        Inserts results into database in batches, using psycopg
+        routine copy_to.
+        """
+
+        results_batch = []
+        self._set_matrices_to_hit_lists(srch_args, results)
+
+        for i, HL in enumerate(results):
+            key = job_index[i]
+            length, fragment = key
+            iteration, search_type, cutoff, plugin, plugin_args \
+                       = jobs[key]
+
+
+            if HL == None: continue
+
+            if fragment in self.max_iters and\
+                   iteration <= self.max_iters[fragment].get(length, -1): 
+                self.delete_search2(length, iteration, fragment)
+
+            results_batch.append((length, iteration, fragment, HL))
+        
+        self.copy_searches(results_batch)
+
+    def _insert_results(self, jobs, srch_args, results, job_index):
+        """
+        Inserts results into the database.
+        """
+
+        if self.has_copy:
+            self._insert_results_batch(jobs, srch_args, results,
+                                       job_index)
+        else:
+            self._insert_results_single(jobs, srch_args, results,
+                                        job_index)
+            
 
     def run_search_jobs(self, jobs):
         """
@@ -132,51 +227,60 @@ class PFMFindClient(SearchClient, DatabaseClient):
             raise RuntimeError, "Search in progress"  
         self.search_lock = True
 
-        # Compile search arguments
         srch_args = []
+        job_index = []
+        j = 0
+        k = 0
         for key, val in jobs.iteritems():
+
             length, fragment = key 
             iteration, search_type, cutoff, plugin, plugin_args \
                        = val
             qseq = self.query_sequence[fragment: fragment + length]
 
+            if not self.is_valid_fragment(qseq): # skip if invalid 
+                continue
+            
             if iteration == 0:
                 plugin_func = self.start_plugins[plugin][0]
             else:
                 plugin_func = self.iteration_plugins[plugin][0]
 
             HL = self.select_lif_search(length, iteration-1, fragment)
+            if HL == None and iteration: # skip if no search was done
+                continue
+                
             PM, matrix_type, conv_type = plugin_func(HL, *plugin_args)
+            if PM == None: # skip if plugin rejects the arguments
+                continue
+            
             srch_args.append([search_type, qseq, PM, matrix_type,
                               cutoff, conv_type])
-        # Submit search
+            job_index.append(key)
+            j += 1
+            k += 1
+            # Submit searches in small batches
+            if j == _MAX_SUBMITTED_SEARCHES:
+                results = self.search(srch_args)
+                self._insert_results(jobs, srch_args, 
+                                    results, job_index) 
+                srch_args = []
+                job_index = []
+                j = 0
+
+            
+        # Submit the remaining searches
         results = self.search(srch_args)
-        
-        # Process search - assign
-        keys = jobs.keys()
-        for i,key in enumerate(keys):
-            length, fragment = key
-            iteration, search_type, cutoff, plugin, plugin_args \
-                       = jobs[key]
+        self._insert_results(jobs, srch_args, 
+                             results, job_index) 
 
-            HL = results[i]
-            if HL == None: continue
-
-            HL.matrix_name = getattr(PM, 'name', None)
-            if srch_args[i][3] == POSITIONAL:
-                HL.matrix = PM
-            else:
-                HL.matrix = None
-
-            if fragment in self.max_iters and\
-                iteration <= self.max_iters[fragment].get(length, -1): 
-                self.replace_search(length, iteration, fragment, HL)
-            else:
-                self.insert_search(length, iteration, fragment, HL) 
-            del(jobs[(length,fragment)])
+        # Delete all jobs, even those that were rejected
+        for key in jobs.keys():
+            del(jobs[key])
 
         self.search_lock = False
         self.get_max_iters()
+        return k
         
     def write_config(self, fp):
         """
@@ -253,7 +357,10 @@ class PFMFindClient(SearchClient, DatabaseClient):
                     '_tmp_plugin_dir']:
             setattr(self, var, None)
         
-        p.ParseFile(fp) 
+        p.ParseFile(fp)
+        
+        if 'port' in self._tmp_dbargs:
+            self._tmp_dbargs['port'] = int(self._tmp_dbargs['port'])
 
         # Try to open connections - quietly leave if failing
         try:
@@ -290,6 +397,7 @@ class PFMFindClient(SearchClient, DatabaseClient):
                             '_tmp_ixargs', '_tmp_plugin_dir']:
                     delattr(self, var)
         except:
+            raise
             pass
 
     def _start_element(self, name, attrs):
@@ -314,3 +422,125 @@ class PFMFindClient(SearchClient, DatabaseClient):
         if self._sflag:
             self._fs.write(data)
  
+
+
+    def iterated_rel_search(self, experiment_name,
+                            experiment_description,
+                            sequence, description,
+                            frag_len,
+                            start_plugin, start_params,
+                            iter_plugin, iter_params,
+                            cutoff_Evalues):
+        """
+        Runs automated iterated search for all fragments of a
+        certain length of a given sequence.
+
+        """
+
+        if not self.attached:
+            raise RuntimeError, "Not attached to a search client."  
+
+        tot_frags = len(sequence) + 1 - frag_len
+
+        # Create experiment if it doesn't already exist
+        eid = self.get_experiment_id(experiment_name)
+
+        if eid == None:
+            eid = self.create_experiment(experiment_name,
+                                         experiment_description,
+                                         sequence,
+                                         description,
+                                         frag_len,
+                                         frag_len+1)
+
+        # Set experiment
+        self.set_current_experiment(eid)
+
+        final_results = []
+
+        # ** Prepare the first iteration **
+        # Get the matrix first (it is the same for all searches)
+        plugin_func = self.start_plugins[start_plugin][0]
+        PM, matrix_type, conv_type = plugin_func(None, *start_params)
+
+
+        fragments = []
+        srch_args = []
+        Eval = cutoff_Evalues[0]
+        for f in xrange(tot_frags):
+            qseq = self.query_sequence[f: f + frag_len]
+            if not self.is_valid_fragment(qseq): continue
+            fragments.append(f)
+            srch_args.append([REL_SRCH, qseq, PM, matrix_type,
+                              Eval, conv_type])
+
+##         fragments = range(tot_frags)
+##         srch_args = [[REL_SRCH, self.query_sequence[f: f + frag_len],
+##                       PM, matrix_type, cutoff_Evalues[0], conv_type] \
+##                      for f in fragments ] 
+
+        plugin_func = self.iteration_plugins[iter_plugin][0]
+        
+        # *** Run all iterations ***
+        step = _MAX_SUBMITTED_SEARCHES
+        for i in xrange(len(cutoff_Evalues)):
+            profiles = []
+            new_fragments = []
+            for j in xrange(0, len(srch_args), step): 
+                # Run batch search
+                results = self.search(srch_args[j:j+step])
+
+                # Immediately process the results to obtain profiles
+                if i < len(cutoff_Evalues) - 1:
+                    for k,HL in enumerate(results):
+                        if HL == None: continue
+                        PM_data = plugin_func(HL, *iter_params)
+                        if PM_data[0] != None:
+                            profiles.append(PM_data)
+                            new_fragments.append(fragments[j+k])
+                else:
+                    final_results.extend(results)
+
+                del(results)
+
+            if i < len(cutoff_Evalues) - 1:
+                # Create arguments for next iteration
+                fragments = new_fragments
+                srch_args = [[REL_SRCH,
+                              self.query_sequence[f: f + frag_len],
+                              profiles[k][0],
+                              profiles[k][1],
+                              cutoff_Evalues[i+1],
+                              profiles[k][2]] \
+                             for k,f in enumerate(fragments) ] 
+            else:
+                # Put results into database - we need to generate
+                # standard 'jobs' etc.
+                jobs = {}.fromkeys([(frag_len, f) for f in fragments],
+                                   (i, REL_SRCH, cutoff_Evalues[i],
+                                    iter_plugin, iter_params))
+                job_index = jobs.keys()
+                self._insert_results(jobs, srch_args, 
+                                     final_results, job_index) 
+
+
+
+        self.reset_current_experiment()
+        return eid, len(final_results)
+
+##         all_frags = [(frag_len, f) for f in range(tot_frags)]
+##         for i, Eval in enumerate(cutoff_Evalues):
+##             # Create jobs
+##             jobs = {}
+##             if i > 0:
+##                 job_params = (i, REL_SRCH, Eval,
+##                               iter_plugin, iter_params)
+##             else:
+##                 job_params = (i, REL_SRCH, Eval,
+##                               start_plugin, start_params)
+            
+##             jobs = {}.fromkeys(all_frags, job_params) 
+##             final_motifs = self.run_search_jobs(jobs)
+
+##         self.reset_current_experiment()
+##         return eid, final_motifs
