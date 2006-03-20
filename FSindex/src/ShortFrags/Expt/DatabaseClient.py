@@ -21,6 +21,7 @@
 
 import cPickle, threading
 from itertools import ifilterfalse
+from cStringIO import StringIO
 from ShortFrags.Expt.hit_list import HitList
 from BioSQL import BioSeqDatabase
 
@@ -113,6 +114,7 @@ class DatabaseClient(object):
         self.conn = None
         self.module = None
         self.reset_current_experiment()
+        self.has_copy = False
 
         self._views = {}
          
@@ -133,6 +135,8 @@ class DatabaseClient(object):
         self.server = BioSeqDatabase.open_database(driver=driver, **kwargs)
         self.conn = self.server.adaptor.conn
         self.crs = self.server.adaptor.cursor
+        if hasattr(self.crs, 'copy_from'):
+            self.has_copy = True
                
     def close(self):
         """
@@ -144,6 +148,7 @@ class DatabaseClient(object):
             self.conn.close()
             self.conn = None
             self.module = None
+            self.has_copy = False
         self.reset_current_experiment()
 
         self.driver = None
@@ -506,11 +511,10 @@ class DatabaseClient(object):
         self.conn.commit()
         self.db_write_lock.release()
 
-    def replace_search(self, length, iteration, fragment, HL):
+    def delete_search2(self, length, iteration, fragment):
         """
-        First deletes all hits having the same length and fragment and
-        iteration greater than or equal to given iteration, then inserts
-        a new hit list and matrix (optional)
+        Deletes all hits having the same length and fragment and
+        iteration greater than or equal to given iteration
         """
 
         self.db_write_lock.acquire()
@@ -525,9 +529,75 @@ class DatabaseClient(object):
         self.crs.execute(sql, (self.cur_expt, length,
                                   iteration, fragment))
 
+        self.conn.commit()
+        self.db_write_lock.release()
+
+    def replace_search(self, length, iteration, fragment, HL):
+        """
+        First deletes all hits having the same length and fragment and
+        iteration greater than or equal to given iteration, then inserts
+        a new hit list and matrix (optional)
+        """
+
+        self.db_write_lock.acquire()
+        self.delete_search2(length, iteration, fragment)
         self.insert_search(length, iteration, fragment, HL, lock=False)
         self.db_write_lock.release()
     
+    def copy_searches(self, search_results, lock=True):
+        """
+        Uses psycopg .copy_to (PostgreSQL COPY) to insert many
+        search results at once.
+        """
+        if lock:
+            self.db_write_lock.acquire()
+
+        # Searches table first
+        data = StringIO()
+        for length, iteration, fragment, HL in search_results:
+            data.write('%d\t%d\t%d\t%d\t' %\
+                       (self.cur_expt, length, iteration, fragment))  
+
+            matrix_name = getattr(HL, 'matrix_name')
+            if not matrix_name:
+                matrix_name = '\N'
+            matrix = getattr(HL, 'matrix')
+            if matrix:
+                matrix = cPickle.dumps(matrix, 0)
+            else:
+                matrix = '\N'
+                
+            data.write('%s\t%s\t' %\
+                       (HL.query_seq, matrix_name))
+
+            data.write(matrix)
+            data.write('\t')
+            data.write('%d\t%d\t%d\t%d\t%d\n' %\
+                       (HL.conv_type, HL.sim_range, HL.dist_range,
+                        HL.kNN, len(HL)))
+
+        data.seek(0)
+        self.crs.copy_from(data, 'searches')
+        self.conn.commit()        
+
+        # Hits next              
+        data = StringIO()
+        for length, iteration, fragment, HL in search_results:
+            for ht in HL:
+                data.write('%d\t%d\t%d\t%d\t%s\t%d\t%d\t%d\t%e\t%e\n' %\
+                           (self.cur_expt, length, iteration, fragment,
+                            ht.accession, ht.seq_from, ht.dist,
+                            ht.sim, ht.pvalue, ht.Evalue))
+
+        data.seek(0)
+        self.crs.copy_from(data, 'hits')
+        self.conn.commit()        
+
+        if lock:
+            self.db_write_lock.release()
+
+
+
     def select_lif_search(self, length, iteration, fragment,
                           get_matrix=False, features=[]):
         """
