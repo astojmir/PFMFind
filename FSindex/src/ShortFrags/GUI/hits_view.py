@@ -234,7 +234,7 @@ class HitsView(Tkinter.Frame, View):
         self._sorts[self.vSortVar.get()](HL, self.vSortIncr.get())
         
         self.wScText.configure(text_state = 'normal')
-        text, self._offsets = HL.print_str(get_offsets=True)
+        text, self._offsets = HL.print_str(get_offsets=True, qs=self.state[1])
         self.wScText.setvalue(text)
 
         self.wScText.appendtext('***** Score Matrix *****\n')
