@@ -39,6 +39,15 @@ MAX = FS.MAX
 AVG = FS.AVG
 
 
+# Dummy matrix classes
+class SubstitutionMatrix(dict):
+    """
+    Biopython matrix as a new class.
+    """
+    pass
+
+
+
 class MatrixColumn(object):
     def __init__(self, col, this, alphabet):
         self._col = col
@@ -178,9 +187,9 @@ class ScoreMatrix(Smatrix):
             self.this = FS.Smatrix_copy(inarg)
             self.thisown = 1
         else:
-            raise TypeError, "Constructor only accepts"
-        " a filename, a dictionary"
-        " and an instance of ScoreMatrix." 
+            raise TypeError, "Constructor only accepts"\
+                  " a filename, a dictionary"\
+                  " and an instance of ScoreMatrix." 
 
         self.alphabet = FS.Smatrix_alphabet_get(self)
         self.mean = self._calc_mean()
@@ -273,9 +282,9 @@ class ProfileMatrix(Smatrix):
             self.this = FS.Smatrix_copy(inarg)
             self.thisown = 1
         else:
-            raise TypeError, "Constructor only accepts"
-        " a Biopython PSSM"
-        " and an instance of ProfileMatrix." 
+            raise TypeError, "Constructor only accepts"\
+                  " a Biopython PSSM"\
+                  " and an instance of ProfileMatrix." 
 
         self.mean = self._calc_mean()
         self.alphabet = FS.Smatrix_alphabet_get(self)
