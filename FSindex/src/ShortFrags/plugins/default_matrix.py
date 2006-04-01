@@ -21,7 +21,8 @@
 
 
 from Bio.SubsMat import MatrixInfo
-from ShortFrags.Expt.matrix import QUASI, MAX, AVG, SCORE 
+from ShortFrags.Expt.matrix import QUASI, MAX, AVG, SCORE
+from ShortFrags.Expt.matrix import SubstitutionMatrix
 
 _MATRIX_CTYPE = {'None': 0, 'Quasi': QUASI, 'Avg': AVG, 'Max': MAX} 
 
@@ -31,16 +32,22 @@ arg_list = [('Matrix Name', MatrixInfo.available_matrices, 'blosum62'),
             ('Conversion', _MATRIX_CTYPE.keys(), 'None'),
             ]
 
+_std_alphabet_map = {}.fromkeys(list("ACDEFGHIKLMNPQRSTVWY"))
+
 
 def _filter_non_standard_letters(S):
     for a, b in S.keys():
-        if a not in "ACDEFGHIKLMNPQRSTVWY" or \
-           b not in "ACDEFGHIKLMNPQRSTVWY":
+        if a not in _std_alphabet_map or \
+           b not in _std_alphabet_map:
             del(S[(a,b)])
 
 def get_matrix(HL, matrix_name, conv_type):
 
-    S = MatrixInfo.__dict__[matrix_name]
+    S = SubstitutionMatrix()
+    S.update(MatrixInfo.__dict__[matrix_name])
+    S.name = matrix_name
+    
+##     S = MatrixInfo.__dict__[matrix_name]
     _filter_non_standard_letters(S)
     matrix_type = SCORE
     ctype = _MATRIX_CTYPE[conv_type]
