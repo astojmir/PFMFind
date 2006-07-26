@@ -23,6 +23,7 @@ import FS
 import sys
 import types
 from DirichletMix import BKGRND_PROBS as bg_dict
+from cStringIO import StringIO
 
 # Mtype values
 SCORE = FS.SCORE
@@ -264,7 +265,24 @@ class ScoreMatrix(Smatrix):
                         V[(x,y,z)] = r
         return V
                     
-
+    def latex_repr(self, alphabet=None):
+        if alphabet == None:
+            alphabet = self.alphabet
+        fs = StringIO()
+        fs.write('\\begin{tabular}{l@{  }')
+        for x in alphabet:
+            fs.write('r@{\hspace{2pt}}')
+        fs.write('}\n')
+        for x in alphabet:
+            fs.write(' & \\bf %s' % x)
+        fs.write('\\\\ \n')
+        for x in alphabet:
+            fs.write('\\bf %s ' % x)
+            for y in alphabet:
+                fs.write(' & %d' % self[x][y])
+            fs.write('\\\\ \n')
+        fs.write('\\end{tabular}')
+        return fs.getvalue()
 
 class ProfileMatrix(Smatrix):
     def __init__(self, inarg, Stype=FS.SIMILARITY, new=True):
