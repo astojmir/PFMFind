@@ -3,7 +3,7 @@ SHELL=/bin/sh
 # Uncomment if Sun C/C++ compiler is to be used.
 #COMPILER= sun
 #MACHINE = st-james
-#MACHINE = morava
+MACHINE = navier
 
 SRCDIR = src/
 BINDIR = bin/
@@ -27,8 +27,8 @@ DEBUG=-g -D DEBUG=2
 ifeq ($(MACHINE), st-james)
 PYDIR = /usr/pkg/include/python2p3
 else
-  ifeq ($(MACHINE), morava)
-  PYDIR = /usr/include/python2.2
+  ifeq ($(MACHINE), navier)
+  PYDIR = /home/aleksand/include/python2.4
   else
   PYDIR = /usr/include/python2.4
   endif
