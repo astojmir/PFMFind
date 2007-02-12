@@ -74,13 +74,13 @@ void ufragdb_create(UFRAG_DB *udb, const char *db_name,
   EXCEPTION *except;
 
   char *seqstr;
+  char *s;
   char **tree_item;
   struct avl_table *AVLtree = NULL;
 
-  ULINT i, j, k, l;
+  ULINT i, j, k;
   ULINT no_frags;
   ULINT one_percent_fragments;
-  int valid = 1;
 
   DUP_FRAG *dfrg = NULL;
   ULINT max_dfrg = DFRG_INCR;
@@ -119,21 +119,35 @@ void ufragdb_create(UFRAG_DB *udb, const char *db_name,
     _base_ = fastadb_data_pter(udb->sdb, 0);  
     _end_ = fastadb_end_heap(udb->sdb);
 
-    j=0;
     fprintf(stdout, "Sorting fragments.\n");
-    for (seqstr=_base_; seqstr <= _end_; seqstr++) {
-      j++;
 
-      /* Check if the fragment is valid */
-      valid = 1;
-      for (l=0; l < frag_len; l++, seqstr++) {
-	if (*seqstr == '\0' || *seqstr == 'B' || 
-	    *seqstr == 'Z' || *seqstr == 'X' )
-	  valid = 0;
-	  break;
-      } 
+    j = 0;
+    s = _base_;
 
-      if (valid) {
+    while (s+1-frag_len < _base_ && s <= _end_) {
+      if (*s == '\0' || *s == 'B' || 
+	  *s == 'Z' || *s == 'X' ) {
+	s += frag_len;
+	j += frag_len;
+      }
+      else {
+	s++;
+	j++;
+      }
+    }
+
+
+    while (s <= _end_) {
+      if (*s == '\0' || *s == 'B' || 
+	  *s == 'Z' || *s == 'X' ) {
+	s += frag_len;
+	j += frag_len;
+      }
+      else {
+	seqstr = s+1-frag_len;
+	s++;
+	j++;
+
 	i = seqstr - _base_;
 	tree_item = (char **)avl_probe(AVLtree, seqstr);	  
 
@@ -152,7 +166,7 @@ void ufragdb_create(UFRAG_DB *udb, const char *db_name,
       }
       // Progress bar
       printbar(stdout, j+1, one_percent_fragments, 50);  
-    }  
+    }
 
     avl_destroy (AVLtree, NULL);
     AVLtree = NULL;

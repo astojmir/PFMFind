@@ -15,6 +15,24 @@ EXCEPTION FSexcept_array[1];
 EXCEPTION *except;
 struct exception_context the_exception_context[1];
 
+static
+int SEQ_HIT_cmp_by_seq(const void *S1, const void *S2)
+{
+  const SEQ_HIT_t *T1 = S1;
+  const SEQ_HIT_t *T2 = S2;
+
+  if (T1->sequence_id > T2->sequence_id)
+    return 1;
+  else if (T1->sequence_id < T2->sequence_id)
+    return -1;
+  else if (T1->sequence_from > T2->sequence_from)
+    return 1;
+  else if (T1->sequence_from < T2->sequence_from)
+    return -1;
+  else
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
   BIOSEQ query;
@@ -30,8 +48,9 @@ int main(int argc, char **argv)
   HIT_LIST_t *HL2 = NULL;
   MVP_TREE *MVPT2 = NULL;
 
-  int i;
+  int i, j;
   int no_tests;
+  int test_passed;
 
   char *mvpt_file;
   char *FSindex_file;
@@ -60,7 +79,8 @@ int main(int argc, char **argv)
     SCORE_MATRIX_fprint(D, stdout);
     udb = (UFRAG_DB *) MVPT2->db;
 
-#if 0
+    printf("NumRef=%d\n", MVPT2->num_ref);
+#if 1
     printf ("Loading FSindex\n");
     I = FS_INDEX_load(FSindex_file);
 #endif
@@ -90,7 +110,7 @@ int main(int argc, char **argv)
       query.start = queries[i];
       query.len = udb->frag_len;
 
-#if 0
+#if 1
       /* FSindex run */
       HL1 = FSINDX_kNN_srch(I, &query, D, kNN, HL1, FS_BINS, SARRAY);
       HIT_LIST_sort_decr(HL1);
@@ -100,31 +120,52 @@ int main(int argc, char **argv)
       HL2 = MVP_TREE_rng_srch2(MVPT2, &query, radius, HL2);
       HIT_LIST_sort_by_sequence(HL2);
        
-      printf("%.3d %s %5ld %8ld (%ld%%)\n", i, queries[i], 
-	     HL2->actual_seqs_hits,
-	     HL2->seqs_visited, 
-	     HL2->seqs_visited*100/MVPT2->no_pts);
-#if 0
+/*       printf("%.3d %s %5ld %8ld (%ld%%)\n", i, queries[i],  */
+/* 	     HL2->actual_seqs_hits, */
+/* 	     HL2->seqs_visited,  */
+/* 	     HL2->seqs_visited*100/MVPT2->no_pts); */
+
+#if 1
       /* Comparison */
 
+      HIT_LIST_sort_by_sequence(HL1);
       test_passed = 1;
+
+
+
       if (HL1->actual_seqs_hits != HL2->actual_seqs_hits)
 	test_passed = 0;
       else
 	for (j=0; j<HL1->actual_seqs_hits; j++)
-	  if (SEQ_HIT_cmp_by_seq(HL1->hits+j, HL2->hits+j) != 0)
-	    test_passed = 0;
+	  if (SEQ_HIT_cmp_by_seq(HL1->hits+j, HL2->hits+j) != 0) {
+	      test_passed = 0;
+	      break;
+	  }
 
       if (test_passed) 
 	printf("%.3d %s %5ld %5ld %8ld %8ld (%ld%%) PASSED\n", i, queries[i], 
 	       HL1->actual_seqs_hits,
 	       HL2->actual_seqs_hits, HL1->seqs_visited, HL2->seqs_visited,
-	       HL2->seqs_visited*100/MVPT->no_pts);
-      else 
+	       HL2->seqs_visited*100/MVPT2->no_pts);
+      else {
 	printf("%.3d %s %5ld %5ld %8ld %8ld (%ld%%) FAILED\n", i, queries[i], 
 	       HL1->actual_seqs_hits,
 	       HL2->actual_seqs_hits, HL1->seqs_visited, HL2->seqs_visited,
-	       HL2->seqs_visited*100/MVPT->no_pts);
+	       HL2->seqs_visited*100/MVPT2->no_pts);
+
+	printf("*** FSI *** \n");
+	for (j=0; j<HL1->actual_seqs_hits; j++)
+	  printf("%d %*.*s \n", j, (int) udb->frag_len, 
+		 (int) udb->frag_len, HL1->hits[j].subject.start);
+	
+	printf("*** FSI *** \n");
+	for (j=0; j<HL2->actual_seqs_hits; j++)
+	  printf("%d %*.*s %d \n", j, (int) udb->frag_len, 
+		 (int) udb->frag_len, HL2->hits[j].subject.start,
+		 fastadb_data_offset(udb->sdb, HL2->hits[j].subject.start));
+      }
+
+
 #endif
 #if 0
       j=0;
@@ -210,6 +251,7 @@ int main(int argc, char **argv)
       printf ("\n******* MVPT list *******\n");
       HIT_LIST_print(HL2, stdout, 0);
       printf ("\n\n");
+
 #endif
     }
   }

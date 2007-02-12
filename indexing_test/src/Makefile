@@ -17,7 +17,7 @@ CWARNINGS = -pipe -Wall -Wno-char-subscripts -Wshadow \
 COPTIM=-O3 -fomit-frame-pointer -finline-functions -funroll-loops -D GCC_INLINE
 LDLIBS = -lFSindex -lpthread -lm # -ldmalloc"
 
-CFLAGS = $(DEBUG) $(INCS) $(CWARNINGS) -fPIC # -D USE_DMALLOC
+CFLAGS = $(COPTIM) $(INCS) $(CWARNINGS) -fPIC # -D USE_DMALLOC
 
 all: progs 
 

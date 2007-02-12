@@ -157,11 +157,10 @@ int create_mvp_tree(MVP_TREE *MVPT, int *oidlist, DIST_TYPE *distlist,
 {
 	NODE *newnode; 
 	int newnode_id;
+	int child_id;
 	int vp1, vp2, temp, i, jj1, j2, k, size, first, last; 
 
 	/* create a new node */ 
-	if (FIRST == 62624)
-	  printf("create: level=%d, FIRST=%d, LAST=%d\n", level, FIRST, LAST) ;
 
 	newnode_id = alloc_node(MVPT);
 	newnode = MVPT->nodes + newnode_id;
@@ -169,9 +168,6 @@ int create_mvp_tree(MVP_TREE *MVPT, int *oidlist, DIST_TYPE *distlist,
 	/* if there are at most K+2 (K data elements and 2 vantage
 	points) elements, create a leaf node. */ 
 	if(LAST-FIRST <= MVPT_K+1) {
-
-	  if (FIRST == 62624)
-	    printf("I'm here 01\n");
 
 	  /* LAST and FIRST are inclusive array bounds, that is why we
 	     compare their difference to K+1 */ 
@@ -187,29 +183,15 @@ int create_mvp_tree(MVP_TREE *MVPT, int *oidlist, DIST_TYPE *distlist,
 	  temp=rand_num(FIRST, LAST); 
 	  vp1=oidlist[temp]; 
 	  /* swap the vantage point with the first element */
-	  if (FIRST == 62624) {
-	    printf("I'm here 011\n");
-	    printf("temp=%d, FIRST = %d\n", temp, FIRST);
-	  }
 	  oidlist[temp]=oidlist[FIRST]; 
 	  oidlist[FIRST]=vp1;
 	  FIRST++; 
-
-	  if (FIRST == 62624)
-	    printf("I'm here 0111\n");
 
 	  /* compute distances from the first vantage point */ 
 	  for(i=FIRST; i<=LAST; i++) 
 	    distlist[i] = distance(MVPT, vp1, oidlist[i]); 
 	  
-	  if (FIRST == 62624)
-	    printf("I'm here 012\n");
-
 	  sort(oidlist, distlist, FIRST,LAST); 
-
-
-	  if (FIRST == 62624)
-	    printf("I'm here 02\n");
 
 	  /* pick the second vantage point to be the farthest point from the first one */ 
 	  vp2=oidlist[LAST];
@@ -225,9 +207,6 @@ int create_mvp_tree(MVP_TREE *MVPT, int *oidlist, DIST_TYPE *distlist,
 	    newnode->CD.leaf.datapoint[i-FIRST]=oidlist[i];
 	    newnode->CD.leaf.dist1[i-FIRST]=distlist[i]; 
 	  }
-
-	  if (FIRST == 62624)
-	    printf("I'm here 04\n");
 
 	  for(i=FIRST; i<=LAST; i++) { 
 	    distlist[i] = distance(MVPT, vp2, oidlist[i]);
@@ -297,14 +276,17 @@ int create_mvp_tree(MVP_TREE *MVPT, int *oidlist, DIST_TYPE *distlist,
 	     respect to vp2 */ 
 	  for(k=0; k < MVPT_N; k++) {
 	    newnode->CD.internal.cutoff2[i][k]=distlist[first+j2*k];
-	    if (k== MVPT_N-1)
-	      newnode->CD.internal.child[i][k] = 
-		create_mvp_tree(MVPT, oidlist, distlist, level+1, 
-				first+j2*k, last); 
+	    if (k== MVPT_N-1) {
+	      child_id = create_mvp_tree(MVPT, oidlist, distlist, level+1, 
+					 first+j2*k, last); 
+	      newnode = MVPT->nodes + newnode_id;
+	      newnode->CD.internal.child[i][k] = child_id;
+	    }
 	    else
-	      newnode->CD.internal.child[i][k] = 
-		create_mvp_tree(MVPT, oidlist, distlist, level+1, 
-				first+j2*k, first+j2*k-1+j2); 
+	      child_id = create_mvp_tree(MVPT, oidlist, distlist, level+1, 
+					 first+j2*k, first+j2*k-1+j2);
+	      newnode = MVPT->nodes + newnode_id;
+	      newnode->CD.internal.child[i][k] = child_id;
 	  } 
 	}
 	return(newnode_id); 
@@ -448,9 +430,7 @@ void MVP_TREE_create(MVP_TREE *MVPT, int *oid, int oid_size)
 
   MVPT->nodes = mallocec(NODES_INCR * sizeof(NODE));
   /* The root is always 0 */
-  printf("Before create_mvp_tree\n");
   create_mvp_tree(MVPT, oid, distlist, 1, 0, oid_size-1);
-  printf("After create_mvp_tree\n");
   free(distlist);
 }
 
@@ -585,7 +565,6 @@ MVP_TREE *MVP_TREE_init2(const char *db_name, ULINT frag_len,
   for (i=0; i < oid_size; i++)
     oid[i] = i;
 
-  printf("Before _create\n");
   MVP_TREE_create(MVPT2, oid, oid_size);
   MVP_TREE_fprint_stats(MVPT2, stdout, 0);
 
