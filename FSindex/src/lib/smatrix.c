@@ -19,11 +19,11 @@
  */
 
 
-/********************************************************************/    
+/********************************************************************/
 /*                                                                  */
-/*                     SCORE_MATRIX module                          */ 
+/*                     SCORE_MATRIX module                          */
 /*                                                                  */
-/********************************************************************/    
+/********************************************************************/
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -40,8 +40,8 @@ int score_eval(SCORE_MATRIX *S, const char *s1, const char *s2, int len1)
   int i;
   int H = 0;
 
-  for(i=0; i < len1; s1++, s2++, i++)    
-    H += MM[*s1 & A_SIZE_MASK][*s2 & A_SIZE_MASK]; 
+  for(i=0; i < len1; s1++, s2++, i++)
+    H += MM[*s1 & A_SIZE_MASK][*s2 & A_SIZE_MASK];
   return H;
 }
 
@@ -53,7 +53,7 @@ int profile_eval(SCORE_MATRIX *S, const char *s1, const char *s2, int len1)
   int H = 0;
   int l = min(S->len, len1);
 
-  for(i=0; i < l; s1++, MM++, i++)    
+  for(i=0; i < l; s1++, MM++, i++)
     H += (*MM)[*s1 & A_SIZE_MASK];
   return H;
 }
@@ -69,7 +69,7 @@ int PD_item_conv(SCORE_MATRIX *S, char c, int i, int j)
     return S->M[i][j];
 }
 
-static 
+static
 int SD_item_conv(SCORE_MATRIX *S, char c, int i, int j)
 {
   char cj = 64+j;
@@ -79,17 +79,17 @@ int SD_item_conv(SCORE_MATRIX *S, char c, int i, int j)
     return S->M[c & A_SIZE_MASK][j];
 }
 
-static 
+static
 int PS_item_conv(SCORE_MATRIX *S, char c, int i, int j)
 {
   char cj = 64+j;
   if (!bsearch(&cj, S->alphabet, S->alen, 1, compare_char))
     return VERY_LARGE_DISTANCE;
-  else 
+  else
     return S->M[i][S->qseq[i] & A_SIZE_MASK] - S->M[i][j];
 }
 
-static 
+static
 int SS_item_conv_quasi(SCORE_MATRIX *S, char c, int i, int j)
 {
   int k = c & A_SIZE_MASK;
@@ -97,11 +97,11 @@ int SS_item_conv_quasi(SCORE_MATRIX *S, char c, int i, int j)
   if (!bsearch(&cj, S->alphabet, S->alen, 1, compare_char) ||
       !bsearch(&c, S->alphabet, S->alen, 1, compare_char))
     return VERY_LARGE_DISTANCE;
-  else 
+  else
     return S->M[k][k] - S->M[k][j];
 }
 
-static 
+static
 int SS_item_conv_max(SCORE_MATRIX *S, char c, int i, int j)
 {
   int k = c & A_SIZE_MASK;
@@ -109,11 +109,11 @@ int SS_item_conv_max(SCORE_MATRIX *S, char c, int i, int j)
   if (!bsearch(&cj, S->alphabet, S->alen, 1, compare_char) ||
       !bsearch(&c, S->alphabet, S->alen, 1, compare_char))
     return VERY_LARGE_DISTANCE;
-  else 
+  else
     return max(S->M[k][k] - S->M[k][j], S->M[j][j] - S->M[j][k]);
 }
 
-static 
+static
 int SS_item_conv_avg(SCORE_MATRIX *S, char c, int i, int j)
 {
   int k = c & A_SIZE_MASK;
@@ -121,7 +121,7 @@ int SS_item_conv_avg(SCORE_MATRIX *S, char c, int i, int j)
   if (!bsearch(&cj, S->alphabet, S->alen, 1, compare_char) ||
       !bsearch(&c, S->alphabet, S->alen, 1, compare_char))
     return VERY_LARGE_DISTANCE;
-  else 
+  else
     return S->M[k][k] - S->M[k][j] + S->M[j][j] - S->M[j][k];
 }
 
@@ -143,7 +143,7 @@ int PS_range_conv(SCORE_MATRIX *S, const char *s, int len1, int r)
 {
   return profile_eval(S, S->qseq, NULL, S->len) - r;
 }
- 
+
 /* Matrix conversion functions */
 static
 SCORE_MATRIX *S_matrix_conv(SCORE_MATRIX *S, const char *s, int len1)
@@ -154,7 +154,7 @@ SCORE_MATRIX *S_matrix_conv(SCORE_MATRIX *S, const char *s, int len1)
     NM = mallocec(len1 * sizeof(int *));
     for (i=0; i < len1; i++) {
       NM[i] = mallocec(A_SIZE * sizeof(int));
-      for (j=0; j < A_SIZE; j++) 
+      for (j=0; j < A_SIZE; j++)
 	NM[i][j] = S->item_conv(S, s[i], i, j);
     }
     return SCORE_MATRIX_init(NM, len1, POSITIONAL, DISTANCE,
@@ -164,7 +164,7 @@ SCORE_MATRIX *S_matrix_conv(SCORE_MATRIX *S, const char *s, int len1)
     NM = mallocec(A_SIZE * sizeof(int *));
     for (i=0; i < A_SIZE; i++) {
       NM[i] = mallocec(A_SIZE * sizeof(int));
-      for (j=0; j < A_SIZE; j++) 
+      for (j=0; j < A_SIZE; j++)
 	NM[i][j] = S->item_conv(S, i+64, i, j);
     }
     return SCORE_MATRIX_init(NM, len1, SCORE, DISTANCE,
@@ -180,7 +180,7 @@ SCORE_MATRIX *P_matrix_conv(SCORE_MATRIX *S, const char *s, int len1)
   NM = mallocec(S->len * sizeof(int *));
   for (i=0; i < S->len; i++) {
     NM[i] = mallocec(A_SIZE * sizeof(int));
-    for (j=0; j < A_SIZE; j++) 
+    for (j=0; j < A_SIZE; j++)
       NM[i][j] = S->item_conv(S, 0, i, j);
   }
   return SCORE_MATRIX_init(NM, S->len, POSITIONAL, DISTANCE,
@@ -228,13 +228,13 @@ SCORE_MATRIX *SCORE_MATRIX_init(int **M, int len, MATRIX_TYPE Mtype,
   int l = strlen(a);
   char *c;
   SCORE_MATRIX *S;
-  
+
   /* Check that each letter in alphabet appears only once */
   qsort(a, l, 1, compare_char);
-  for (j=1; j < l; j++) 
-    if (a[j] == a[j-1]) 
+  for (j=1; j < l; j++)
+    if (a[j] == a[j-1])
       return NULL;
-  
+
   S = callocec(1, sizeof(SCORE_MATRIX));
   S->M = M;
   S->Mtype = Mtype;
@@ -372,7 +372,7 @@ SCORE_MATRIX *SCORE_MATRIX_from_file(const char *filename)
       for(; linebuf[field_width] == ' '; field_width++);
       /* Load header */
       for (i=0; i < 23; i++)
-	a[i] = linebuf[field_width+field_width*i]; 
+	a[i] = linebuf[field_width+field_width*i];
       header_read = 1;
     }
     else {
@@ -380,7 +380,7 @@ SCORE_MATRIX *SCORE_MATRIX_from_file(const char *filename)
       row = a[j] & A_SIZE_MASK;
       for (i=0; i < 23; i++) {
 	col = a[i] & A_SIZE_MASK;
-	sscanf(linebuf+2+field_width*i, "%d", &value); 
+	sscanf(linebuf+2+field_width*i, "%d", &value);
 	M[row][col] = value;
       }
       j++;
@@ -415,7 +415,7 @@ char *SCORE_MATRIX_sprint(SCORE_MATRIX *S)
   int i;
   char *a;
   char *b;
-  
+
   if (S->Stype == DISTANCE)
     absprintf(&buf, &size, &len, "DISTANCE MATRIX\n");
   else
@@ -423,23 +423,23 @@ char *SCORE_MATRIX_sprint(SCORE_MATRIX *S)
 
   if (S->Mtype == POSITIONAL) {
     absprintf(&buf, &size, &len, "%2.2s ", "");
-    for (i=0; i < S->len; i++) 
+    for (i=0; i < S->len; i++)
       absprintf(&buf, &size, &len, "%4d ", i);
     absprintf(&buf, &size, &len, "\n");
     absprintf(&buf, &size, &len, "%2.2s ", "");
-    for (i=0; i < S->len; i++) 
+    for (i=0; i < S->len; i++)
       absprintf(&buf, &size, &len, "   %c ", S->qseq[i]);
     absprintf(&buf, &size, &len, "\n");
     for (a=S->alphabet; *a; a++) {
       absprintf(&buf, &size, &len, " %c ", *a);
-      for (i=0; i < S->len; i++) 
+      for (i=0; i < S->len; i++)
 	absprintf(&buf, &size, &len, "%4d ", S->M[i][*a & A_SIZE_MASK]);
       absprintf(&buf, &size, &len, "\n");
     }
   }
   else {
     absprintf(&buf, &size, &len, "%3.3s ", "");
-    for (a=S->alphabet; *a; a++) 
+    for (a=S->alphabet; *a; a++)
       absprintf(&buf, &size, &len, "  %c ", *a);
     absprintf(&buf, &size, &len, "\n");
     for (b=S->alphabet; *b; b++) {
@@ -470,7 +470,7 @@ void SCORE_MATRIX_write(SCORE_MATRIX *S, FILE *fp)
   fwrite(&S->len, sizeof(int), 1, fp);
   fwrite(&S->alen, sizeof(int), 1, fp);
   fwrite(S->alphabet, sizeof(char), S->alen, fp);
-  
+
   m = S->Mtype == SCORE ? A_SIZE : S->len;
   for (i=0; i < m; i++)
     fwrite(S->M[i], sizeof(int), A_SIZE, fp);
@@ -491,9 +491,9 @@ SCORE_MATRIX *SCORE_MATRIX_read(FILE *fp)
   fread(&Stype, sizeof(SCORE_TYPE), 1, fp);
   fread(&len, sizeof(int), 1, fp);
   fread(&alen, sizeof(int), 1, fp);
-  alphabet = callocec(alen+1, sizeof(char)); 
+  alphabet = callocec(alen+1, sizeof(char));
   fread(alphabet, sizeof(char), alen, fp);
-  
+
   m = Mtype == SCORE ? A_SIZE : len;
   M = mallocec(m * sizeof(int *));
   for (i=0; i < m; i++) {
@@ -508,14 +508,14 @@ SCORE_MATRIX *SCORE_MATRIX_read(FILE *fp)
 unsigned char *SCORE_MATRIX_swrite(SCORE_MATRIX *S, int *size)
 {
   /* Use byte-order-independent functions to write the matrix as a
-     byte stream. All ints are 32 bits. */ 
+     byte stream. All ints are 32 bits. */
 
   int i, msize, x, k;
   unsigned char *s;
   char *c, *d;
 
   msize = S->Mtype == SCORE ? S->alen*S->alen : S->len*S->alen;
- 
+
   *size = 4 + 4 + 4 + msize*4 + S->alen+1;
   s = mallocec(*size);
 
@@ -528,14 +528,14 @@ unsigned char *SCORE_MATRIX_swrite(SCORE_MATRIX *S, int *size)
   k += 4;
   swrite_int32(&S->len, 1, s+k);
   k += 4;
-  strncpy(s+k, S->alphabet, S->alen+1);
+  strncpy((char *) (s+k), S->alphabet, S->alen+1);
   k += S->alen+1;
 
 
   if (S->Mtype == SCORE) {
     for (d=S->alphabet; *d; d++)
       for (c=S->alphabet; *c; c++) {
-	swrite_int32(S->M[*d & A_SIZE_MASK] + (*c & A_SIZE_MASK), 1, s+k); 
+	swrite_int32(S->M[*d & A_SIZE_MASK] + (*c & A_SIZE_MASK), 1, s+k);
 	k += 4;
       }
   }
@@ -554,7 +554,7 @@ unsigned char *SCORE_MATRIX_swrite(SCORE_MATRIX *S, int *size)
 SCORE_MATRIX *SCORE_MATRIX_sread(unsigned char *s)
 {
   /* Use byte-order-independent functions to write the matrix as a
-     byte stream. All ints are 32 bits. */ 
+     byte stream. All ints are 32 bits. */
 
   int i, x, k;
   char *c, *d;
@@ -576,7 +576,7 @@ SCORE_MATRIX *SCORE_MATRIX_sread(unsigned char *s)
   k += 4;
   sread_int32(&len, 1, s+k);
   k += 4;
-  alphabet = strdup(s+k);
+  alphabet = strdup((char *) (s+k));
   k += strlen(alphabet)+1;
 
   if (Mtype == SCORE) {
@@ -585,7 +585,7 @@ SCORE_MATRIX *SCORE_MATRIX_sread(unsigned char *s)
       NM[i] = mallocec(A_SIZE * sizeof(int));
     for (d=alphabet; *d; d++)
       for (c=alphabet; *c; c++) {
-	sread_int32(NM[*d & A_SIZE_MASK] + (*c & A_SIZE_MASK), 1, s+k); 
+	sread_int32(NM[*d & A_SIZE_MASK] + (*c & A_SIZE_MASK), 1, s+k);
 	k += 4;
       }
   }
