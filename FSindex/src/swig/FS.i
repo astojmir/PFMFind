@@ -41,6 +41,8 @@ struct exception_context the_exception_context[1];
  typedef SEQ_HIT_t hit;
  typedef HIT_LIST_t hit_list;
  typedef HIT_LIST_t * hit_list_array;
+
+extern int next_avail_srch;
 %}
 
 %include cstring.i
@@ -75,8 +77,8 @@ struct exception_context the_exception_context[1];
     $1[i] = callocec(A_SIZE, sizeof(int));
   while (PyDict_Next($input, &pos, &key, &value)) {
     if (PyTuple_Check(key) && PyTuple_GET_SIZE(key) == 2) {
-      Pa = PyTuple_GetItem(key, 0); 
-      Pb = PyTuple_GetItem(key, 1); 
+      Pa = PyTuple_GetItem(key, 0);
+      Pb = PyTuple_GetItem(key, 1);
       if (PyString_Check(Pa) && PyString_Check(Pb)) {
 	if (PyString_Size(Pa) == 1 && PyString_Size(Pb) == 1) {
 	  a = PyString_AsString(Pa);
@@ -105,9 +107,9 @@ struct exception_context the_exception_context[1];
     return NULL;
   }
   $2 = callocec(a_len+1,1);
-  for (j=0, i=0; i < A_SIZE; i++) 
+  for (j=0, i=0; i < A_SIZE; i++)
     if (a_set[i]) $2[j++] = 64+i;
-} 
+}
 
 /* Converting pssm as list of dictionaries into M + alphabet + len */
 %typemap(in) (int **M, int len, char *alphabet) {
@@ -134,7 +136,7 @@ struct exception_context the_exception_context[1];
     row = PyList_GET_ITEM($input, i);
     if (!(PyTuple_Check(row) && PyTuple_GET_SIZE(row) == 2))
       continue;
-    dict = PyTuple_GetItem(row, 1); 
+    dict = PyTuple_GetItem(row, 1);
     if (!PyDict_Check(dict)) continue;
     pos = 0;
     while (PyDict_Next(dict, &pos, &key, &value)) {
@@ -159,9 +161,9 @@ struct exception_context the_exception_context[1];
     return NULL;
   }
   $3 = callocec(a_len+1,1);
-  for (j=0, i=0; i < A_SIZE; i++) 
+  for (j=0, i=0; i < A_SIZE; i++)
     if (a_set[i]) $3[j++] = 64+i;
-} 
+}
 
 /* Converting list of strings into char ** */
 %typemap(in) (ULINT len, const char **sepn) {
@@ -194,7 +196,7 @@ struct exception_context the_exception_context[1];
 
 %typemap(argout) (ULINT *len, char ***sepn) {
  int i;
- 
+
  $result = PyList_New(*$1);
  for (i=0; i < *$1; i++) {
    PyObject *s = PyString_FromString((*$2)[i]);
@@ -205,7 +207,7 @@ struct exception_context the_exception_context[1];
 %typemap(in,numinputs=0) (char **s, int *l) (char *stemp, int ltemp) {
   $1 = &stemp;
   $2 = &ltemp;
-} 
+}
 %typemap(argout) (char **s, int *l) {
   $result = PyString_FromStringAndSize(*$1, *$2);
 }
@@ -251,16 +253,16 @@ struct exception_context the_exception_context[1];
 typedef unsigned long ULINT;
 typedef signed short SSINT;
 
-/********************************************************************/ 
+/********************************************************************/
 /*         db                                                       */
-/********************************************************************/ 
+/********************************************************************/
 
 typedef struct
 {
 %immutable;
   char *db_name;
   ULINT length;
-  ULINT no_seq;  
+  ULINT no_seq;
 } db;
 
 
@@ -273,7 +275,7 @@ typedef struct
   }
   %pythoncode %{
   def __str__(self):
-    return 'FASTA SEQUENCE DATABASE\nFile: %s\nLength: %d\nSequences: %d\n' % (self.db_name, self.length , self.no_seq)    
+    return 'FASTA SEQUENCE DATABASE\nFile: %s\nLength: %d\nSequences: %d\n' % (self.db_name, self.length , self.no_seq)
   %}
  const char *get_seq(ULINT i) {
    if (i < self->no_seq)
@@ -297,9 +299,9 @@ typedef struct
 }
 
 
-/********************************************************************/ 
+/********************************************************************/
 /*         smatrix                                                  */
-/********************************************************************/ 
+/********************************************************************/
 
 typedef enum {SCORE, POSITIONAL} MATRIX_TYPE;
 typedef enum {SIMILARITY, DISTANCE} SCORE_TYPE;
@@ -389,9 +391,9 @@ void Smatrix_conv_type_set(Smatrix *S, int ctype) {
 %}
 
 
-/********************************************************************/ 
+/********************************************************************/
 /*         Index                                                    */
-/********************************************************************/ 
+/********************************************************************/
 
 /* Conversion of hit lists into Python dictionaries */
 %{
@@ -469,9 +471,9 @@ PyObject *Dict_FromHitList(hit_list *HL) {
     }
     PyDict_SetItemString(dict, "hits", list);
     Py_DECREF(list);
-    
+
     return dict;
-}  
+}
 %}
 
 %typemap(out) hit_list * {
@@ -488,7 +490,7 @@ PyObject *Dict_FromHitList(hit_list *HL) {
   int list_size;
   PyObject *obj;
   PyObject *list;
-  
+
   $3 = &tmp;
   if (!PyList_Check($input)) {
     PyErr_SetString(PyExc_ValueError, "Expecting a list");
@@ -497,7 +499,7 @@ PyObject *Dict_FromHitList(hit_list *HL) {
   $2 = PyList_GET_SIZE($input);
   $1 = mallocec($2 * sizeof(SRCH_ARGS));
   for (i=0; i < $2; i++) {
-    list = PyList_GetItem($input, i); 
+    list = PyList_GetItem($input, i);
     if (!PyList_Check(list) || (list_size = PyList_GET_SIZE(list)) < 5) {
       process_error++;
       break;
@@ -517,13 +519,13 @@ PyObject *Dict_FromHitList(hit_list *HL) {
 
     /* Second item - matrix */
     obj = PyList_GetItem(list, 1);
-    if ((SWIG_ConvertPtr(obj, (void **) &($1[i].M), 
+    if ((SWIG_ConvertPtr(obj, (void **) &($1[i].M),
 			 $descriptor(Smatrix *),
 			 SWIG_POINTER_EXCEPTION | 0 )) == -1) {
       process_error++;
       break;
     }
-			   
+
     /* Third item - range */
     obj = PyList_GetItem(list, 2);
     if (PyInt_Check(obj)) {
@@ -536,7 +538,7 @@ PyObject *Dict_FromHitList(hit_list *HL) {
       process_error++;
       break;
     }
-    
+
     /* Fourth item - kNN */
     obj = PyList_GetItem(list, 3);
     if (PyInt_Check(obj)) {
@@ -620,10 +622,10 @@ typedef enum {SARRAY, DUPS_ONLY, FULL_SCAN} PFUNC_TYPE;
 
 %extend Index {
   /* Call with [] (empty list) as second argument to load from file */
- Index(const char *database, ULINT len, 
+ Index(const char *database, ULINT len,
        const char **sepn, int use_sa = 1,
        int print_flag=0) {
-   if (len) 
+   if (len)
      return FS_INDEX_create(database, len, sepn, use_sa, print_flag);
    else
      return FS_INDEX_load(database);
@@ -664,20 +666,20 @@ typedef enum {SARRAY, DUPS_ONLY, FULL_SCAN} PFUNC_TYPE;
     SEQUENCE_DB *sdb = self->s_db;
     FS_TABLE *ptable = self->ptable;
     int i;
-  
-    /* FASTA Sequence Database data */ 
-    PyDict_SetItemString(dict, "db_name", 
+
+    /* FASTA Sequence Database data */
+    PyDict_SetItemString(dict, "db_name",
 			 PyString_FromString(sdb->db_name));
-    PyDict_SetItemString(dict, "db_length", 
+    PyDict_SetItemString(dict, "db_length",
 			 PyInt_FromLong(sdb->length));
-    PyDict_SetItemString(dict, "db_no_seq", 
+    PyDict_SetItemString(dict, "db_no_seq",
 			 PyInt_FromLong(sdb->no_seq));
 
     /* Index data */
     PyDict_SetItemString(dict, "index_name",
 			 PyString_FromString(self->index_name));
     obj = PyList_New(ptable->len);
-    for (i=0; i < ptable->len; i++) { 
+    for (i=0; i < ptable->len; i++) {
       PyList_SetItem(obj, i, PyString_FromString(ptable->sepn[i]));
     }
     PyDict_SetItemString(dict, "ptable", obj);
@@ -697,7 +699,7 @@ typedef enum {SARRAY, DUPS_ONLY, FULL_SCAN} PFUNC_TYPE;
 			 PyInt_FromLong(self->binL));
     PyDict_SetItemString(dict, "largest_bin_unique",
 			 PyInt_FromLong(self->uL));
-    
+
     return dict;
   }
 
@@ -712,7 +714,7 @@ typedef enum {SARRAY, DUPS_ONLY, FULL_SCAN} PFUNC_TYPE;
 			   stype, ptype);
   }
   hit_list *kNN_srch(char *qseq, int qlen, Smatrix *M, int kNN,
-		     SFUNC_TYPE stype = FS_BINS, 
+		     SFUNC_TYPE stype = FS_BINS,
 		     PFUNC_TYPE ptype = SARRAY, char *qdef ="") {
     BIOSEQ query;
     query.start = qseq;
