@@ -52,7 +52,7 @@ typedef signed short int SSINT;
 /* Exception handling - using cexept */
 
 #define MSG_SIZE 512
-typedef struct 
+typedef struct
 {
   int code;
   char msg[MSG_SIZE+1];
@@ -60,7 +60,7 @@ typedef struct
 
 extern EXCEPTION FSexcept_array[1];
 #define FS_EXCEPTION (FSexcept_array)
-EXCEPTION *FSexcept(int code, const char *fmt, ...); 
+EXCEPTION *FSexcept(int code, const char *fmt, ...);
 
 define_exception_type(EXCEPTION *);
 extern struct exception_context the_exception_context[1];
@@ -103,11 +103,11 @@ void fread_string(char **s, FILE *fp);
 void swrite_int32(void *ptr, size_t nmemb, unsigned char *s);
 void sread_int32(void *ptr, size_t nmemb, unsigned char *s);
 void fwrite_int32(void *ptr, size_t nmemb, FILE *stream);
-void fwrite_int32(void *ptr, size_t nmemb, FILE *stream);
+void fread_int32(void *ptr, size_t nmemb, FILE *stream);
 
 /* Progress bar */
 
-void printbar(FILE *outstream, ULINT cntr, ULINT dispc, 
+void printbar(FILE *outstream, ULINT cntr, ULINT dispc,
 	      USINT dpr);
 
 
@@ -128,13 +128,13 @@ char *path_join(const char *head, const char *tail);
 
 
 
-/********************************************************************/    
-/********************************************************************/    
+/********************************************************************/
+/********************************************************************/
 /***                                                              ***/
-/***               INLINE FUNCTION DEFINITIONS (Macros)           ***/ 
+/***               INLINE FUNCTION DEFINITIONS (Macros)           ***/
 /***                                                              ***/
-/********************************************************************/    
-/********************************************************************/    
+/********************************************************************/
+/********************************************************************/
 
 
 #define max(a, b)  ((a) > (b) ? (a) : (b))
@@ -152,6 +152,6 @@ char *path_join(const char *head, const char *tail);
         }                                          \
       fflush((outstream));                         \
     }                                              \
-  } while(0)        
+  } while(0)
 
 #endif /* _MISCLIB_H */
