@@ -1,9 +1,7 @@
+# This makefile is very old and provisional
+# a configure script would be very useful
 SHELL=/bin/sh
-
-# Uncomment if Sun C/C++ compiler is to be used.
-#COMPILER= sun
-#MACHINE = st-james
-MACHINE = navier
+MAKE = make
 
 SRCDIR = src/
 BINDIR = bin/
@@ -16,57 +14,53 @@ LIBDIR = ../lib
 INCLUDEDIR = src/include/
 INCS = -I../include
 
-GSLINCLUDE = -I /u/students/aleksand/exec/include/
-GSLLIB = -L /u/students/aleksand/exec/lib
-MPATROL = -D USE_MPATROL
-MPATROLLIBS = -lmpatrol -lbfd -liberty
-MAKE = gmake
+# # mpatrol is a useful malloc debugger - commented out for now
+# # http://mpatrol.sourceforge.net/
+# MPATROL = -D USE_MPATROL
+# MPATROLLIBS = -lmpatrol -lbfd -liberty
+
+# # dmalloc is another such library
+# # http://dmalloc.com/
+# DMALLOC =  -D USE_DMALLOC
+# DMALLOCLIBS = -ldmalloc
 
 DEBUG=-g -D DEBUG=2
 
-ifeq ($(MACHINE), st-james)
-PYDIR = /usr/pkg/include/python2p3
-else
-  ifeq ($(MACHINE), navier)
-  PYDIR = /home/aleksand/include/python2.4
-  else
-  PYDIR = /usr/include/python2.4
-  endif
-endif
+# This should be set to point to Python headers
+PYDIR = /home/aleksand/exec/VirtualEnv/pfmfind/include/python2.5
 
 LDFLAGS = "-L ../lib"
 
-ifneq ($(COMPILER), sun)
-# gcc flags 
+# gcc flags
 GPROF = -pg
 CC = gcc
 CWARNINGS = -pipe -Wall -Wno-char-subscripts -Wshadow \
           -Wwrite-strings -Wstrict-prototypes \
           -Wformat -Wmissing-prototypes -funsigned-char #-Werror
 COPTIM=-O3 -fomit-frame-pointer -finline-functions -funroll-loops -D GCC_INLINE
-LDLIBS = "-lFSindex -lgcc -lm -lpthread"# -ldmalloc"
-else
-# Solaris cc flags 
-GPROF = -xpg
+LDLIBS = "-lFSindex -lgcc -lm -lpthread"
 
-CC = cc
-CWARNINGS =  -errwarn -v
-COPTIM = -xO5 -fast -xipo -s
-LDLIBS = "-lFSindex"
-endif
+
+# # Solaris cc flags
+# GPROF = -xpg
+# CC = cc
+# CWARNINGS =  -errwarn -v
+# COPTIM = -xO5 -fast -xipo -s
+# LDLIBS = "-lFSindex"
+
 
 
 
 VPATH = src/lib:src/swig
 
-CFLAGS = $(DEBUG) $(INCS) -fPIC # -D USE_DMALLOC -D THREADS=4
+CFLAGS = $(DEBUG) $(INCS) -fPIC # -D THREADS=4
 
 all: progs
 
 progs: libFSindex swig
 	if [ ! -d  $(BINDIR) ]; then \
 	   mkdir $(BINDIR); \
-	fi 
+	fi
 	cd $(PROGSDIR); \
 	$(MAKE) CC=$(CC) CFLAGS="$(CFLAGS) $(CWARNINGS)" LDFLAGS=$(LDFLAGS) LDLIBS=$(LDLIBS); \
 	for x in *; do if [ -x $$x -a -f $$x.c ]; \
@@ -115,7 +109,7 @@ srcclean:
 	$(MAKE) srcclean; \
 	cd ../..; \
 
-tarball: 
+tarball:
 	tar -cvf FSindex.tar Makefile; \
 	tar -rvf FSindex.tar data/*.*; \
 	tar -rvf FSindex.tar --exclude=CVS matrix/*; \
