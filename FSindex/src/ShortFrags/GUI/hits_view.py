@@ -245,7 +245,7 @@ class HitsView(Tkinter.Frame, View):
         self.wScText.configure(text_state = 'disabled')
 
         for sb, sm in zip(self._scroll_buttons, self._scroll_marks):
-            self.ind[sb] = self.wScText.search(sm, '1.0')
+            self.ind[sb] = str(self.wScText.search(sm, '1.0'))
 
         s = _row(self.ind['Summary'])
         d = _row(self.ind['Details'])
