@@ -26,9 +26,6 @@ from tkMessageBox import showerror, showinfo, Message,\
      askquestion
 from ShortFrags.GUI.view import View
 
-_ffont = Pmw.logicalfont('Fixed')
-## _hfont = Pmw.logicalfont('Helvetica', sizeIncr=-2)
-_hfont = _ffont
 _FIXED_RANGE = True # Allow only lengths from 6 to 20
 
 
@@ -47,7 +44,7 @@ class SettingsView(Tkinter.Frame, View):
 
         self.wDbGrp = Pmw.Group(self, tag_text='Database Settings')
         self.wDbGrp.pack(anchor='nw', fill='x', padx=5, pady=7)
-        
+
         w = Tkinter.Frame(self.wDbGrp.interior())
         w.pack(anchor='w')
 
@@ -55,62 +52,62 @@ class SettingsView(Tkinter.Frame, View):
             column=0, padx=5, pady=5, sticky='w')
         self.wDriverMenu = Pmw.OptionMenu(w, items=['psycopg2', 'pgdb', 'psycopg'],
                                           menubutton_width=20,
-                                          menu_font=_hfont,
-                                          menubutton_font=_hfont)
+                                          menu_font=self.ffont,
+                                          menubutton_font=self.ffont)
         self.wDriverMenu.grid(row=0, column=1, padx=5, pady=5, sticky='w')
 
         Tkinter.Label(w, text="Database:").grid(row=0, column=2, padx=5,
                                               pady=5, sticky='w')
         self.wDbEntry = Pmw.EntryField(w, entry_width = 25,
-                                       entry_font=_hfont)
+                                       entry_font=self.ffont)
         self.wDbEntry.grid(row=0, column=3, padx=5, pady=5,
-                           sticky='w') 
-        
+                           sticky='w')
+
         Tkinter.Label(w, text="Host:").grid(row=2, column=0, padx=5,
                                             pady=5, sticky='w')
         self.wHostEntry = Pmw.EntryField(w, entry_width = 30,
-                                            entry_font=_hfont) 
+                                            entry_font=self.ffont)
         self.wHostEntry.grid(row=2, column=1, padx=5, pady=5,
                              sticky='w')
-        
+
         Tkinter.Label(w, text="Port:").grid(row=2, column=2, padx=5,
                                             pady=5, sticky='w')
         self.wPortEntry = Pmw.EntryField(w, entry_width =10,
-                                            entry_font=_hfont) 
+                                            entry_font=self.ffont)
         self.wPortEntry.grid(row=2, column=3, padx=5, pady=5,
                              sticky='w')
 
         Tkinter.Label(w, text="User:").grid(row=4, column=0, padx=5,
                                             pady=5, sticky='w')
         self.wUserEntry = Pmw.EntryField(w, entry_width =25,
-                                            entry_font=_hfont)         
+                                            entry_font=self.ffont)
         self.wUserEntry.grid(row=4, column=1, padx=5, pady=5,
                              sticky='w')
-        
+
         Tkinter.Label(w, text="Password:").grid(row=4, column=2,
                                                 padx=5, pady=5,
-                                                sticky='w') 
+                                                sticky='w')
         self.wPswdEntry = Pmw.EntryField(w, entry_width =25,
                                          entry_show="*",
-                                         entry_font=_hfont)        
+                                         entry_font=self.ffont)
         self.wPswdEntry.grid(row=4, column=3, padx=5, pady=5,
                              sticky='w')
-        
-        Tkinter.Label(w, text="Dataset schema:").grid(row=6, column=0, 
+
+        Tkinter.Label(w, text="Dataset schema:").grid(row=6, column=0,
                                                       padx=5, pady=5,
-                                                      sticky='w') 
+                                                      sticky='w')
 
         self.wDSEntry = Pmw.EntryField(w, entry_width =25,
-                                       entry_font=_hfont) 
+                                       entry_font=self.ffont)
         self.wDSEntry.grid(row=6, column=1, padx=5, pady=5,
                            sticky='w')
-        Tkinter.Label(w, text="PFMFind schema:").grid(row=6, column=2,  
+        Tkinter.Label(w, text="PFMFind schema:").grid(row=6, column=2,
                                                       padx=5, pady=5,
-                                                      sticky='w') 
+                                                      sticky='w')
         self.wPSEntry = Pmw.EntryField(w, entry_width =25,
-                                       entry_font=_hfont) 
+                                       entry_font=self.ffont)
         self.wPSEntry.grid(row=6, column=3, padx=5, pady=5,
-                           sticky='w') 
+                           sticky='w')
 
         self.wDbButFrm = Tkinter.Frame(w)
         self.wDbButFrm.grid(row=8, column=0, columnspan=2,
@@ -128,30 +125,30 @@ class SettingsView(Tkinter.Frame, View):
                                         text='Disconnect',
                                         command=self._disconnect_db)
         self.wDbDisBut.pack(side='left', padx=10)
-        
+
 
         # ************************************************************
         # ******* Index Settings *************************************
         # ************************************************************
 
         self.wIndexGrp = Pmw.Group(self, tag_text='Index Settings')
-        self.wIndexGrp.pack(anchor='nw', padx=5, pady=7, fill='x') 
+        self.wIndexGrp.pack(anchor='nw', padx=5, pady=7, fill='x')
 
         w = Tkinter.Frame(self.wIndexGrp.interior())
         w.pack(anchor='w')
 
         Tkinter.Label(w, text="Host:").grid(row=0,
-                                            column=0, padx=5, 
+                                            column=0, padx=5,
                                             pady=5, sticky='w')
         self.wIxHostEntry = Pmw.EntryField(w, entry_width=30,
-                                           entry_font=_hfont) 
+                                           entry_font=self.ffont)
         self.wIxHostEntry.grid(row=0, column=1, padx=5, pady=5,
-                               sticky='w')  
-        
+                               sticky='w')
+
         Tkinter.Label(w, text="Port:").grid(row=0, column=2, padx=5,
                                             pady=5, sticky='w')
         self.wIxPortEntry = Pmw.EntryField(w, entry_width=10,
-                                           entry_font=_hfont)        
+                                           entry_font=self.ffont)
         self.wIxPortEntry.grid(row=0, column=3, padx=5, pady=5,
                                sticky='w')
 
@@ -172,7 +169,7 @@ class SettingsView(Tkinter.Frame, View):
                                         text='Disconnect',
                                         command=self._disconnect_ix)
         self.wIxDisBut.pack(side='left', padx=10)
-        
+
 
 
         # ************************************************************
@@ -181,23 +178,23 @@ class SettingsView(Tkinter.Frame, View):
 
         self.wPluginGrp = Pmw.Group(self, tag_text='Plugin Settings')
         self.wPluginGrp.pack(anchor='nw', padx=5, pady=7, fill='x',
-                             expand=1) 
+                             expand=1)
 
         w = Tkinter.Frame(self.wPluginGrp.interior())
         w.pack(anchor='w')
-        
+
         Tkinter.Label(w, text='Custom Plugin Path:').grid(row=0,\
             column=0, padx=5, pady=5, sticky='w')
-        
+
         self.wPlgPathEntry = Pmw.EntryField(w, entry_width=60,
-                                            entry_font=_hfont)
+                                            entry_font=self.ffont)
         self.wPlgPathEntry.grid(row=0, column=1, padx=5, pady=5,
-                                sticky='w')  
+                                sticky='w')
 
         self.wPlgPathBut = Tkinter.Button(w, text='Choose...',\
             width=5, command=self._set_plugin_path)
         self.wPlgPathBut.grid(row=0, column=3, padx=5, pady=5,
-                              sticky='w') 
+                              sticky='w')
 
         self.wPlButFrm = Tkinter.Frame(w)
         self.wPlButFrm.grid(row=2, column=0, columnspan=2,
@@ -244,12 +241,12 @@ class SettingsView(Tkinter.Frame, View):
                 self._db_form[k].setvalue(self.PFMF_client.dbargs[k])
             else:
                 self._db_form[k].setvalue('')
-                    
+
         if self.PFMF_client.db_schema:
             self.wDSEntry.setvalue(self.PFMF_client.db_schema)
         else:
             self.wDSEntry.setvalue('')
- 
+
         if self.PFMF_client.PFMF_schema:
             self.wPSEntry.setvalue(self.PFMF_client.PFMF_schema)
         else:
@@ -284,13 +281,13 @@ class SettingsView(Tkinter.Frame, View):
         s = self.wPswdEntry.getvalue().strip()
         if len(s):
             dbargs['password'] = s
-         
+
         try:
             self.PFMF_client.open(**dbargs)
         except:
             showerror('Connection Error', 'Could not connect to' \
                       ' PostgreSQL database.',
-                      parent=self.parent) 
+                      parent=self.parent)
             return
 
         schemata = dict()
@@ -305,10 +302,10 @@ class SettingsView(Tkinter.Frame, View):
         except:
             showerror('Connection Error', 'Could not initialise the' \
                       ' given\n or default database schemata.',
-                      parent=self.parent) 
+                      parent=self.parent)
             self.PFMF_client.close()
             return
-            
+
         self.update()
 
     def _disconnect_db(self):
@@ -325,7 +322,7 @@ class SettingsView(Tkinter.Frame, View):
             self.wIxPortEntry.setvalue(str(self.PFMF_client.port))
         else:
             self.wIxPortEntry.setvalue('')
-            
+
     def _connect_ix(self):
         host = self.wIxHostEntry.getvalue().strip()
         port = self.wIxPortEntry.getvalue().strip()
@@ -340,7 +337,7 @@ class SettingsView(Tkinter.Frame, View):
         if not self.PFMF_client.attach(host, port):
             showerror('Connection Error', 'Could not connect to' \
                       ' FSIndex server\n at %s:%s.' % (host, port),
-                      parent=self.parent) 
+                      parent=self.parent)
             return
         self.update()
 
@@ -368,7 +365,7 @@ class SettingsView(Tkinter.Frame, View):
         path = self.wPlgPathEntry.getvalue()
         if not os.path.isdir(path):
             showerror('Input Error', 'Invalid plugin path.',
-                      parent=self.parent) 
+                      parent=self.parent)
             return
         self.PFMF_client.init_plugins(path)
 
@@ -405,7 +402,7 @@ class SettingsView(Tkinter.Frame, View):
             self.wDbConBut.configure(state='disabled')
             self.wDbDisBut.configure(state='normal')
             self.wLoad.configure(state='disabled')
-            
+
             if self.PFMF_client.host and self.PFMF_client.port:
                 self.wDbDisBut.configure(state='disabled')
                 self.wIxConBut.configure(state='disabled')
@@ -413,7 +410,7 @@ class SettingsView(Tkinter.Frame, View):
             else:
                 self.wIxConBut.configure(state='normal')
                 self.wIxDisBut.configure(state='disabled')
-                
+
         else:
             self.wDbConBut.configure(state='normal')
             self.wDbDisBut.configure(state='disabled')

@@ -24,9 +24,7 @@ from tkMessageBox import askquestion
 from tkMessageBox import showerror, showinfo, Message
 from ShortFrags.GUI.view import View
 
-_ffont = Pmw.logicalfont('Fixed')
-## _hfont = Pmw.logicalfont('Helvetica', sizeIncr=-2)
-_hfont = _ffont
+
 _FIXED_RANGE = True # Allow only lengths from 6 to 20
 
 
@@ -45,7 +43,7 @@ class ExperimentView(Tkinter.Frame, View):
         self.selected_exp_id = None
         self.inserted_exp_id = None
         self.selected_exp_data = None
-        self.exp_list = list()        
+        self.exp_list = list()
 
         self.set_exp_func = set_exp_func
         self.new_exp = False
@@ -70,16 +68,16 @@ class ExperimentView(Tkinter.Frame, View):
 
         self.wExpCombo = Pmw.ComboBox(self.wExpList.interior(),
                                       selectioncommand =
-                                      self._change_experiment, 
+                                      self._change_experiment,
                                       scrolledlist_items = [],
                                       listbox_width = 45,
                                       listbox_height = 6,
-                                      scrolledlist_vscrollmode='static', 
+                                      scrolledlist_vscrollmode='static',
                                       scrolledlist_hscrollmode='none',
                                       dropdown=0,
                                       history=0,
-                                      listbox_font=_hfont,
-                                      entry_font=_hfont)
+                                      listbox_font=self.ffont,
+                                      entry_font=self.ffont)
         self.wExpCombo.grid(row=0, column=1, padx=5, pady=10, sticky='we')
         self.wExpList.interior().columnconfigure(1, weight=2)
         self.wDescText = Pmw.ScrolledText(self.wExpList.interior(),
@@ -90,7 +88,7 @@ class ExperimentView(Tkinter.Frame, View):
                                           hscrollmode='none',
                                           text_height=2,
                                           text_wrap='word',
-                                          text_font = _hfont,
+                                          text_font=self.ffont,
                                           text_padx = 4,
                                           text_pady = 4,
                                           text_state = 'disabled',
@@ -122,7 +120,7 @@ class ExperimentView(Tkinter.Frame, View):
         self.Sbut.grid(sticky='n', row=4, column=0)
         self.wSeqText = Pmw.ScrolledText(w, text_width=65, text_height=8,
                                          hscrollmode='none',
-                                         vscrollmode='static', 
+                                         vscrollmode='static',
                                          text_wrap='word')
         self.wSeqText.grid(row=2, column=1, columnspan=3,
                            rowspan=3,padx=5, pady=5, sticky='we')
@@ -167,14 +165,14 @@ class ExperimentView(Tkinter.Frame, View):
         exp_id = self.exp_list[index][0]
 
         if exp_id == self.selected_exp_id: return
-        
+
         self.selected_exp_id = exp_id
         self.inserted_exp_id = None
         self.selected_exp_data = None
         self._clear_data()
 
         thr = threading.Thread(target=self._db_get_data_thread,
-                               args=(exp_id,))  
+                               args=(exp_id,))
         thr.start()
         self._insert_data(exp_id)
 
@@ -182,7 +180,7 @@ class ExperimentView(Tkinter.Frame, View):
     def _db_get_data_thread(self, exp_id):
         self.db_access_lock.acquire()
         if exp_id == self.selected_exp_id:
-            exp_data = self.PFMF_client.get_experiment_data(exp_id) 
+            exp_data = self.PFMF_client.get_experiment_data(exp_id)
         else:
             return
         if exp_id == self.selected_exp_id:
@@ -190,15 +188,15 @@ class ExperimentView(Tkinter.Frame, View):
         self.db_access_lock.release()
 
     def _insert_data(self, exp_id):
-        
+
         if exp_id != self.selected_exp_id or \
            exp_id == self.inserted_exp_id :
             return
-        
+
         if self.selected_exp_data:
             name, desc, qseq, qdesc, min_len, max_len =\
                   self.selected_exp_data
-            
+
             self.wDescText.configure(text_state='normal')
             self.wDescText.setvalue(desc)
             self.wDtxt.configure(text_state='normal')
@@ -249,14 +247,14 @@ class ExperimentView(Tkinter.Frame, View):
                 showerror('Input Error',
                           'No experiment name given.',
                           parent=self.parent)
-                return False          
+                return False
 
             # Name may have no more than 40 chars.
             if len(name) > 40:
                 showerror('Input Error',
                           'Experiment name too long.',
                           parent=self.parent)
-                return False          
+                return False
 
             # Name must be unique
             names = [s[1] for s in self.exp_list]
@@ -272,26 +270,26 @@ class ExperimentView(Tkinter.Frame, View):
                 showerror('Input Error',
                           'No sequence input.',
                           parent=self.parent)
-                return False          
+                return False
             if len(qseq.translate('#'*256,a)) > 0:
                 showerror('Input Error',
                           'Sequence contains invalid letters.',
                           parent=self.parent)
                 return False
-            
+
             # Sequence description non-empty
             if len(qdesc) == 0:
                 showerror('Input Error',
                           'Must have sequence description.',
                           parent=self.parent)
-                return False          
+                return False
 
         # Non-empty experiment description
         if len(desc) == 0:
             showerror('Input Error',
                       'Must have experiment description.',
                       parent=self.parent)
-            return False          
+            return False
 
         if _FIXED_RANGE: return True
         # ********* NOT USED FOR NOW *********************************
@@ -301,25 +299,25 @@ class ExperimentView(Tkinter.Frame, View):
             showerror('Input Error',
                       'At least one of length ranges is missing.',
                       parent=self.parent)
-            return False          
-        
+            return False
+
         if min_len > max_len:
             showerror('Input Error',
                       'Minimum length is greater than maximum length.',
                       parent=self.parent)
-            return False          
+            return False
 
         if min_len < 6:
             showerror('Input Error',
                       'Minimum length is smaller than 6.',
                       parent=self.parent)
-            return False          
+            return False
 
         if max_len > 20:
             showerror('Input Error',
                       'Maximum length is greater than 20.',
                       parent=self.parent)
-            return False          
+            return False
         # ************************************************************
 
     def _new_experiment(self):
@@ -335,7 +333,7 @@ class ExperimentView(Tkinter.Frame, View):
         self.wDtxt.setvalue("")
         self.wSeqText.configure(text_state = 'normal')
         self.wSeqText.setvalue("")
-        
+
 
     def _delete_experiment(self):
         # Cannot delete the current experiment
@@ -366,7 +364,7 @@ class ExperimentView(Tkinter.Frame, View):
         else:
             self.PFMF_client.set_current_experiment(exp_id)
             self._root().title("PFMFind - %s" %\
-                self.exp_list[index][1]) 
+                self.exp_list[index][1])
         self.set_exp_func()
 
     def _reset_form(self):
@@ -376,8 +374,8 @@ class ExperimentView(Tkinter.Frame, View):
             exp_data = self.get_form_data()
             if exp_data != self.selected_exp_data:
                 self._insert_data(self.selected_exp_id)
-                
-            
+
+
     def _update_database(self):
         exp_data = self.get_form_data()
         if self.new_exp:
@@ -391,35 +389,35 @@ class ExperimentView(Tkinter.Frame, View):
             self.new_exp=False
             self._change_experiment()
         else:
-            if exp_data[1] == self.selected_exp_data[1]: return 
+            if exp_data[1] == self.selected_exp_data[1]: return
             if not self._validate_input(exp_data): return
             thr = threading.Thread(\
                 target=self.PFMF_client.update_experiment,
-                args=(self.selected_exp_id, exp_data[1]))   
+                args=(self.selected_exp_id, exp_data[1]))
             thr.start()
             self.selected_exp_data = exp_data
 
     def _format_seq(self):
         s = self.get_form_data()[2]
         self.wSeqText.setvalue("")
-        
+
         for i in range(10, len(s)+10,10):
             self.wSeqText.insert('end', s[i-10:i])
             self.wSeqText.insert('end', ' ')
- 
+
     def reset_experiment_list(self):
         self.exp_list = self.PFMF_client.get_experiment_names()
         names = [s[1] for s in self.exp_list]
-        
+
         self.wExpCombo.setlist(names)
-    
+
     def get_form_data(self):
         name = self.wExpCombo.component('entryfield').getvalue()
         name = name.rstrip('\n ')
         desc = self.wDescText.getvalue().rstrip('\n ')
 
         qseq = self.wSeqText.getvalue()
-        qseq = qseq.replace(' ', '').replace('\n', '').strip().upper() 
+        qseq = qseq.replace(' ', '').replace('\n', '').strip().upper()
 
         qdesc = self.wDtxt.getvalue().rstrip('\n ')
 
@@ -427,7 +425,7 @@ class ExperimentView(Tkinter.Frame, View):
             min_len = 6
             max_len = 20
             return (name, desc, qseq, qdesc, min_len, max_len)
-            
+
         # ********* NOT USED FOR NOW *********************************
         try:
             min_len = int(self.L0.getvalue())

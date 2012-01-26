@@ -25,6 +25,7 @@ import os, sys
 
 from ShortFrags.Expt import fragexpt
 
+from view import View
 from status import StatusShow
 from index_view import IndexView
 from search_view import SearchView
@@ -34,7 +35,6 @@ from experiment_view import ExperimentView
 from settings_view import SettingsView
 from Console import Console
 
-_ffont = Pmw.logicalfont('Fixed')
 
 _SETTINGS = 0
 _EXPERIMENT = 1
@@ -54,7 +54,7 @@ class PFMFindGUI(Tkinter.Frame):
         self.parent=parent
 
 
-        # State variables 
+        # State variables
         self.PFMF_client = fragexpt.PFMFindClient()
         self.state = (None, None, None)
 
@@ -63,17 +63,17 @@ class PFMFindGUI(Tkinter.Frame):
             fp = file(config_file, 'r')
             self.PFMF_client.read_config(fp)
             fp.close()
-        
- 
+
+
         # ************************************************************
         # ******* Menu on the top ************************************
         # ************************************************************
 
         self.wBalloon = Pmw.Balloon(self)
         self.wMenuBar = Pmw.MenuBar(self, balloon=self.wBalloon,
-                                    hotkeys=True) 
+                                    hotkeys=True)
         self.wMenuBar.pack(side='top', anchor='nw', fill='x',
-                           expand=1) 
+                           expand=1)
 
         self.wMenuBar.addmenu('File', 'Exit')
         self.wMenuBar.addmenuitem('File', 'command',
@@ -100,7 +100,7 @@ class PFMFindGUI(Tkinter.Frame):
         self.wNote = Pmw.NoteBook(self,
                                   createcommand=self._create_view,
                                   raisecommand=self._raise_view)
-        self.wNote.pack(fill = 'both', expand=1, padx=10, pady=5) 
+        self.wNote.pack(fill = 'both', expand=1, padx=10, pady=5)
         self.vView = Tkinter.StringVar()
 
         # ************************************************************
@@ -109,12 +109,12 @@ class PFMFindGUI(Tkinter.Frame):
 
         self.wMessageBar = Pmw.MessageBar(self,
                                           entry_relief='groove',
-                                          entry_font = _ffont)
+                                          entry_font = View.ffont)
         self.wMessageBar.pack(side='top', anchor='w',
-                              fill='x', expand=1)  
+                              fill='x', expand=1)
         self.wMessageBar.message('state', '')
         self.wBalloon.configure(statuscommand =
-                                self.wMessageBar.helpmessage) 
+                                self.wMessageBar.helpmessage)
         self.msg_bar_height = 20
 
         # ************************************************************
@@ -135,8 +135,8 @@ class PFMFindGUI(Tkinter.Frame):
         # ************************************************************
 
         # views: name, type, class, additional args as dict
-        # page_PFMF_client=self.PFMF_client is passed automatically 
-        
+        # page_PFMF_client=self.PFMF_client is passed automatically
+
         self.views = [('Settings', _SETTINGS, SettingsView,
                        {'page_update_func': self.update_tab_state}),
                       ('Experiment', _EXPERIMENT, ExperimentView,
@@ -145,7 +145,7 @@ class PFMFindGUI(Tkinter.Frame):
                       ('Search', _SEARCH, SearchView,
                        {'page_set_func': self.wStatus.set_values}),
                       ('Hits', _RESULTS, HitsView,
-                       {'page_set_func': self.wStatus.set_values}), 
+                       {'page_set_func': self.wStatus.set_values}),
                       ('Keywords', _RESULTS, KeywordView,
                        {'page_set_func': self.wStatus.set_values,
                         'page_msg_func': self._msg_func}),
@@ -156,17 +156,17 @@ class PFMFindGUI(Tkinter.Frame):
 
         self.wViews = {}
         dummy_page = self.wNote.add('Dummy')
-        
+
         for vname, vtype, vclass, vkwargs in self.views:
             self.wViews[vname] = \
-                (self.wNote.add(vname, page_pyclass=vclass, 
+                (self.wNote.add(vname, page_pyclass=vclass,
                                 page_PFMF_client=self.PFMF_client,
                                 tab_state='disabled',
                                 **vkwargs), vtype)
             self.wMenuBar.addmenuitem('View', 'radiobutton', vname,
                                       command=self._activate_view,
                                       label=vname,
-                                      variable=self.vView, 
+                                      variable=self.vView,
                                       value=vname, state='disabled')
         self.wNote.delete(0)
 
@@ -174,7 +174,7 @@ class PFMFindGUI(Tkinter.Frame):
         # ************************************************************
         # ******* Enable some views **********************************
         # ************************************************************
- 
+
         self.wStatus.reset()
         self._enable_tabs(_SETTINGS)
         self.update_tab_state()
@@ -188,9 +188,9 @@ class PFMFindGUI(Tkinter.Frame):
         if name not in self.wViews: return
         w = self.wViews[name][0]
         w.set_size(self.work_height, self.work_width)
-        w.reset(self.state)        
+        w.reset(self.state)
         self.vView.set(name)
-        
+
     def _msg_func(self, text):
         self.wMessageBar.message('state', text)
 
@@ -214,7 +214,7 @@ class PFMFindGUI(Tkinter.Frame):
                 self.wNote.tab(name).configure(state='disabled')
                 i = mb.index(name)
                 mb.entryconfigure(i, state='disabled')
-                
+
     def _activate_view(self):
         name = self.vView.get()
         self.wNote.selectpage(name)
@@ -225,7 +225,7 @@ class PFMFindGUI(Tkinter.Frame):
             self._enable_tabs(_SEARCH)
         else:
             self._disable_tabs(_SEARCH)
-            
+
         self._enable_tabs(_RESULTS)
 
     def _unset_experiment(self):
@@ -253,4 +253,4 @@ class PFMFindGUI(Tkinter.Frame):
     def quit(self):
         self.parent.destroy()
 
-            
+

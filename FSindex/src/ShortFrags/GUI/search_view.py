@@ -25,13 +25,12 @@ from ShortFrags.GUI.view import View
 from ShortFrags.GUI.ScrolledSeq import ScrolledSeq, col_f
 from ShortFrags.Expt.SearchServer import RNG_SRCH, KNN_SRCH, REL_SRCH
 
-_ffont = Pmw.logicalfont('Fixed')
 
 def _empty_func():
     pass
 
 class SearchView(Tkinter.Frame, View):
-    
+
     _default_plugins = ['default_matrix', 'default_profile']
     _search_types = [[REL_SRCH, 'E-value', 1.0, float,
                       {'validator':'real', 'min':0.0, 'max':1e05}],
@@ -55,7 +54,7 @@ class SearchView(Tkinter.Frame, View):
         self.set_func = set_func
         self.enable_func = enable_func
         self.disable_func = disable_func
-        
+
         self.state = (None, None, None)
         self.jobs = {}
         self.search_finished = False
@@ -79,7 +78,7 @@ class SearchView(Tkinter.Frame, View):
         self.wOptions.pack_propagate(0)
 
         # ***** Search Arguments *************************************
-        
+
         self.wCutoffParams = Pmw.Group(self.wOptions,
                                      tag_text='Cutoff Options')
         self.wCutoffParams.pack(anchor='nw', fill='x', padx=5, pady=5)
@@ -102,14 +101,14 @@ class SearchView(Tkinter.Frame, View):
         self.vCutoffParams.set(0)
 
         # ***** Plugin input *****************************************
-        
+
         self.wPluginInput = Pmw.Group(self.wOptions,
                                       tag_text='Matrix Options')
         self.wPluginInput.pack(fill='x', padx=5, pady=5)
         self.wPluginLabel = Tkinter.Label(self.wPluginInput.interior(),
                                           text='Plugin')
         self.wPluginLabel.grid(row=0, column=0, sticky='w',
-                               padx=5, pady=5) 
+                               padx=5, pady=5)
         self.wPluginChooser = \
             Pmw.OptionMenu(self.wPluginInput.interior(),
                            items = [],
@@ -146,7 +145,7 @@ class SearchView(Tkinter.Frame, View):
 
         self.wJobsButtons = Pmw.ButtonBox(self.wJobs.interior())
         self.wJobsButtons.grid(row=2, column=0, columnspan=2,
-                               pady=2)  
+                               pady=2)
 
         self.wJobsButtons.add('Set', command = self._set_jobs)
         self.wJobsButtons.add('Unset', command = self._unset_jobs)
@@ -160,7 +159,7 @@ class SearchView(Tkinter.Frame, View):
 
         self.wSeqMat =  Tkinter.Frame(self)
         self.wSeqMat.pack(side='left', anchor='nw',
-                          fill='both', expand = 1) 
+                          fill='both', expand = 1)
 
         # ***** Full sequence viewer *********************************
 
@@ -168,7 +167,7 @@ class SearchView(Tkinter.Frame, View):
                                     self.PFMF_client.query_sequence,
                                     self.set_func)
         self.wSeqText.pack(anchor='nw', fill='x')
-  
+
         self.wSeqText.tag_config('green yellow', background = 'green yellow')
         self.wSeqText.tag_config('green', background = 'green')
         self.wSeqText.tag_config('red', background = 'red')
@@ -181,7 +180,7 @@ class SearchView(Tkinter.Frame, View):
         self.wMatrixText = Pmw.ScrolledText(self.wSeqMat,
                                             usehullsize = 1,
                                             text_wrap='none',
-                                            text_font = _ffont,
+                                            text_font = self.ffont,
                                             text_padx = 4,
                                             text_pady = 4,
                                             text_state = 'disabled',
@@ -201,7 +200,7 @@ class SearchView(Tkinter.Frame, View):
                 b = self.wJobs2.button(i)
                 b.config(state='normal')
                 b.update()
-        
+
     def _highlight_jobs(self):
         self.wSeqText.tag_remove('green yellow', '1.0', '3.0')
         self.wSeqText.tag_remove('green', '1.0', '3.0')
@@ -237,7 +236,7 @@ class SearchView(Tkinter.Frame, View):
                 fdict[f] = min(fdict[f], idiff)
             else:
                 fdict[f] = idiff
-                
+
         for f in fdict.iterkeys():
             pos = "1.%d" % col_f(f)
             if fdict[f] == 0:
@@ -289,7 +288,7 @@ class SearchView(Tkinter.Frame, View):
             remaining = [(l,f) for l in lengths
                          for f in range(len(self.qseq) + 1 - l)
                          if (l,f) not in self.jobs]
-            
+
             if job_type1 == 'All':
                 conflicts = [(l,f) for l in lengths
                              for f in range(len(self.qseq) + 1 - l)
@@ -344,17 +343,17 @@ class SearchView(Tkinter.Frame, View):
         thr = threading.Thread(target=self._show_matrix_thread,
                                args=(thread_id,
                                      self.state,
-                                     plugin, plugin_args))  
+                                     plugin, plugin_args))
         thr.start()
         self._process_matrix(thr, thread_id)
-        
+
     def _process_matrix(self, thread, thread_id):
         if thread_id != self.current_thread:
             return
         elif thread.isAlive():
             self.after(100, self._process_matrix,
                        thread, thread_id)
-        elif self.matrix_text and self.matrix_text[0] == thread_id: 
+        elif self.matrix_text and self.matrix_text[0] == thread_id:
             self.wMatrixText.setvalue(self.matrix_text[1])
 
     def _show_matrix_thread(self, thread_id, state,
@@ -365,7 +364,7 @@ class SearchView(Tkinter.Frame, View):
         HL = self.PFMF_client.select_lif_search(length,
                                                 iteration-1,
                                                 fragment)
-        
+
         # Check if futher computation is really needed
         if thread_id != self.current_thread:
             return
@@ -380,7 +379,7 @@ class SearchView(Tkinter.Frame, View):
             info_text = ""
 
         if thread_id == self.current_thread:
-            self.matrix_text = (thread_id, matrix_text + info_text) 
+            self.matrix_text = (thread_id, matrix_text + info_text)
 
 
     def _run_searches(self):
@@ -414,7 +413,7 @@ class SearchView(Tkinter.Frame, View):
     def reset(self, state=(None, None, None)):
 
         if state == self.state: return
-        
+
         self.state = state
         (length, fragment, iteration) = self.state
 
@@ -423,7 +422,7 @@ class SearchView(Tkinter.Frame, View):
             self.wSeqText.reset(state, self.qseq)
         else:
             self.wSeqText.reset(state)
-        
+
         self._highlight_jobs()
         first_search = (iteration == 0)
         if first_search != self.first_search:
@@ -432,23 +431,23 @@ class SearchView(Tkinter.Frame, View):
                 self.plugins = self.PFMF_client.start_plugins
                 self.default_plugin = self._default_plugins[0]
             else:
-                self.plugins = self.PFMF_client.iteration_plugins  
+                self.plugins = self.PFMF_client.iteration_plugins
                 self.default_plugin = self._default_plugins[1]
             self.wPluginChooser.setitems(self.plugins.keys(),
                                          self.default_plugin)
             self.wPluginChooser.invoke()
         else:
             self._show_matrix()
-           
+
     def set_plugin_widgets(self, plugin):
         self.current_plugin = plugin
-        
+
         # Destroy old widgets
         for w, l, default in self.plugin_widgets:
             w.destroy()
             l.destroy()
         self.plugin_widgets = []
-        
+
         # Create new widgets
         arg_list = self.plugins[plugin][2]
 
@@ -456,39 +455,39 @@ class SearchView(Tkinter.Frame, View):
 
             l = Tkinter.Label(self.wPluginInput.interior(),
                               text=label)
-            l.grid(row=i+1, column=0, sticky='w', padx=5, pady=5)            
-            
+            l.grid(row=i+1, column=0, sticky='w', padx=5, pady=5)
+
             if isinstance(choice, list):
-                width = min(21, max(map(len, choice))) 
+                width = min(21, max(map(len, choice)))
                 w = Pmw.OptionMenu(self.wPluginInput.interior(),
                                    items = choice,
                                    initialitem = default_choice,
                                    menubutton_width = width,
                                    command = self._show_matrix)
-                
+
             elif isinstance(choice, str):
                 w = Pmw.EntryField(self.wPluginInput.interior(),
                                    entry_width = 8,
                                    validate = choice,
                                    value = default_choice,
-                                   modifiedcommand = self._show_matrix) 
+                                   modifiedcommand = self._show_matrix)
             else:
                 w = Tkinter.Label(self.wPluginInput.interior(),
                                   text='INVALID OPTION')
 
-                self.plugin_widgets.append((None, default_choice)) 
+                self.plugin_widgets.append((None, default_choice))
 
             w.grid(row=i+1, column=1, sticky='w')
-            self.plugin_widgets.append((w, l, default_choice)) 
-        
+            self.plugin_widgets.append((w, l, default_choice))
+
         self._show_matrix()
 
     def _get_plugin_options(self):
         plugin = self.wPluginChooser.getvalue()
         arg_list = self.plugins[plugin][2]
         plugin_args = []
-        for i, (label, choice, default_choice) in enumerate(arg_list): 
-            w = self.plugin_widgets[i][0]                
+        for i, (label, choice, default_choice) in enumerate(arg_list):
+            w = self.plugin_widgets[i][0]
             if isinstance(choice, list):
                 plugin_args.append(w.getvalue())
             elif isinstance(choice, str):
@@ -503,5 +502,5 @@ class SearchView(Tkinter.Frame, View):
                     plugin_args.append(val)
             else:
                 plugin_args.append(default_choice)
-        return plugin, plugin_args 
+        return plugin, plugin_args
 

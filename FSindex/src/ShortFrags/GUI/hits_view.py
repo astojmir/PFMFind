@@ -25,7 +25,6 @@ import Pmw, Tkinter, string, threading
 from ShortFrags.Expt.matrix import ScoreMatrix, ProfileMatrix
 from ShortFrags.GUI.ScrolledSeq import ScrolledSeq, col_f
 
-_ffont = Pmw.logicalfont('Fixed')
 
 def _row(ind):
     pos = string.split(ind, '.')
@@ -34,15 +33,15 @@ def _row(ind):
 
 def _default_set_func():
     pass
-   
+
 
 class HitsView(Tkinter.Frame, View):
 
     _scroll_buttons = ['Header', 'Summary', 'Details', 'Matrix']
     _scroll_marks = ['***** Query Parameters *****',
                      '***** Summary *****',
-                     '***** Full Details *****', 
-                     '***** Score Matrix *****', 
+                     '***** Full Details *****',
+                     '***** Score Matrix *****',
                      ]
 
     _sorts = {'Distance': HitList.sort_by_distance,
@@ -64,11 +63,11 @@ class HitsView(Tkinter.Frame, View):
         self.db_access_lock = threading.Lock()
         self.current_thread = 0
         self.HL_done = False
-        
+
         self.state=(None, None, None)
         self.PFMF_client = PFMF_client
         self.set_func = set_func
-        
+
         # ************************************************************
         # ******* Options on the left ********************************
         # ************************************************************
@@ -99,7 +98,7 @@ class HitsView(Tkinter.Frame, View):
         self.wSortIncr.pack(anchor='w', padx=5, pady=3)
         self.vSortIncr.set(1)
 
-        
+
         # ***** Scroll Buttons ***************************************
 
         self.wScrollOpts = Pmw.Group(self.wMenu,
@@ -116,7 +115,7 @@ class HitsView(Tkinter.Frame, View):
 
         self.wSeqHit =  Tkinter.Frame(self)
         self.wSeqHit.pack(side='left', anchor='nw',
-                          fill='both', expand = 1) 
+                          fill='both', expand = 1)
 
         # ***** Full sequence viewer *********************************
 
@@ -141,7 +140,7 @@ class HitsView(Tkinter.Frame, View):
                                         vscrollmode='static',
                                         hscrollmode='static',
                                         text_wrap='none',
-                                        text_font = _ffont,
+                                        text_font = self.ffont,
                                         text_padx = 4,
                                         text_pady = 4,
                                         text_state = 'disabled',
@@ -158,8 +157,8 @@ class HitsView(Tkinter.Frame, View):
     def reset(self, state=(None, None, None)):
 
         if state == self.state: return
-        
-        self.state = length, fragment, iteration = state 
+
+        self.state = length, fragment, iteration = state
 
         self.wSeqText.reset(state, self.PFMF_client.query_sequence)
         self._highlight_searches()
@@ -175,9 +174,9 @@ class HitsView(Tkinter.Frame, View):
         self.thread_lock.acquire()
         self.current_thread += 1
         self.HL_done = False
-        thr = threading.Thread(target=self._db_select_hits_thread, 
+        thr = threading.Thread(target=self._db_select_hits_thread,
                                args=(self.current_thread,
-                                     length, fragment, iteration))  
+                                     length, fragment, iteration))
         thr.start()
         self.thread_lock.release()
         self._process_hits(self.current_thread)
@@ -187,9 +186,9 @@ class HitsView(Tkinter.Frame, View):
         self.thread_lock.acquire()
         is_current_thread = (thread_id == self.current_thread)
         self.thread_lock.release()
-        
+
         if not is_current_thread: return
-        
+
         if self.HL_done:
             if self.HL == None:
                 self.wScText.configure(text_state = 'normal')
@@ -201,7 +200,7 @@ class HitsView(Tkinter.Frame, View):
             self.after(100, self._process_hits, thread_id)
 
     def _db_select_hits_thread(self, thread_id, length,
-                               fragment, iteration): 
+                               fragment, iteration):
 
         self.db_access_lock.acquire()
 
@@ -211,7 +210,7 @@ class HitsView(Tkinter.Frame, View):
 
         if is_current_thread:
             self.HL = self.PFMF_client.select_lif_search(length,
-                                                         iteration,  
+                                                         iteration,
                                                          fragment,
                                                          True)
 
@@ -226,13 +225,13 @@ class HitsView(Tkinter.Frame, View):
 
     def _show_hits(self):
         if self.HL == None: return
-        
+
         HL = self.HL
         self.wScText.tag_remove('click', '1.0', 'end')
 
         # Sort list
         self._sorts[self.vSortVar.get()](HL, self.vSortIncr.get())
-        
+
         self.wScText.configure(text_state = 'normal')
         text, self._offsets = HL.print_str(get_offsets=True, qs=self.state[1])
         self.wScText.setvalue(text)
@@ -245,7 +244,7 @@ class HitsView(Tkinter.Frame, View):
             self.wScText.appendtext(HL.matrix_name)
         self.wScText.configure(text_state = 'disabled')
 
-        for sb, sm in zip(self._scroll_buttons, self._scroll_marks): 
+        for sb, sm in zip(self._scroll_buttons, self._scroll_marks):
             self.ind[sb] = self.wScText.search(sm, '1.0')
 
         s = _row(self.ind['Summary'])
@@ -260,10 +259,10 @@ class HitsView(Tkinter.Frame, View):
         if self.HL == None:
             return
         x1,y1 = self._get_pos(event.x, event.y)
-        
+
         s = _row(self.ind['Summary'])
         d = _row(self.ind['Details'])
-        
+
 ##         if y1 < s+2 or y1 > d-2:
 ##             return
         r = y1 - s - 2

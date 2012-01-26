@@ -20,8 +20,8 @@
 
 
 import Tkinter, Pmw, string
+from ShortFrags.GUI.view import View
 
-_ffont = Pmw.logicalfont('Fixed')
 BSIZE = 10
 def col_f(x0):
     return x0 + x0 // BSIZE
@@ -41,7 +41,7 @@ class ScrolledSeq(Pmw.ScrolledText):
         Pmw.ScrolledText.__init__(self, parent,
                                   text_height = 3,
                                   text_wrap='none',
-                                  text_font = _ffont,
+                                  text_font = View.ffont,
                                   text_padx = 4,
                                   text_pady = 4,
                                   text_state = 'disabled',
@@ -63,7 +63,7 @@ class ScrolledSeq(Pmw.ScrolledText):
 
     def _set_query_sequence(self):
         self.configure(text_state = 'normal')
-        self.delete(1.0, 'end') 
+        self.delete(1.0, 'end')
         line_len = col_f(len(self.qseq)-1) + 2
         self.insert('end', ' '*(line_len-1))
         self.insert('end', '\n')

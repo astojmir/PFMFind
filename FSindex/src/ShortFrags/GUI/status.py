@@ -20,10 +20,11 @@
 
 
 import Tkinter, Pmw
+from ShortFrags.GUI.view import View
 
 def _null_func(*args, **kwargs):
     pass
-                    
+
 class StatusShow(Tkinter.Frame):
     def __init__(self, parent, PFMF_client, ufunc=_null_func,
                  set_func=_null_func, unset_func=_null_func):
@@ -40,9 +41,9 @@ class StatusShow(Tkinter.Frame):
         self.wLabel = Tkinter.Label(self.wFrame, text="Query Fragment")
         self.wLabel.grid(row=0, column=0, sticky='w')
         self.wSeqLabel = Tkinter.Label(self.wFrame, text="",
-                                       font=Pmw.logicalfont('Fixed'))
+                                       font=View.ffont)
         self.wSeqLabel.grid(row=0, column=1, sticky='w')
-                                            
+
         self.wFragLen = Pmw.Counter(self,
                                     labelpos = 'w',
                                     label_text = 'Fragment\nLength',
@@ -61,7 +62,7 @@ class StatusShow(Tkinter.Frame):
                                     entry_width = 3,
                                     entryfield_value = ' ',
                                     )
-        for w in [self.wFragLen, self.wCurIter, self.wCurFrag]: 
+        for w in [self.wFragLen, self.wCurIter, self.wCurFrag]:
             w.pack(side='right', anchor='w', padx=5)
         self.reset(init=True)
 
@@ -71,7 +72,7 @@ class StatusShow(Tkinter.Frame):
         if iteration == None:
             iteration = self._max_iters(length, fragment)
         self.wCurIter.setvalue(str(iteration))
-        
+
     def get_values(self):
         l = int(self.wFragLen.getvalue())
         f = int(self.wCurFrag.getvalue())
@@ -90,7 +91,7 @@ class StatusShow(Tkinter.Frame):
         l = int(self.wFragLen.getvalue())
         f = int(self.wCurFrag.getvalue())
         s = self.PC.query_sequence[f:f+l]
-        self.wSeqLabel.configure(text=s)  
+        self.wSeqLabel.configure(text=s)
 
     def _validate_none(self, text):
         print "validate_none", text
@@ -104,7 +105,7 @@ class StatusShow(Tkinter.Frame):
             v = int(text)
         except ValueError:
             return Pmw.ERROR
-        
+
         if v >= self.PC.min_len and v < self.PC.max_len:
             return Pmw.OK
         else:
@@ -127,7 +128,7 @@ class StatusShow(Tkinter.Frame):
             v = int(text)
         except ValueError:
             return Pmw.ERROR
-        
+
         l = int(self.wFragLen.getvalue())
         f = int(self.wCurFrag.getvalue())
         if v >= 0 and v <= self._max_iters(l, f):
@@ -154,7 +155,7 @@ class StatusShow(Tkinter.Frame):
         else:
             self._set_qseq()
             self.update_func(l, f, i)
-            
+
     def _iter_changed(self):
         self._set_qseq()
         self.update_func(*self.get_values())
@@ -163,21 +164,21 @@ class StatusShow(Tkinter.Frame):
         if self.PC.cur_expt:
             self.set_values(self.PC.min_len, 0, 0)
             self.wFragLen.configure(entryfield_validate =
-                                    self._validate_len, 
+                                    self._validate_len,
                                     entryfield_entry_state = 'normal',
                                     entryfield_modifiedcommand =
                                     self._len_changed,
                                     downarrow_state = 'normal',
                                     uparrow_state = 'normal')
             self.wCurFrag.configure(entryfield_validate =
-                                    self._validate_frag, 
+                                    self._validate_frag,
                                     entryfield_entry_state = 'normal',
                                     entryfield_modifiedcommand =
                                     self._frag_changed,
                                     downarrow_state = 'normal',
                                     uparrow_state = 'normal')
             self.wCurIter.configure(entryfield_validate =
-                                    self._validate_iter, 
+                                    self._validate_iter,
                                     entryfield_entry_state = 'normal',
                                     entryfield_modifiedcommand =
                                     self._iter_changed,
@@ -188,13 +189,13 @@ class StatusShow(Tkinter.Frame):
                 self.update_func(*self.get_values())
                 self.set_func()
         else:
-            for w in [self.wFragLen, self.wCurFrag, self.wCurIter]:  
+            for w in [self.wFragLen, self.wCurFrag, self.wCurIter]:
                 w.configure(entryfield_modifiedcommand = None,
                             entryfield_validate = None,
                             entryfield_entry_state = 'disabled',
                             downarrow_state = 'disabled',
                             uparrow_state = 'disabled')
                 w.setvalue(' ')
-            self.wSeqLabel.configure(text='')  
+            self.wSeqLabel.configure(text='')
             if not init:
                 self.unset_func()

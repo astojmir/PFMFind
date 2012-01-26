@@ -51,7 +51,6 @@ class KeywordView(Tkinter.Frame, View):
         Tkinter.Frame.__init__(self, parent)
         View.__init__(self)
         self.pack_propagate(0)
-        self.ffont = Pmw.logicalfont('Fixed')
 
         #Menu
         self.wMenu = Tkinter.Frame(self)
@@ -72,7 +71,7 @@ class KeywordView(Tkinter.Frame, View):
         self.wOnt = Pmw.OptionMenu(self.wMenu,
                                    labelpos = 'w',
                                    label_text = 'Ontology:',
-                                   menubutton_textvariable = self.vOnt,  
+                                   menubutton_textvariable = self.vOnt,
                                    items = self.ontologies,
                                    menubutton_width = 20,
                                    command = None,
@@ -120,8 +119,8 @@ class KeywordView(Tkinter.Frame, View):
                                         rowheader_width = 35,
                                         )
         self.wScText.pack(fill = 'both', expand = 1)
-        
-        # Details of hits - scrolled text 
+
+        # Details of hits - scrolled text
         self.wHitsText = Pmw.ScrolledText(self,
                                           usehullsize = 1,
                                           text_wrap='none',
@@ -131,7 +130,7 @@ class KeywordView(Tkinter.Frame, View):
                                           text_cursor = 'left_ptr',
                                           )
         self.wHitsText.pack()
-        
+
         # State
         self.PFMF_client = PFMF_client
         self.computed_len_iter = (None, None)
@@ -140,7 +139,7 @@ class KeywordView(Tkinter.Frame, View):
         self.thread_lock = threading.Lock()
         self.db_access_lock = threading.Lock()
         self.current_thread = 0
-        
+
         self.msg_func = msg_func
         self.set_func = set_func
         self.state = (None, None, None)
@@ -182,7 +181,7 @@ class KeywordView(Tkinter.Frame, View):
             r2 = int(r2)
         except ValueError:
             return
-            
+
         length, fragment, iteration = self.state
 
         if r1 < 0 or r2 > len(self.rqseq)-length+1:
@@ -191,10 +190,10 @@ class KeywordView(Tkinter.Frame, View):
         if (length, iteration) != self.computed_len_iter or \
            (r1,r2) != self.frag_rng or self.ont != self.vOnt.get():
             self.VL = None
-            self.msg_func("Computing view.")        
-            self.wBut.configure(state='disabled')            
+            self.msg_func("Computing view.")
+            self.wBut.configure(state='disabled')
 
-            thr = threading.Thread(target=self._db_select_view_thread, 
+            thr = threading.Thread(target=self._db_select_view_thread,
                                    args=(length, iteration,
                                          self.vOnt.get(), (r1, r2)))
             thr.start()
@@ -211,21 +210,21 @@ class KeywordView(Tkinter.Frame, View):
         # Check if ready
         if self.VL == None:
             self.after(100, self._process_view,
-                       length, iteration, frag_rng) 
+                       length, iteration, frag_rng)
             return
 
 
-        self.wBut.configure(state='normal')            
-        self.msg_func("")        
+        self.wBut.configure(state='normal')
+        self.msg_func("")
         if self.VL == []: return
-        
+
 
         self.view_list = self.VL
         self.computed_len_iter = (length, iteration)
         self.frag_rng = frag_rng
         self.ont = self.vOnt.get()
-       
-            
+
+
         self.sort_type = self.vSort.get()
 
         HS = {}
@@ -240,7 +239,7 @@ class KeywordView(Tkinter.Frame, View):
                 else:
                     HS[j] = k
                 kw_accessions[-1] += k
-                
+
         self.HL_sizes = HS
 
         # Sort view_list
@@ -251,26 +250,26 @@ class KeywordView(Tkinter.Frame, View):
             tmp.sort()
             tmp.reverse()
             self.view_list = [t[1] for t in tmp]
-          
+
         line_len = col_f(len(self.rqseq)-1) + 2
         ts = StringIO()
         ks = StringIO()
-        
+
         for i, (keyword, items) in enumerate(self.view_list):
             a = array('c', ' '*line_len)
 
             for j, accessions in items:
                 col_new = col_f(j)
                 a[col_new] = '*'
-                
-            if i < len(self.view_list) - 1:                
+
+            if i < len(self.view_list) - 1:
                 a[line_len - 1] = '\n'
                 ts.write(a.tostring())
                 ks.write('%s\n' % keyword)
             else:
                 ts.write(a.tostring())
                 ks.write('%s' % keyword)
-                
+
         self.kw_text = ks.getvalue()
         self.view_text = ts.getvalue()
 
@@ -294,8 +293,8 @@ class KeywordView(Tkinter.Frame, View):
 
         colhead = self.wScText.component('columnheader')
         colhead.configure(state = 'normal')
-        colhead.delete(1.0, 'end') 
-        
+        colhead.delete(1.0, 'end')
+
         rowhead = self.wScText.component('rowheader')
         rowhead.configure(state = 'normal')
         rowhead.delete(1.0, 'end')
@@ -342,7 +341,7 @@ class KeywordView(Tkinter.Frame, View):
         if state == self.state: return
         self.state = state
         (length, fragment, iteration) = self.state
-            
+
         self.rqseq = self.PFMF_client.query_sequence
         self.ontologies = self.PFMF_client.feature_types
         self.wOnt.setitems(self.ontologies)
@@ -359,15 +358,15 @@ class KeywordView(Tkinter.Frame, View):
 
         # Scroll to the selected fragment
         self.wScText.see("1.%d" % col_f(self.state[1]))
-        
+
     def clear(self):
         self.state = (None, None, None)
 
         colhead = self.wScText.component('columnheader')
         colhead.configure(state='normal')
-        colhead.delete(1.0, 'end') 
+        colhead.delete(1.0, 'end')
         colhead.configure(state='disabled')
-        
+
         rowhead = self.wScText.component('rowheader')
         rowhead.configure(state='normal')
         rowhead.delete(1.0, 'end')
@@ -376,22 +375,22 @@ class KeywordView(Tkinter.Frame, View):
         self.wScText.configure(text_state='normal')
         self.wScText.setvalue("")
         self.wScText.configure(text_state='disabled')
-        
+
         self.wHitsText.configure(text_state='normal')
         self.wHitsText.setvalue("")
         self.wHitsText.configure(text_state='disabled')
-        
+
     def _construct_tags(self, empty=False):
         # Tags
 
         # Remove old tags
         for tag in self.wScText.tag_names():
             self.wScText.tag_remove(tag, '1.0', 'end')
-            
+
         colhead = self.wScText.component('columnheader')
         colhead.tag_add('query_click', '1.0', '2.0')
         if empty: return
-        
+
         # Set new tags
         self.wScText.tag_add('enter', '1.0', 'end')
         self.wScText.tag_add('leave', '1.0', 'end')
@@ -401,7 +400,7 @@ class KeywordView(Tkinter.Frame, View):
             for j, accessions in items:
                 col_new = col_f(j)
                 pos = "%d.%d" % (1+i, col_new)
-                
+
                 # This is 'significance' of the dot for now
                 kw_p = float(len(accessions)) / self.HL_sizes[j]
 
@@ -440,14 +439,14 @@ class KeywordView(Tkinter.Frame, View):
         (x1,y1) = self._get_pos(event.x, event.y)
         if y1 < len(self.view_list):
             kw = self.view_list[y1][0]
-            self.msg_func(kw)        
+            self.msg_func(kw)
 
     def _leave_event(self, event):
-        self.msg_func("")        
-        
+        self.msg_func("")
+
     def _click_event(self, event):
         if self.hits_text == None: return
-        
+
         x1,y1 = self._get_pos(event.x, event.y)
         x1 = col_f_inv(x1)
         if y1 >= len(self.view_list): return
@@ -464,9 +463,9 @@ class KeywordView(Tkinter.Frame, View):
             self.thread_lock.acquire()
             self.current_thread += 1
             self.hits_text = None
-            thr = threading.Thread(target=self._db_select_hits_thread, 
+            thr = threading.Thread(target=self._db_select_hits_thread,
                                    args=(self.current_thread,
-                                         items[i][1], length, 
+                                         items[i][1], length,
                                          x1, iteration),
                                    kwargs={'features': [self.vOnt.get()]})
             thr.start()
@@ -481,7 +480,7 @@ class KeywordView(Tkinter.Frame, View):
         self.thread_lock.acquire()
         is_current_thread = (thread_id == self.current_thread)
         self.thread_lock.release()
-        
+
         if not is_current_thread: return
 
         if self.hits_text == None:
@@ -512,7 +511,7 @@ class KeywordView(Tkinter.Frame, View):
             HL1 = [h for h in HL if h._bioentry_id in accessions]
             self.hits_text = description(HL1,
                                          self.rqseq[fragment:fragment+length],
-                                         fragment)   
+                                         fragment)
         self.db_access_lock.release()
 
 
