@@ -20,6 +20,7 @@
 
 
 from ShortFrags.GUI.view import View
+from ShortFrags.GUI.optionmenu import OptionMenu
 from ShortFrags.Expt.hit_list import HitList
 from ShortFrags.Expt.hit_list import description
 from array import array
@@ -68,27 +69,27 @@ class KeywordView(Tkinter.Frame, View):
 
         self.ontologies = []
         self.vOnt = Tkinter.StringVar()
-        self.wOnt = Pmw.OptionMenu(self.wMenu,
-                                   labelpos = 'w',
-                                   label_text = 'Ontology:',
-                                   menubutton_textvariable = self.vOnt,
-                                   items = self.ontologies,
-                                   menubutton_width = 20,
-                                   command = None,
-                                   hull_bd=2, hull_relief='ridge',
-                                   )
+        self.wOnt = OptionMenu(self.wMenu,
+                               labelpos = 'w',
+                               label_text = 'Ontology:',
+                               menubutton_textvariable = self.vOnt,
+                               items = self.ontologies,
+                               menubutton_width = 20,
+                               command = None,
+                               hull_bd=2, hull_relief='ridge',
+                               )
         self.wOnt.pack(side='left', anchor='w', padx=5, pady=5)
 
 
         self.vSort = Tkinter.StringVar()
-        self.wSort = Pmw.OptionMenu(self.wMenu,
-                                        labelpos = 'w',
-                                        label_text = 'Sort:',
-                                        menubutton_textvariable = self.vSort,
-                                        items = self._sorts,
-                                        menubutton_width = 15,
-                                        hull_bd=2, hull_relief='ridge',
-                                        )
+        self.wSort = OptionMenu(self.wMenu,
+                                labelpos = 'w',
+                                label_text = 'Sort:',
+                                menubutton_textvariable = self.vSort,
+                                items = self._sorts,
+                                menubutton_width = 15,
+                                hull_bd=2, hull_relief='ridge',
+                                )
         self.wSort.pack(side='left',  padx=10, pady=5)
 
 
