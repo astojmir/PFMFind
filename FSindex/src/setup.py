@@ -54,7 +54,7 @@ cfg_files = ['PFMFcf.dtd', 'PFMFdb.dtd', 'PFMFix.dtd',
              'dbsetup_sample01.xml', 'ixsetup_sample01.xml',
              ]
 full_cfg_files = [join('ShortFrags/data/setup_config', f) \
-                  for f in cfg_files] 
+                  for f in cfg_files]
 
 sql_files = ['biosqldb-pg-cnstr.sql',
              'biosqldb-pg-fk.sql',
@@ -65,7 +65,7 @@ sql_files = ['biosqldb-pg-cnstr.sql',
              'biosqldb-pg.sql',
              ]
 full_sql_files = [join('ShortFrags/data/sql-schema', f) \
-                  for f in sql_files] 
+                  for f in sql_files]
 
 DATA_FILES = [
     (CONFIG_DATA_DIR, full_cfg_files),
@@ -79,13 +79,13 @@ if sys.platform == 'win32':
     SCRIPTS.append('ShortFrags/scripts/FSsearchs.py')
 else:
     SCRIPTS.append('ShortFrags/scripts/FSsearchd.py')
-    
+
 
 setup(
     name='PFMFind',
-    version='0.47',
+    version='0.48',
     author='Aleksandar Stojmirovic',
-    author_email='astojmir@uottawa.ca',
+    author_email='stojmira@ncbi.nlm.nih.gov',
     url='http://www.vuw.ac.nz/biodiscovery/publications/centre/pfmfind.aspx',
     packages=PACKAGES,
     scripts=SCRIPTS,
