@@ -19,6 +19,10 @@ CREATE INDEX biosequence_pkey ON biosequence (bioentry_id);
 CREATE INDEX bioentry_accession_key ON bioentry (accession);
 CREATE INDEX taxon_name_taxid ON taxon_name (taxon_id);
 
+For index creation, add:
+
+CREATE INDEX bioentry_pk_ix ON bioentry (bioentry_id);
+
 
 ** KEYWORD VIEW TOO SLOW? -> CREATE INDEXES in Postgres database **
 
