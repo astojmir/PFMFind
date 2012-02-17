@@ -24,6 +24,7 @@ from tkMessageBox import askquestion, showwarning
 from ShortFrags.GUI.view import View
 from ShortFrags.GUI.ScrolledSeq import ScrolledSeq, col_f
 from ShortFrags.Expt.SearchServer import RNG_SRCH, KNN_SRCH, REL_SRCH
+from ShortFrags.GUI.optionmenu import OptionMenu
 
 
 def _empty_func():
@@ -110,10 +111,10 @@ class SearchView(Tkinter.Frame, View):
         self.wPluginLabel.grid(row=0, column=0, sticky='w',
                                padx=5, pady=5)
         self.wPluginChooser = \
-            Pmw.OptionMenu(self.wPluginInput.interior(),
-                           items = [],
-                           menubutton_width = 20,
-                           command = self.set_plugin_widgets)
+            OptionMenu(self.wPluginInput.interior(),
+                       items = [],
+                       menubutton_width = 20,
+                       command = self.set_plugin_widgets)
         self.wPluginChooser.grid(row=0, column=1, sticky='w')
 
         # ***** Jobs *************************************************
@@ -459,11 +460,11 @@ class SearchView(Tkinter.Frame, View):
 
             if isinstance(choice, list):
                 width = min(21, max(map(len, choice)))
-                w = Pmw.OptionMenu(self.wPluginInput.interior(),
-                                   items = choice,
-                                   initialitem = default_choice,
-                                   menubutton_width = width,
-                                   command = self._show_matrix)
+                w = OptionMenu(self.wPluginInput.interior(),
+                               items = choice,
+                               initialitem = default_choice,
+                               menubutton_width = width,
+                               command = self._show_matrix)
 
             elif isinstance(choice, str):
                 w = Pmw.EntryField(self.wPluginInput.interior(),

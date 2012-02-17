@@ -25,6 +25,7 @@ from tkFileDialog import askopenfilename, askdirectory,\
 from tkMessageBox import showerror, showinfo, Message,\
      askquestion
 from ShortFrags.GUI.view import View
+from ShortFrags.GUI.optionmenu import OptionMenu
 
 _FIXED_RANGE = True # Allow only lengths from 6 to 20
 
@@ -50,10 +51,10 @@ class SettingsView(Tkinter.Frame, View):
 
         Tkinter.Label(w, text="PostgreSQL Driver:").grid(row=0,\
             column=0, padx=5, pady=5, sticky='w')
-        self.wDriverMenu = Pmw.OptionMenu(w, items=['psycopg2', 'pgdb', 'psycopg'],
-                                          menubutton_width=20,
-                                          menu_font=self.ffont,
-                                          menubutton_font=self.ffont)
+        self.wDriverMenu = OptionMenu(w, items=['psycopg2', 'pgdb', 'psycopg'],
+                                      menubutton_width=20,
+                                      menu_font=self.ffont,
+                                      menubutton_font=self.ffont)
         self.wDriverMenu.grid(row=0, column=1, padx=5, pady=5, sticky='w')
 
         Tkinter.Label(w, text="Database:").grid(row=0, column=2, padx=5,

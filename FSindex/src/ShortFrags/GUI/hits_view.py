@@ -24,6 +24,7 @@ from ShortFrags.Expt.hit_list import HitList
 import Pmw, Tkinter, string, threading
 from ShortFrags.Expt.matrix import ScoreMatrix, ProfileMatrix
 from ShortFrags.GUI.ScrolledSeq import ScrolledSeq, col_f
+from ShortFrags.GUI.optionmenu import OptionMenu
 
 
 def _row(ind):
@@ -83,11 +84,11 @@ class HitsView(Tkinter.Frame, View):
                                    tag_text='Sort by')
         self.wSortOpts.pack(anchor='nw', fill='x', padx=5, pady=7)
         self.vSortVar = Tkinter.StringVar()
-        self.wSortMenu = Pmw.OptionMenu(self.wSortOpts.interior(),
-                                        menubutton_textvariable = self.vSortVar,
-                                        items = self._sorts.keys(),
-                                        menubutton_width = 10,
-                                        command = lambda a: self._show_hits())
+        self.wSortMenu = OptionMenu(self.wSortOpts.interior(),
+                                    menubutton_textvariable = self.vSortVar,
+                                    items = self._sorts.keys(),
+                                    menubutton_width = 10,
+                                    command = lambda a: self._show_hits())
         self.wSortMenu.pack(anchor='w', padx=5, pady=3)
         self.vSortVar.set('Distance')
         self.vSortIncr = Tkinter.IntVar()
