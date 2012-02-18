@@ -19,9 +19,10 @@
 #
 
 
-from string import split, join, strip
-import sys, os, copy
-from transcendental import gamma, log, array, product, beta, lgamma, exp, zeros
+import sys
+import os
+import numpy as np
+import scipy.special as sp
 from Bio.Align.AlignInfo import PSSM
 from cStringIO import StringIO
 
@@ -89,7 +90,7 @@ def henikoff_weights(seqs, alphabet, counts):
 
 
 def log_beta(x):
-    return sum(lgamma(x)) - lgamma(sum(x))
+    return sum(sp.gammaln(x)) - sp.gammaln(sum(x))
 
 class DirichletMix:
     def __init__(self, dic=None):
@@ -103,19 +104,19 @@ class DirichletMix:
             for i, a in enumerate(self.alphabet):
                 self.order[a] = i
             self.num_distr = len(self.mixture)
-           
+
     def read(self, filename):
         fp = file(filename, 'r')
         actions = {'Name': "self.name = atoms[2]",
                    'Name=': "self.name = atoms[1]",
-                   'Order': "self.alphabet = join(atoms[2:],'')",
-                   'Order=': "self.alphabet = join(atoms[1:],'')",
+                   'Order': "self.alphabet = ''.join(atoms[2:])",
+                   'Order=': "self.alphabet = ''.join(atoms[1:])",
                    'Mixture=': "self.mixture.append(float(atoms[1]))",
                    'Alpha=': "self.alpha.append(map(float, atoms[1:]))",
                    }
 
         for line in fp:
-            atoms = split(strip(line))
+            atoms = line.strip().split()
             if not len(atoms): continue
             if atoms[0] == 'EndClassName': break
             if atoms[0] not in actions: continue
@@ -146,26 +147,26 @@ class DirichletMix:
     # TO DO: FIX THE NOTATION SO THAT IT CORRESPONDS TO THE PAPER
 
     def _coeffs(self, k, n, sum_n):
-        alpha = array(self.alpha[k][1:])
+        alpha = np.array(self.alpha[k][1:])
         sum_alpha = self.alpha[k][0]
         q = self.mixture[k]
 
         # Calculate the coefficient using logarithms
         log_coeff = log_beta(n+alpha) - log_beta(alpha)
-        return q * exp(log_coeff)
-        
+        return q * np.exp(log_coeff)
+
 ##         P = 1.0
 ##         for i in range(len(alpha)):
 ##             if n[i]:
-##                 P *= n[i] * beta(n[i], alpha[i])
-##                 print n[i], alpha[i],  beta(n[i], alpha[i])
+##                 P *= n[i] * sp.beta(n[i], alpha[i])
+##                 print n[i], alpha[i],  sp.beta(n[i], alpha[i])
 ##         print P
-##         B = sum_n * beta(sum_n, sum_alpha)
+##         B = sum_n * sp.beta(sum_n, sum_alpha)
 ##         return q * B / P
 
     def _probs(self, i, coeff, n):
-        a = array([self.alpha[k][i+1] for k in xrange(self.num_distr)])
-        sum_a_j = array([sum(self.alpha[k][1:]) for k in xrange(self.num_distr)])
+        a = np.array([self.alpha[k][i+1] for k in xrange(self.num_distr)])
+        sum_a_j = np.array([sum(self.alpha[k][1:]) for k in xrange(self.num_distr)])
         return sum(coeff*(a+n[i])/(sum_a_j + sum(n)))
 
     def aa_vector(self, aa_dict):
@@ -174,47 +175,47 @@ class DirichletMix:
     def block_counts(self, seqs, weights=None):
         return freq_counts(seqs, self.alphabet, weights)
 
-        
+
     def _pos_probs(self, counts):
-        n = array(counts)
+        n = np.array(counts)
 
         # *** NEW CODE FROM HERE ****
         sum_n = sum(n)
-        p = array([0.0]*len(counts))
-        log_coeffs = array([0.0]*self.num_distr)
-        q = array(self.mixture)
+        p = np.array([0.0]*len(counts))
+        log_coeffs = np.array([0.0]*self.num_distr)
+        q = np.array(self.mixture)
 
         for j in xrange(self.num_distr):
-            alpha_j = array(self.alpha[j][1:])
+            alpha_j = np.array(self.alpha[j][1:])
             log_coeffs[j] = log_beta(n+alpha_j) - log_beta(alpha_j)
-            
+
         log_coeffs = log_coeffs - max(log_coeffs)
-        coeffs = q * exp(log_coeffs)
+        coeffs = q * np.exp(log_coeffs)
 
         for i in xrange(len(counts)):
-            a = array([self.alpha[j][i+1] for j in xrange(self.num_distr)])
-            sum_a_j = array([sum(self.alpha[j][1:]) for j in xrange(self.num_distr)])
+            a = np.array([self.alpha[j][i+1] for j in xrange(self.num_distr)])
+            sum_a_j = np.array([sum(self.alpha[j][1:]) for j in xrange(self.num_distr)])
             N = (a+n[i])/(sum_a_j + sum(n))
             p[i] = sum(coeffs*N)
 
-        return p / sum(p)    
-        # **** END OF NEW CODE  **** 
+        return p / sum(p)
+        # **** END OF NEW CODE  ****
 
-##         coeff = array([self._coeffs(k, n, sum(n)) for k in range(self.num_distr)])
+##         coeff = np.array([self._coeffs(k, n, sum(n)) for k in range(self.num_distr)])
 ##         # coeff = coeff / sum(coeff)
-##         X = array([self._probs(i, coeff, n) for i in xrange(len(counts))])
+##         X = np.array([self._probs(i, coeff, n) for i in xrange(len(counts))])
 ##         return X / sum(X)
 
     def _pos_log_odds(self, _pos_probs, bkgrnd, scale=1.0):
         n = len(_pos_probs)
-        return [int(scale * log(_pos_probs[i]/bkgrnd[i]) / log(2.0)) for i in range(n)]
+        return [int(scale * np.log(_pos_probs[i]/bkgrnd[i]) / np.log(2.0)) for i in range(n)]
 
     def block_probs(self, block_counts):
         return [self._pos_probs(counts) for counts in block_counts]
 
     def block_log_odds(self, block_probs, bkgrnd, scale=1.0):
         return [self._pos_log_odds(probs, bkgrnd, scale) for probs in block_probs]
-    
+
     def block2pssm(self, block_data, seq):
         pssm_info  = []
         for i in range(len(block_data)):
@@ -230,7 +231,7 @@ class DirichletMix:
             pdata = lambda x: "%*d " % (field_width, x)
         else:
             pdata = lambda x: "%*.*f " % (field_width, precision, x)
-            
+
         file_str.write("   ")
         for i in range(len(block_data)):
             file_str.write("%*d " % (field_width, i))
@@ -241,7 +242,7 @@ class DirichletMix:
                 file_str.write(pdata(block_data[i][j]))
             file_str.write("\n")
         return file_str.getvalue()
-                      
+
 def _Comp2PyScript(path, filename=None):
     """
     Converts all Dirichlet mixtures files (ending in comp)
@@ -260,7 +261,7 @@ def _Comp2PyScript(path, filename=None):
     names.sort()
 
     fp.write("import DirichletMix\n\n")
-    fp.write("get_mix = lambda name: DirichletMix.DirichletMix(DIR_MIX[name])\n") 
+    fp.write("get_mix = lambda name: DirichletMix.DirichletMix(DIR_MIX[name])\n")
     fp.write("get_names = lambda : NAMES\n\n")
 
     k = range(len(names))
@@ -270,22 +271,22 @@ def _Comp2PyScript(path, filename=None):
             fp.write("'%s', " % names[j])
         fp.write("\n%*s" % (9+1, ""))
     fp.write("]\n\n")
-    
+
     fp.write("DIR_MIX = {\n")
     fp.write("    '%s': " % names[0])
     DM = DirichletMix()
     DM.read(names[0])
     DM._print_as_PyDict(4+len(names[0])+4, 4, fp, False)
     fp.write(",\n")
-    
+
     for s in names[1:]:
         fp.write("%*s'%s': " % (4, "", s))
         DM = DirichletMix()
         DM.read(s)
-        DM._print_as_PyDict(4+len(s)+4, 4, fp, False)                
+        DM._print_as_PyDict(4+len(s)+4, 4, fp, False)
         fp.write(",\n")
     fp.write("           }\n")
-    
+
     if filename != None:
         fp.close()
 
