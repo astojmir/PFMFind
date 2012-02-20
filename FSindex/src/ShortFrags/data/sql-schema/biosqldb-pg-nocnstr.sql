@@ -84,7 +84,7 @@ CREATE TABLE bioentry (
 	 biodatabase_id INTEGER NOT NULL ,
 	 taxon_id INTEGER ,
 	 name VARCHAR ( 40 ) NOT NULL ,
-	 accession VARCHAR ( 40 ) NOT NULL ,
+	 accession VARCHAR ( 128 ) NOT NULL ,
 	 identifier VARCHAR ( 40 ) ,
 	 division VARCHAR ( 6 ) ,
 	 description TEXT ,
@@ -119,7 +119,7 @@ CREATE SEQUENCE dbxref_pk_seq;
 CREATE TABLE dbxref (
 	 dbxref_id INTEGER DEFAULT nextval ( 'dbxref_pk_seq' ) NOT NULL ,
 	 dbname VARCHAR ( 40 ) NOT NULL ,
-	 accession VARCHAR ( 40 ) NOT NULL ,
+	 accession VARCHAR ( 128 ) NOT NULL ,
 	 version INTEGER NOT NULL );
 
 
