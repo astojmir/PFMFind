@@ -31,3 +31,8 @@ CREATE INDEX term_id_ix ON term (term_id);
 CREATE INDEX seqfeature_id_ix ON location (seqfeature_id);
 
 But, the query with outer join may be too slow anyway.
+
+*****************************
+All these indexes should be there automatically
+if you add them after loading
+*****************************
