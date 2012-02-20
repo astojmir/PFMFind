@@ -19,7 +19,11 @@
 #
 
 
-import sys, os, os.path, xml.parsers.expat, time
+import sys
+import os
+import os.path
+import time
+import xml.parsers.expat
 from cStringIO import StringIO
 from BioSQL import BioSeqDatabase
 from ShortFrags.Expt.index import FSIndex
@@ -54,10 +58,10 @@ class PFMF_IndexCreator(object):
     def _start_element(self, name, attrs):
 
         if name == 'PFMF_index_setup':
-            self._setup_flag = True 
+            self._setup_flag = True
 
         if not self._setup_flag: return
-        
+
         if name == 'Database':
             self.dbargs = attrs
         elif name == 'Index_dir' or name == 'Partition':
@@ -70,13 +74,13 @@ class PFMF_IndexCreator(object):
                                  int(attrs.get('max_residues', '2147483648'))))
         elif name == 'Index':
             self.dataset[-1][0].append(([], int(attrs['length'])))
-            
+
     def _end_element(self, name):
 
         if not self._setup_flag: return
 
         if name == 'PFMF_db_setup':
-            self._setup_flag = False 
+            self._setup_flag = False
         elif name == 'Index_dir':
             self._sflag = False
             self.index_dir = self._fs.getvalue()
@@ -85,19 +89,19 @@ class PFMF_IndexCreator(object):
         elif name == 'Partition':
             self._sflag = False
             pttn = self._fs.getvalue()
-            if len(self.dataset[-1][0][-1][0]) < self.dataset[-1][0][-1][1]:  
+            if len(self.dataset[-1][0][-1][0]) < self.dataset[-1][0][-1][1]:
                 self.dataset[-1][0][-1][0].append(pttn)
         elif name == 'Index':
             pttn = self.dataset[-1][0][-1][0][-1]
             n = self.dataset[-1][0][-1][1] - len(self.dataset[-1][0][-1][0])
             for i in xrange(n):
-                self.dataset[-1][0][-1][0].append(pttn) 
+                self.dataset[-1][0][-1][0].append(pttn)
 
     def _char_data(self, data):
 
         if self._setup_flag and self._sflag:
             self._fs.write(data)
-         
+
 
     def parse_config(self, fp):
         """
@@ -109,8 +113,8 @@ class PFMF_IndexCreator(object):
         p.StartElementHandler = self._start_element
         p.EndElementHandler = self._end_element
         p.CharacterDataHandler = self._char_data
-        
-        p.ParseFile(fp) 
+
+        p.ParseFile(fp)
 
 
     def create_fasta_files(self):
@@ -119,14 +123,14 @@ class PFMF_IndexCreator(object):
         """
 
         print "Creating FASTA datasets."
-        print "  Opening database." 
+        print "  Opening database."
         server = BioSeqDatabase.open_database(**self.dbargs)
         cur = server.adaptor.cursor
 
         for indexes, name, schema, namespace, max_res in self.dataset:
 
             print "  Creating dataset %s." % name
-            
+
             if schema:
                 print "    Setting schema %s." % schema
                 cur.execute("SET search_path TO %s" % schema)
@@ -143,14 +147,14 @@ class PFMF_IndexCreator(object):
             if namespace:
                 dbid = server[namespace].dbid
                 sql = """SELECT e.name || ' (' || e.accession || ') '
-                         || e.description AS header, s.seq AS residues 
+                         || e.description AS header, s.seq AS residues
                          FROM bioentry e, biosequence s
                          WHERE e.bioentry_id = s.bioentry_id AND
                          e.biodatabase_id = %s ORDER BY e.name;"""
                 cur.execute(sql, (dbid,))
             else:
                 sql = """SELECT e.name || ' (' || e.accession || ') '
-                         || e.description AS header, s.seq AS residues 
+                         || e.description AS header, s.seq AS residues
                          FROM bioentry e, biosequence s
                          WHERE e.bioentry_id = s.bioentry_id
                          ORDER BY e.name;"""
@@ -161,7 +165,7 @@ class PFMF_IndexCreator(object):
             num_residues = max_res + 1
             # Counter and file are dummy
             file_counter = -1
-            fp = StringIO() 
+            fp = StringIO()
 
             while 1:
                 res = cur.fetchone()
@@ -176,7 +180,7 @@ class PFMF_IndexCreator(object):
                     fasta_name = name + '%3.3d.fas' % file_counter
                     print "    Creating file %s." % fasta_name
                     fasta_path = os.path.join(self.index_dir,
-                                              fasta_name)  
+                                              fasta_name)
                     # Open file in binary mode:
                     # We write in UNIX format with line separator '\n'
                     fp = file(fasta_path, 'wb')
@@ -203,7 +207,7 @@ class PFMF_IndexCreator(object):
         os.chdir(self.index_dir)
 
         # Change resource limits (memory) - only if POSIX platform
-	if os.name == 'posix':	
+	if os.name == 'posix':
             print "  Changing resource limits."
             import resource
             if 'RLIMIT_DATA' in dir(resource):
@@ -212,7 +216,7 @@ class PFMF_IndexCreator(object):
             if 'RLIMIT_RSS' in dir(resource):
                 lim = resource.getrlimit(resource.RLIMIT_RSS)
                 resource.setrlimit(resource.RLIMIT_RSS, (lim[1],lim[1]))
-            if 'RLIMIT_MEMLOCK' in dir(resource): 
+            if 'RLIMIT_MEMLOCK' in dir(resource):
                 lim = resource.getrlimit(resource.RLIMIT_MEMLOCK)
                 resource.setrlimit(resource.RLIMIT_MEMLOCK, (lim[1],lim[1]))
 
@@ -237,7 +241,7 @@ class PFMF_IndexCreator(object):
                     # separate process.
 
                     # For UNIX, use the standard fork() way:
-                    if os.name == 'posix':	
+                    if os.name == 'posix':
                         pid = os.fork()
                         if pid == 0:
                             I = FSIndex(fasta_name, pttn, 0, 0)
@@ -260,7 +264,7 @@ class PFMF_IndexCreator(object):
                         pipe_out.close()
 
                     j += 1
-                    
+
         os.chdir(old_path)
         print "Finished creating indexes at %s." % now()
 

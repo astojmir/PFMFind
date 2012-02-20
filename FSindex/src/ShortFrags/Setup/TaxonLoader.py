@@ -19,9 +19,13 @@
 #
 
 
+import os
+import os.path
+import sys
+import tarfile
 from ftplib import FTP
-from bisect import bisect_left, bisect_right
-import os, os.path, sys, tarfile 
+from bisect import bisect_left
+from bisect import bisect_right
 
 
 # Stage constants
@@ -34,7 +38,7 @@ class TaxonLoader(object):
     Replaces the load_ncbi_taxonomy.pl script from BioSQL
     distribution. PostgreSQL specific. Deletes all entries from the taxon
     and taxon_name tables and re-creates them - this assumes no foreign
-    key constraints. 
+    key constraints.
     """
 
     def __init__(self, adaptor, taxon_dir, stage=DOWNLOAD):
@@ -78,7 +82,7 @@ class TaxonLoader(object):
             self._load_names()
 
         os.chdir(self.old_dir)
-       
+
 
     def _download_taxondb(self):
         # download
@@ -115,7 +119,7 @@ class TaxonLoader(object):
         fpin = file('nodes.dmp')
         for line in fpin:
             cols = line.split('\t|\t')
-            # Creating node row - note that first col is parent_id 
+            # Creating node row - note that first col is parent_id
             node = [cols[1], cols[0], cols[2],
                     cols[6], cols[8], None, None]
             self._nodes.append(node)
@@ -135,7 +139,7 @@ class TaxonLoader(object):
         fpout = file('taxon.tbl', 'w')
         for node in self._nodes:
             new_line = '\t'.join((node[1], node[1], node[0], node[2],
-                                  node[3], node[4], node[5], node[6])) 
+                                  node[3], node[4], node[5], node[6]))
             fpout.write(new_line)
             fpout.write('\n')
         fpout.close()
@@ -143,7 +147,7 @@ class TaxonLoader(object):
     def _traverse_subtree(self, node):
         if node[5] != None:
             return
-        
+
         self._ctr += 1
         node[5] = str(self._ctr)  # left value
         C = self._get_children(node)
@@ -158,7 +162,7 @@ class TaxonLoader(object):
         a = bisect_left(self._parents, p)
         b = bisect_right(self._parents, p)
         return self._nodes[a:b]
-    
+
     def _load_names(self):
         cur = self.adaptor.cursor
 

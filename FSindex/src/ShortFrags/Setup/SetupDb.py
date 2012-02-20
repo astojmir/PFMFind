@@ -19,7 +19,8 @@
 #
 
 
-import os.path, xml.parsers.expat
+import os.path
+import xml.parsers.expat
 from cStringIO import StringIO
 
 from BioSQL import BioSeqDatabase
@@ -31,11 +32,12 @@ from ShortFrags.Setup.UnirefLoader import UnirefLoader
 from ShortFrags.Setup.InterProLoader import Protein2IprParser
 from ShortFrags.Setup.InterProLoader import InterProLoader
 
+
 class PFMF_DatabaseLoader(object):
     def __init__(self):
         self._setup_flag = False
         self._sflag = False
-        
+
         self.dbargs = {}
         self.schema_name = None
         self.schema_create = 0
@@ -53,10 +55,10 @@ class PFMF_DatabaseLoader(object):
     def _start_element(self, name, attrs):
 
         if name == 'PFMF_db_setup':
-            self._setup_flag = True 
+            self._setup_flag = True
 
         if not self._setup_flag: return
-        
+
         if name == 'Database':
             self.dbargs = attrs
         elif name == 'Uniprot_file' or name == 'Uniref_file' \
@@ -77,20 +79,20 @@ class PFMF_DatabaseLoader(object):
             self.schema_create = int(attrs.get('create', '0'))
         elif name == 'Taxonomy':
             self.copy_taxonomy = int(attrs.get('copy', '0'))
-            
+
     def _end_element(self, name):
 
         if not self._setup_flag: return
 
         if name == 'PFMF_db_setup':
-            self._setup_flag = False 
+            self._setup_flag = False
         elif name == 'Uniprot_file':
             self._sflag = False
             self.uniprot.append((self._fs.getvalue(), self._namespace,
-                                 self._sql_start, self._sql_end)) 
+                                 self._sql_start, self._sql_end))
         elif name == 'Uniref_file':
             self._sflag = False
-            self.uniref.append((self._fs.getvalue(), self._namespace, 
+            self.uniref.append((self._fs.getvalue(), self._namespace,
                                 self._sql_start, self._sql_end))
         elif name == 'InterPro_file':
             self._sflag = False
@@ -108,7 +110,7 @@ class PFMF_DatabaseLoader(object):
 
         if self._setup_flag and self._sflag:
             self._fs.write(data)
-         
+
     def parse_config(self, fp):
         """
         Parses the XML configuration file.
@@ -119,8 +121,8 @@ class PFMF_DatabaseLoader(object):
         p.StartElementHandler = self._start_element
         p.EndElementHandler = self._end_element
         p.CharacterDataHandler = self._char_data
-        
-        p.ParseFile(fp) 
+
+        p.ParseFile(fp)
 
     def load_database(self):
         """
@@ -134,19 +136,19 @@ class PFMF_DatabaseLoader(object):
 
         # Setting Schema
         if self.schema_name:
-            print "Setting up the schema %s." % self.schema_name 
+            print "Setting up the schema %s." % self.schema_name
             self._set_schema()
 
         # Initial SQL
         if self.initial_sql:
             print "Running initial SQL script %s." % self.initial_sql
             self._execute_sql(self.initial_sql)
-            
+
         # Taxonomy
         if self.taxon_dir:
             print "Loading taxonomy."
             self._load_taxonomy()
-            
+
         # Uniprot
         for filename, namespace, sql0, sql1 in self.uniprot:
             print "Processing Uniprot file %s"\
@@ -201,7 +203,7 @@ class PFMF_DatabaseLoader(object):
 
         print "Closing database."
         self.server.adaptor.close()
-        
+
     def _execute_sql(self, sql_file):
         cur = self.server.adaptor.cursor
         fn1 = os.path.join(self.sql_dir, sql_file)
@@ -215,7 +217,7 @@ class PFMF_DatabaseLoader(object):
         """
         Opens a relational database.
         """
-        
+
         self.server = BioSeqDatabase.open_database(**self.dbargs)
 
 
@@ -235,12 +237,12 @@ class PFMF_DatabaseLoader(object):
         """
         Makes schema readable for all users - PostgreSQL only.
         """
-        
+
         cur = self.server.adaptor.cursor
         cur.execute('GRANT USAGE ON SCHEMA %s TO PUBLIC'\
-                    % (self.schema_name,)) 
+                    % (self.schema_name,))
         sql = "SELECT table_name FROM information_schema.tables" \
-              " WHERE table_schema=%s"  
+              " WHERE table_schema=%s"
         cur.execute(sql, (self.schema_name,))
 
         cur1 = self.server.adaptor.conn.cursor()
@@ -257,7 +259,7 @@ class PFMF_DatabaseLoader(object):
         Loads taxonomy tables using NCBI taxonomy data.
         """
         TL = TaxonLoader(self.server.adaptor, self.taxon_dir,
-                         self.copy_taxonomy) 
+                         self.copy_taxonomy)
         TL.load_ncbi_taxonomy()
 
     def _get_namespace(self, namespace):

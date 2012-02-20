@@ -19,8 +19,6 @@
 #
 
 
-from string import split
-
 def default_handler(ac, start, end, name, ipid, desc):
     pass
 
@@ -31,7 +29,7 @@ class Protein2InterProParser(object):
 
     def parse(self, fp):
         for line in fp:
-            ls = split(line, None, 5)
+            ls = line.split(None, 5)
             if len(ls) != 6: continue
             ac, ipid, start, end, name, desc = ls
             desc = desc.rstrip()
@@ -55,7 +53,7 @@ class Protein2IprParser(object):
         for line in fp:
             ls = line.split('\t', 5)
             if len(ls) != 6: continue
-            ac, ipid, desc, name, start, end = ls 
+            ac, ipid, desc, name, start, end = ls
             desc = desc.rstrip()
             try:
                 start = int(start)
@@ -74,7 +72,7 @@ class InterProLoader(object):
         self.adaptor = adaptor
         self.dbid = dbid
 
-        self.ontology_id = self._get_ontology_id('InterPro domain') 
+        self.ontology_id = self._get_ontology_id('InterPro domain')
         self.source_term_id = self._get_source_term_id('InterPro')
         self.term = self._get_terms()
         self.bioentry = self._get_bioentries()
@@ -96,14 +94,14 @@ class InterProLoader(object):
         source_cat_id = self._get_ontology_id('Source Tags')
 
         oids = self.adaptor.execute_and_fetch_col0(
-            "SELECT term_id FROM term WHERE name = %s AND ontology_id=%s", 
+            "SELECT term_id FROM term WHERE name = %s AND ontology_id=%s",
             (uniref_name, source_cat_id))
         if oids:
             return oids[0]
-        
+
         sql = r"INSERT INTO term (name, ontology_id)" \
               r" VALUES (%s, %s)"
-        self.adaptor.execute(sql, (uniref_name, source_cat_id)) 
+        self.adaptor.execute(sql, (uniref_name, source_cat_id))
         return self.adaptor.last_id("term")
 
     def _get_terms(self):
@@ -111,7 +109,7 @@ class InterProLoader(object):
             "SELECT name, term_id FROM term WHERE ontology_id=%s",
             (self.ontology_id, ))
         return dict(terms)
-        
+
     def _get_bioentries(self):
         sql = """SELECT a.accession, a.bioentry_id, b.maxrank FROM
         bioentry AS a LEFT OUTER JOIN (SELECT bioentry_id, max(rank)
@@ -126,19 +124,19 @@ class InterProLoader(object):
             else:
                 r += 1
             bioentries[a] = [b,r]
-            
+
         return bioentries
- 
-    def _get_domain_id(self, name, definition): 
+
+    def _get_domain_id(self, name, definition):
 
         if name not in self.term:
             sql = r"INSERT INTO term (name," \
                   r" definition, ontology_id)" \
                   r" VALUES (%s, %s, %s)"
             self.adaptor.execute(sql, (name, definition,
-                                       self.ontology_id))    
+                                       self.ontology_id))
             self.term[name] = self.adaptor.last_id("term")
-            
+
         return self.term[name]
 
     def load_domain(self, ac, start, end, name, ipid, desc):
@@ -147,7 +145,7 @@ class InterProLoader(object):
         bioentry_id, rank = self.bioentry[ac]
 
         term_id = self._get_domain_id(name, desc)
-        
+
         sql = r"INSERT INTO seqfeature (bioentry_id, type_term_id, " \
               r"source_term_id, rank) VALUES (%s, %s, %s, %s)"
         self.adaptor.execute(sql, (bioentry_id, term_id,
