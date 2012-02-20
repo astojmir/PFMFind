@@ -19,15 +19,25 @@
 #
 
 
-import types, cPickle, sys, os, re, socket, Queue, select
-import time, os.path, string
-from ShortFrags.Expt.index import FSIndex
+import types,
+import cPickle
+import sys
+import os
+import re
+import socket
+import Queue
+import select
+import time
+import os.path
 from cStringIO import StringIO
 from threading import Thread
 from errno import EINTR
 
-from ShortFrags.Expt.matrix import SCORE, POSITIONAL
-from ShortFrags.Expt.matrix import ScoreMatrix, ProfileMatrix
+from ShortFrags.Expt.index import FSIndex
+from ShortFrags.Expt.matrix import SCORE
+from ShortFrags.Expt.matrix import POSITIONAL
+from ShortFrags.Expt.matrix import ScoreMatrix
+from ShortFrags.Expt.matrix import ProfileMatrix
 from ShortFrags.Expt.scoredistr import ScoreDistr
 
 
@@ -40,7 +50,7 @@ MAX_HITS = 1500
 
 # ***********************************************************************
 # CLIENT-SERVER COMMUNICATIONS PROTOCOL
-#  
+#
 # Client sends requests to server as pickled Python objects, server
 # answers back the same way. A single request is allowed through
 # a communications channel.
@@ -52,7 +62,7 @@ MAX_HITS = 1500
 # OPCODES:
 #
 # DIE -            the server and any of its subservers exit, returns
-#                  nothing. 
+#                  nothing.
 # GET_INDEX_DATA - returns a list (for each of subservers) of index
 #                  descriptions. The number of descriptions depends on
 #                  topology (i.e. a subserver can have more subservers
@@ -85,7 +95,7 @@ SEARCH = 3
 SCORE_DISTR = 4
 
 def send_obj(sock, obj):
-    msg = cPickle.dumps(obj, 2)   
+    msg = cPickle.dumps(obj, 2)
     totalsent = 0
     while totalsent < len(msg):
         sent = sock.send(msg[totalsent:])
@@ -119,7 +129,7 @@ def parse_slaves_config(serverfile):
     fp = file(serverfile, 'r')
     servers = []
     for line in fp:
-        sp_line = string.split(line)
+        sp_line = line.split()
         sp_line[1] = int(sp_line[1])
         servers.append(sp_line)
     fp.close()
@@ -198,7 +208,7 @@ class SearchServer(object):
         else:
             self.servers = []
             self.load_index(self.indexfile)
-        
+
 
         try:
             if not self.terminate_flag:
@@ -234,7 +244,7 @@ class SearchServer(object):
             print "Error loading index:" , inst.__class__, inst.__str__()
             sys.stdout.flush()
             self.terminate_flag = OTHER_ERROR
-            
+
         self.terminate(terminate_subservers=self.control_slaves)
 
     def terminate(self, terminate_subservers=True):
@@ -250,9 +260,9 @@ class SearchServer(object):
             print "Exiting due to being unable to reach all slaves."
         elif self.terminate_flag == NO_INDEX:
             print "Exiting due to being unable to load index."
-            
 
-            
+
+
         sys.stdout.flush()
 
         # Wait for working thread to finish
@@ -287,7 +297,7 @@ class SearchServer(object):
 
         for i,srvr in enumerate(self.servers):
             host, port, workpath, indexfile = srvr[:4]
-            pythonpath = binpath = ''            
+            pythonpath = binpath = ''
             if len(srvr) > 4:
                 pythonpath = srvr[4]
                 if len(srvr) > 5:
@@ -297,7 +307,7 @@ class SearchServer(object):
                 print "Found FSsearch slave %2.2d running on %s:%d" % (i, host, port)
                 sys.stdout.flush()
             except socket.error, inst:
-                if self.control_slaves: # Start the daemon 
+                if self.control_slaves: # Start the daemon
                     print "Starting FSsearch slave %2.2d on %s:%d using ssh." % (i, host, port)
                     sys.stdout.flush()
                     daemon_full = os.path.join(binpath, "FSsearchd.py")
@@ -322,7 +332,7 @@ class SearchServer(object):
 
         opcode = obj[0]
         data = obj[1]
-                
+
         if opcode > 4:
             raise RuntimeError, "Invalid opcode recieved"
 
@@ -397,13 +407,13 @@ class SearchServer(object):
             rng, res = self._process_distributions(((a,len(sd_data)),sd_data[a:]))
             for j,i in enumerate(xrange(*rng)):
                 data[i][6] = res[j]
-                
+
             if chunk > 0:
                 for srvr in self.servers:
                     rng, res = self.queue.get()
                     for j,i in enumerate(xrange(*rng)):
                         data[i][6] = res[j]
-                    
+
 
             print "Started %d search requests at %s" % (len(data), now())
             sys.stdout.flush()
@@ -431,7 +441,7 @@ class SearchServer(object):
                     results[i].bins_hit += HL.bins_hit
                     results[i].unique_frags_visited += HL.unique_frags_visited
                     results[i].unique_frags_hit += HL.unique_frags_hit
-                
+
             # Check that the queue is empty
             if not self.queue.empty():
                 print "Queue not empty"
@@ -449,9 +459,9 @@ class SearchServer(object):
                     continue
                 search_type = data[i][0]
                 if search_type == KNN_SRCH:
-                    k = data[i][4]  
+                    k = data[i][4]
                     HL.sort_by_distance()
-                    d = HL[k-1].dist                    
+                    d = HL[k-1].dist
                     if HL[-1].dist > d:
                         while HL[k].dist == d:
                             k += 1
@@ -474,9 +484,9 @@ class SearchServer(object):
                 results.append(None)
         results = (rng,results)
         print "Processed %d distributions at %s" % (len(sd_data), now())
-        sys.stdout.flush() 
+        sys.stdout.flush()
         return results
-        
+
     def process_request(self, clsock, opcode, data):
         if opcode == DIE:
             self.terminate_flag = REMOTE
@@ -499,7 +509,7 @@ class SearchServer(object):
                        or len(srch) != 8:
                     results.append(None)
                     continue
-                
+
                 search_type = srch[0]
                 qseq = srch[1]
                 matrix = srch[2]
@@ -508,7 +518,7 @@ class SearchServer(object):
                 conv_type = srch[5]
                 SD = srch[6]
                 totfrags = srch[7]
-                
+
                 if matrix_type == SCORE:
                     M = ScoreMatrix(matrix)
                 elif  matrix_type == POSITIONAL:
@@ -516,10 +526,10 @@ class SearchServer(object):
                 else:
                     results.append(None)
                     continue
-                
+
                 if SD == None:
                     SD = srch[6] = ScoreDistr(matrix, matrix_type, conv_type, qseq)
-                
+
                 if conv_type:
                     M.conv_type = conv_type
                     M = M.matrix_conv()
@@ -546,24 +556,24 @@ class SearchServer(object):
                 # Now add sequence and accession to the hit
                 # At some stage this should be implemented in
                 # C Also note that this only works for
-                # SwissProt/TrEMBL 
+                # SwissProt/TrEMBL
 
                 for hit in HL:
                     # Set accession
-                    hit.sequence = self.I.db.get_frag(hit.seq_id, hit.seq_from, hit.seq_to)                  
+                    hit.sequence = self.I.db.get_frag(hit.seq_id, hit.seq_from, hit.seq_to)
                     defline = self.I.db.get_def(hit.seq_id)
-                    m = self.sp_acc.search(defline) 
+                    m = self.sp_acc.search(defline)
                     hit.accession = m.groups()[0]
                     del(hit.seq_id)
 
                     # Set E-value and p-value
-                    if conv_type == 0: 
+                    if conv_type == 0:
                         score = hit.sim
                     else:
                         score = hit.dist
                     hit.pvalue = SD.pvalue(score)
                     hit.Evalue = totfrags * hit.pvalue
-                   
+
 
                 results.append(HL)
             print "Processed %d search requests at %s" % (len(data), now())

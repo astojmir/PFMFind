@@ -23,10 +23,10 @@
 Wrapper around FSindex library.
 """
 
+import os, os.path
 from ShortFrags.Expt import FS
 from ShortFrags.Expt.db import db
 from ShortFrags.Expt.hit_list import HitList
-import os, os.path
 
 FS_BINS = FS.FS_BINS
 SUFFIX_ARRAY = FS.SUFFIX_ARRAY
@@ -37,7 +37,7 @@ DUPS_ONLY = FS.DUPS_ONLY
 FULL_SCAN = FS.FULL_SCAN
 
 def _get_db(I):
-    return db(FS.Index_s_db_get(I), new=False, own=False) 
+    return db(FS.Index_s_db_get(I), new=False, own=False)
 
 def _get_ix_data(I):
     return FS.Index_get_data(I)
@@ -47,13 +47,13 @@ class FSIndex(object):
         self.thisown = 0
         if sepn == None:
             sepn = []
-            
+
         # Need to change directory because the C code works only on UNIX
         old_workdir = os.getcwd()
         new_workdir, new_filename = os.path.split(filename)
         if len(new_workdir):
             os.chdir(new_workdir)
-        
+
         self.this = FS.new_Index(new_filename, sepn, use_sa, print_flag)
 
         # Return to old working directory
@@ -90,7 +90,7 @@ class FSIndex(object):
 
     def rng_srch(self, qseq, M, rng, stype=FS_BINS,
                  ptype=SARRAY, qdef=""):
-        
+
 
         hits_dict = FS.Index_rng_srch(self, qseq, M, rng, M.conv_type,
                                       stype, ptype, qdef)

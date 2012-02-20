@@ -21,10 +21,10 @@
 
 import sys
 import os
+from cStringIO import StringIO
 import numpy as np
 import scipy.special as sp
 from Bio.Align.AlignInfo import PSSM
-from cStringIO import StringIO
 
 # Background amino acid frequencies - as dictionary
 ## BKGRND_PROBS = {'A': 7.5610, 'C': 1.6504, 'D': 5.0605,

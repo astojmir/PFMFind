@@ -23,12 +23,17 @@
 PFMFind client code.
 """
 
-import ShortFrags
+import os
+import os.path
+import imp
+import xml.parsers.expat
 from cStringIO import StringIO
-import os, os.path, imp, xml.parsers.expat
 
-from ShortFrags.Expt.matrix import SCORE, POSITIONAL, ScoreMatrix,\
-     ProfileMatrix 
+import ShortFrags
+from ShortFrags.Expt.matrix import SCORE
+from ShortFrags.Expt.matrix import POSITIONAL
+from ShortFrags.Expt.matrix import ScoreMatrix
+from ShortFrags.Expt.matrix import ProfileMatrix
 from ShortFrags.Expt.SearchClient import SearchClient
 from ShortFrags.Expt.DatabaseClient import DatabaseClient
 from ShortFrags.Expt.SearchServer import REL_SRCH
@@ -42,17 +47,17 @@ def _write_xml_tag(fp, tag, indent=0):
 
 class PFMFindClient(SearchClient, DatabaseClient):
     _default_plugin_dir = \
-        os.path.join(ShortFrags.__path__[0], 'plugins')  
-    
+        os.path.join(ShortFrags.__path__[0], 'plugins')
+
     def __init__(self, plugin_dir=None):
-        SearchClient.__init__(self) 
-        DatabaseClient.__init__(self) 
+        SearchClient.__init__(self)
+        DatabaseClient.__init__(self)
         self.search_lock = False
         self.init_plugins(plugin_dir)
 
     def init_plugins(self, plugin_dir=None):
         """
-        Goes through plugin directories and gets all plugin modules. 
+        Goes through plugin directories and gets all plugin modules.
         """
 
         self.plugin_dir = plugin_dir
@@ -84,7 +89,7 @@ class PFMFindClient(SearchClient, DatabaseClient):
                     try:
                         M = imp.load_module(name, fp,
                                             pathname,
-                                            description)  
+                                            description)
                     finally:
                         if fp: fp.close()
 
@@ -123,7 +128,7 @@ class PFMFindClient(SearchClient, DatabaseClient):
         Checks that a given sequence is non-empty and consists only of
         letters from the standard amino acid alphabet.
         """
-        
+
         valid_alphabet = 'ACDEFGHIKLMNPQRSTVWY'
         if not qseq or qseq.upper().translate('#'*256, valid_alphabet):
             return False
@@ -142,15 +147,15 @@ class PFMFindClient(SearchClient, DatabaseClient):
             PM = srch_args[i][2]
             results[i].matrix_name = getattr(PM, 'name', None)
             results[i].matrix = None
-            
+
 ##             if srch_args[i][3] == POSITIONAL:
 ##                 results[i].matrix = PM
 ##             else:
 ##                 results[i].matrix = None
-        
+
 
     def _insert_results_single(self, jobs, srch_args, results,
-                               job_index): 
+                               job_index):
         """
         Inserts results into the database one by one.
         """
@@ -166,10 +171,10 @@ class PFMFindClient(SearchClient, DatabaseClient):
             if HL == None: continue
 
             if fragment in self.max_iters and\
-                   iteration <= self.max_iters[fragment].get(length, -1): 
+                   iteration <= self.max_iters[fragment].get(length, -1):
                 self.replace_search(length, iteration, fragment, HL)
             else:
-                self.insert_search(length, iteration, fragment, HL) 
+                self.insert_search(length, iteration, fragment, HL)
 
 
     def _insert_results_batch(self, jobs, srch_args, results,
@@ -192,11 +197,11 @@ class PFMFindClient(SearchClient, DatabaseClient):
             if HL == None: continue
 
             if fragment in self.max_iters and\
-                   iteration <= self.max_iters[fragment].get(length, -1): 
+                   iteration <= self.max_iters[fragment].get(length, -1):
                 self.delete_search2(length, iteration, fragment)
 
             results_batch.append((length, iteration, fragment, HL))
-        
+
         self.copy_searches(results_batch)
 
     def _insert_results(self, jobs, srch_args, results, job_index):
@@ -210,7 +215,7 @@ class PFMFindClient(SearchClient, DatabaseClient):
         else:
             self._insert_results_single(jobs, srch_args, results,
                                         job_index)
-            
+
 
     def run_search_jobs(self, jobs):
         """
@@ -219,11 +224,11 @@ class PFMFindClient(SearchClient, DatabaseClient):
         """
 
         if not self.attached:
-            raise RuntimeError, "Not attached to a search client."  
+            raise RuntimeError, "Not attached to a search client."
 
         if self.search_lock:
             jobs = {}
-            raise RuntimeError, "Search in progress"  
+            raise RuntimeError, "Search in progress"
         self.search_lock = True
 
         srch_args = []
@@ -232,14 +237,14 @@ class PFMFindClient(SearchClient, DatabaseClient):
         k = 0
         for key, val in jobs.iteritems():
 
-            length, fragment = key 
+            length, fragment = key
             iteration, search_type, cutoff, plugin, plugin_args \
                        = val
             qseq = self.query_sequence[fragment: fragment + length]
 
-            if not self.is_valid_fragment(qseq): # skip if invalid 
+            if not self.is_valid_fragment(qseq): # skip if invalid
                 continue
-            
+
             if iteration == 0:
                 plugin_func = self.start_plugins[plugin][0]
             else:
@@ -248,11 +253,11 @@ class PFMFindClient(SearchClient, DatabaseClient):
             HL = self.select_lif_search(length, iteration-1, fragment)
             if HL == None and iteration: # skip if no search was done
                 continue
-                
+
             PM, matrix_type, conv_type = plugin_func(HL, *plugin_args)
             if PM == None: # skip if plugin rejects the arguments
                 continue
-            
+
             srch_args.append([search_type, qseq, PM, matrix_type,
                               cutoff, conv_type])
             job_index.append(key)
@@ -261,17 +266,17 @@ class PFMFindClient(SearchClient, DatabaseClient):
             # Submit searches in small batches
             if j == _MAX_SUBMITTED_SEARCHES:
                 results = self.search(srch_args)
-                self._insert_results(jobs, srch_args, 
-                                    results, job_index) 
+                self._insert_results(jobs, srch_args,
+                                    results, job_index)
                 srch_args = []
                 job_index = []
                 j = 0
 
-            
+
         # Submit the remaining searches
         results = self.search(srch_args)
-        self._insert_results(jobs, srch_args, 
-                             results, job_index) 
+        self._insert_results(jobs, srch_args,
+                             results, job_index)
 
         # Delete all jobs, even those that were rejected
         for key in jobs.keys():
@@ -280,7 +285,7 @@ class PFMFindClient(SearchClient, DatabaseClient):
         self.search_lock = False
         self.get_max_iters()
         return k
-        
+
     def write_config(self, fp):
         """
         Writes the current configuration to a file in XML format.
@@ -288,7 +293,7 @@ class PFMFindClient(SearchClient, DatabaseClient):
 
         fp.write("""<?xml version="1.0" encoding="UTF-8"?>\n""")
         fp.write("""<!DOCTYPE PFMF_config SYSTEM "%s">\n""" %\
-             os.path.join(ShortFrags.CONFIG_DATA_DIR, 'PFMFcf.dtd' )) 
+             os.path.join(ShortFrags.CONFIG_DATA_DIR, 'PFMFcf.dtd' ))
         i = 0
         _write_xml_tag(fp, "<PFMF_config>\n", i)
         i += 1
@@ -306,10 +311,10 @@ class PFMFindClient(SearchClient, DatabaseClient):
         # Schemas
         if self.db_schema:
             _write_xml_tag(fp, '<DbSchema name="%s"/>\n' %\
-                self.db_schema, i) 
+                self.db_schema, i)
         if self.PFMF_schema:
             _write_xml_tag(fp, '<PFMFSchema name="%s"/>\n' %\
-                self.PFMF_schema, i) 
+                self.PFMF_schema, i)
         i -= 1
         _write_xml_tag(fp, "</Database_config>\n", i)
 
@@ -344,7 +349,7 @@ class PFMFindClient(SearchClient, DatabaseClient):
         if self.conn or self.attached:
             raise RuntimeError("Client must be in the initial state"\
                 " (no open connections) before reading configuration.")
-            
+
         p = xml.parsers.expat.ParserCreate()
         p.returns_unicode = 0
         p.StartElementHandler = self._start_element
@@ -355,9 +360,9 @@ class PFMFindClient(SearchClient, DatabaseClient):
                     '_tmp_PFMF_schema', '_tmp_ixargs',
                     '_tmp_plugin_dir']:
             setattr(self, var, None)
-        
+
         p.ParseFile(fp)
-        
+
         if 'port' in self._tmp_dbargs:
             self._tmp_dbargs['port'] = int(self._tmp_dbargs['port'])
 
@@ -376,7 +381,7 @@ class PFMFindClient(SearchClient, DatabaseClient):
                 if self._tmp_db_schema:
                     schema_args['db_schema'] = self._tmp_db_schema
                 if hasattr(self, '_tmp_PFMF_schema'):
-                    schema_args['PFMF_schema'] = self._tmp_PFMF_schema 
+                    schema_args['PFMF_schema'] = self._tmp_PFMF_schema
                 self.set_schema(**schema_args)
 
                 # Attach to index
@@ -384,11 +389,11 @@ class PFMFindClient(SearchClient, DatabaseClient):
                     self._tmp_ixargs['port'] =\
                         int(self._tmp_ixargs['port'])
                     self.attach(**self._tmp_ixargs)
-                
+
                 # Initialise plugins
                 if self._tmp_plugin_dir:
                     self.init_plugins(self._tmp_plugin_dir)
-                
+
             finally:
                 # Clean up
                 for var in ['_sflag', '_fs', '_tmp_dbargs',
@@ -420,7 +425,7 @@ class PFMFindClient(SearchClient, DatabaseClient):
     def _char_data(self, data):
         if self._sflag:
             self._fs.write(data)
- 
+
 
 
     def iterated_rel_search(self, experiment_name,
@@ -437,7 +442,7 @@ class PFMFindClient(SearchClient, DatabaseClient):
         """
 
         if not self.attached:
-            raise RuntimeError, "Not attached to a search client."  
+            raise RuntimeError, "Not attached to a search client."
 
         tot_frags = len(sequence) + 1 - frag_len
 
@@ -473,14 +478,14 @@ class PFMFindClient(SearchClient, DatabaseClient):
                               Eval, conv_type])
 
         plugin_func = self.iteration_plugins[iter_plugin][0]
-        
+
         # *** Run all iterations ***
         final_results = []
         step = _MAX_SUBMITTED_SEARCHES
         for i in xrange(len(cutoff_Evalues)):
             profiles = []
             new_fragments = []
-            for j in xrange(0, len(srch_args), step): 
+            for j in xrange(0, len(srch_args), step):
                 # Run batch search
                 results = self.search(srch_args[j:j+step])
 
@@ -502,8 +507,8 @@ class PFMFindClient(SearchClient, DatabaseClient):
             jobs = {}.fromkeys(job_index,
                                (i, REL_SRCH, cutoff_Evalues[i],
                                 iter_plugin, iter_params))
-            self._insert_results(jobs, srch_args, 
-                                 final_results, job_index) 
+            self._insert_results(jobs, srch_args,
+                                 final_results, job_index)
 
             final_len = len(final_results)
             final_results = []
@@ -517,7 +522,7 @@ class PFMFindClient(SearchClient, DatabaseClient):
                               profiles[k][1],
                               cutoff_Evalues[i+1],
                               profiles[k][2]] \
-                             for k,f in enumerate(fragments) ] 
+                             for k,f in enumerate(fragments) ]
 
         self.reset_current_experiment()
         return eid, final_len

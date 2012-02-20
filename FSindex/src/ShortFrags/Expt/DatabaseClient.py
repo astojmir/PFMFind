@@ -19,7 +19,8 @@
 #
 
 
-import cPickle, threading
+import cPickle
+import threading
 from itertools import ifilterfalse
 from cStringIO import StringIO
 from ShortFrags.Expt.hit_list import HitList
@@ -51,7 +52,7 @@ _dom_view = "SELECT f.bioentry_id, f.fragment, f.term_id" \
             " AS f JOIN location AS l USING (seqfeature_id)" \
             " WHERE ((f.start+1) BETWEEN l.start_pos AND" \
             " l.end_pos) OR ((f.start+%d) BETWEEN l.start_pos"\
-            " AND l.end_pos)" 
+            " AND l.end_pos)"
 
 
 # This is becoming most difficult so I'll split it into components
@@ -99,8 +100,8 @@ class DatabaseClient(object):
     _expt_attrs = ['expt_name',
                    'expt_description',
                    'query_sequence',
-                   'query_description', 
-                   'min_len', 
+                   'query_description',
+                   'min_len',
                    'max_len',
                    ]
 
@@ -117,11 +118,11 @@ class DatabaseClient(object):
         self.has_copy = False
 
         self._views = {}
-         
+
        # Only one thread at the time should be able to write to the
-        # database. 
+        # database.
         self.db_write_lock = threading.Lock()
-       
+
     def __del__(self):
         self.close()
 
@@ -137,12 +138,12 @@ class DatabaseClient(object):
         self.crs = self.server.adaptor.cursor
         if hasattr(self.crs, 'copy_from'):
             self.has_copy = True
-               
+
     def close(self):
         """
         Cleaning up.
         """
-        
+
         if self.conn:
             self.conn.commit()
             self.conn.close()
@@ -223,7 +224,7 @@ class DatabaseClient(object):
                            'Non Experimental Qualifiers',
                            ]
         self.feature_types = [tag for tag in \
-            ifilterfalse(filter_tags, self._ontologies.keys())]   
+            ifilterfalse(filter_tags, self._ontologies.keys())]
 
         # Assign functions to retrieve features
 
@@ -241,7 +242,7 @@ class DatabaseClient(object):
             else: #uniref cluster
                 self._views[k] = (_kw_view,
                                   "definition || ' (' || name || ')'",
-                                  _format_without_length)  
+                                  _format_without_length)
 
 
     def load_PFMF_schema(self):
@@ -256,13 +257,13 @@ class DatabaseClient(object):
             length SMALLINT NOT NULL ,
             iteration SMALLINT NOT NULL ,
             fragment INTEGER NOT NULL ,
-            accession VARCHAR ( 40 ) NOT NULL , 
+            accession VARCHAR ( 40 ) NOT NULL ,
             start INTEGER NOT NULL ,
             distance SMALLINT ,
             similarity SMALLINT ,
             pvalue REAL ,
             Evalue REAL ,
-            PRIMARY KEY ( experiment_id, length, iteration, fragment, accession, start ) ); 
+            PRIMARY KEY ( experiment_id, length, iteration, fragment, accession, start ) );
 
         CREATE TABLE searches (
             experiment_id SMALLINT NOT NULL ,
@@ -277,7 +278,7 @@ class DatabaseClient(object):
             dist_range SMALLINT ,
             kNN SMALLINT ,
             num_hits INTEGER NOT NULL ,
-            PRIMARY KEY ( experiment_id, length, iteration, fragment ) ); 
+            PRIMARY KEY ( experiment_id, length, iteration, fragment ) );
 
         CREATE SEQUENCE experiments_pk_seq;
 
@@ -306,7 +307,7 @@ class DatabaseClient(object):
         """
 
         sql = "SELECT experiment_id, name FROM experiments ORDER BY" \
-              " experiment_id DESC" 
+              " experiment_id DESC"
         cursor = self.conn.cursor()
         cursor.execute(sql)
         results = cursor.fetchall()
@@ -317,10 +318,10 @@ class DatabaseClient(object):
         """
         Retrieves full experiment data from the database.
         """
-        
+
         sql = """SELECT name, description, query_sequence,
                    query_description, min_len, max_len
-                   FROM experiments WHERE experiment_id=%s"""        
+                   FROM experiments WHERE experiment_id=%s"""
         self.crs.execute(sql, (experiment_id,))
         return self.crs.fetchone()
 
@@ -328,7 +329,7 @@ class DatabaseClient(object):
         """
         Retrieves experiment_id from a name.
         """
-        
+
         sql = "SELECT experiment_id FROM experiments WHERE name=%s"
         cursor = self.conn.cursor()
         cursor.execute(sql, (name,))
@@ -339,7 +340,7 @@ class DatabaseClient(object):
         else:
             return res[0][0]
 
-    def create_experiment(self, name, description, query_sequence, 
+    def create_experiment(self, name, description, query_sequence,
                           query_description, min_len, max_len):
         """
         Creates a new experiment in the database.
@@ -360,9 +361,9 @@ class DatabaseClient(object):
     def update_experiment(self, experiment_id, description=None):
         """
         Updates the experiment description. Other columns may not be
-        updated.   
+        updated.
         """
-        
+
         self.db_write_lock.acquire()
         if description:
             sql = "UPDATE experiments SET description=%s WHERE" \
@@ -370,7 +371,7 @@ class DatabaseClient(object):
             self.crs.execute(sql, (description, experiment_id))
             self.conn.commit()
         self.db_write_lock.release()
-        
+
     def set_current_experiment(self, experiment_id):
         """
         Sets the experiment all searches refer to.
@@ -395,15 +396,15 @@ class DatabaseClient(object):
         """
         Deletes all searches and hits associated with
         a given experiment.
-        
-        Deleting the current experiment is not allowed. 
+
+        Deleting the current experiment is not allowed.
         """
 
         if experiment_id == self.cur_expt:
             raise ValueError("Deleting the current experiment is not allowed.")
 
         self.db_write_lock.acquire()
-            
+
         sql = """ DELETE FROM hits WHERE experiment_id = %s """
         self.crs.execute(sql, (experiment_id,))
         sql = """ DELETE FROM searches WHERE experiment_id = %s """
@@ -432,13 +433,13 @@ class DatabaseClient(object):
                 self.max_iters[f][l] = i
             else:
                 self.max_iters[f] = {l : i}
-        
+
     def get_num_hits(self, length, iteration, fragment):
         """
         Returns the number of hits for given parameters or
-        None if no search was performed. 
+        None if no search was performed.
         """
-        
+
         sql = """
         SELECT num_hits FROM searches WHERE
           experiment_id=%s AND length=%s AND iteration=%s AND fragment=%s"""
@@ -451,7 +452,7 @@ class DatabaseClient(object):
             return 0
         else:
             return res[0][0]
-        
+
     def insert_search(self, length, iteration, fragment, HL, lock=True):
         """
         Inserts a hit list into relational database. Scoring matrix can
@@ -543,7 +544,7 @@ class DatabaseClient(object):
         self.delete_search2(length, iteration, fragment)
         self.insert_search(length, iteration, fragment, HL, lock=False)
         self.db_write_lock.release()
-    
+
     def copy_searches(self, search_results, lock=True):
         """
         Uses psycopg .copy_to (PostgreSQL COPY) to insert many
@@ -556,7 +557,7 @@ class DatabaseClient(object):
         data = StringIO()
         for length, iteration, fragment, HL in search_results:
             data.write('%d\t%d\t%d\t%d\t' %\
-                       (self.cur_expt, length, iteration, fragment))  
+                       (self.cur_expt, length, iteration, fragment))
 
             matrix_name = getattr(HL, 'matrix_name')
             if not matrix_name:
@@ -566,7 +567,7 @@ class DatabaseClient(object):
                 matrix = cPickle.dumps(matrix, 0)
             else:
                 matrix = '\N'
-                
+
             data.write('%s\t%s\t' %\
                        (HL.query_seq, matrix_name))
 
@@ -578,9 +579,9 @@ class DatabaseClient(object):
 
         data.seek(0)
         self.crs.copy_from(data, 'searches')
-        self.conn.commit()        
+        self.conn.commit()
 
-        # Hits next              
+        # Hits next
         data = StringIO()
         for length, iteration, fragment, HL in search_results:
             for ht in HL:
@@ -591,7 +592,7 @@ class DatabaseClient(object):
 
         data.seek(0)
         self.crs.copy_from(data, 'hits')
-        self.conn.commit()        
+        self.conn.commit()
 
         if lock:
             self.db_write_lock.release()
@@ -611,7 +612,7 @@ class DatabaseClient(object):
                     'dist_range', 'kNN', 'matrix_name']
         attribs2 = ['_bioentry_id', '_taxon_id', 'accession',
                     'seq_from', 'dist', 'sim', 'pvalue', 'Evalue',
-                    'defline', 'sequence'] 
+                    'defline', 'sequence']
 
 
         if get_matrix:
@@ -637,18 +638,18 @@ class DatabaseClient(object):
             else:
                 HL_dict['matrix'] = None
             res = res[:-1]
-            
+
         for key, val in zip(attribs1,res):
             HL_dict[key] = val
 
-            
+
         sql = """SELECT a.*, substring(s.seq from a.start+1 for %s ),
         %s AS fragment FROM
         (SELECT b.bioentry_id, b.taxon_id, h1.*,
           b.accession || '|' || b.description FROM
           (SELECT h.accession, h.start, h.distance, h.similarity,
           h.pvalue, h.Evalue FROM hits AS h WHERE
-          h.experiment_id=%s AND h.length=%s 
+          h.experiment_id=%s AND h.length=%s
           AND h.iteration=%s AND h.fragment=%s)
           AS h1 JOIN bioentry AS b ON h1.accession=b.accession)
         AS a JOIN biosequence AS s ON a.bioentry_id=s.bioentry_id
@@ -657,7 +658,7 @@ class DatabaseClient(object):
                              length, iteration, fragment))
 
         HL_dict['hits'] = []
-        while 1: 
+        while 1:
             res =cursor.fetchone()
             if res == None: break
             hd = {}
@@ -673,11 +674,11 @@ class DatabaseClient(object):
         # Now get the species
         taxons = """SELECT b.taxon_id FROM
          (SELECT h.accession FROM hits AS h WHERE
-         h.experiment_id=%s AND h.length=%s 
+         h.experiment_id=%s AND h.length=%s
          AND h.iteration=%s AND h.fragment=%s) AS h1
          JOIN bioentry AS b ON h1.accession=b.accession
          GROUP BY taxon_id """
-        
+
 
         sql = "SELECT i.taxon_id, n.name FROM"\
               " (%s) AS i JOIN"\
@@ -713,7 +714,7 @@ class DatabaseClient(object):
     # ************************************************************
 
     def select_li_features(self, length, iteration, feature_type,
-                           frag_range): 
+                           frag_range):
         """
         Returns the keywords sorted for KeywordView GUI.
         """
@@ -732,7 +733,7 @@ class DatabaseClient(object):
         sql = "SELECT term_id, fragment, bioentry_id FROM (%s) AS fttbl" \
               " ORDER BY term_id, fragment" % feature_table
         cursor.execute(sql)
-            
+
         view_list = []
 
         if cursor.rowcount <= 0:
@@ -746,7 +747,7 @@ class DatabaseClient(object):
             tid = int(res[0])
             frag = int(res[1])
             acc = res[2]
-            
+
             if tid == old_tid:
                 if frag == old_frag:
                     view_list[-1][1][-1][1].append(acc)
@@ -757,7 +758,7 @@ class DatabaseClient(object):
 
             old_tid = tid
             old_frag = frag
-            
+
         for i in xrange(len(view_list)):
             tid = view_list[i][0]
             cursor.execute("SELECT %s FROM term WHERE term_id=%d" \
@@ -772,7 +773,7 @@ class DatabaseClient(object):
         Retrieve full description (not only the keys) of Uniprot
         features of bioentries in bioentry_table from the database.
         """
-        
+
         cursor = self.conn.cursor()
 
         oid_ft_key = self._ontologies['Uniprot Feature Keys']
@@ -788,7 +789,7 @@ class DatabaseClient(object):
 
         sql = "SELECT bioentry_id,term_id,q1,q2,start_pos,end_pos" \
               " FROM (%s) AS fttbl ORDER BY bioentry_id" % \
-              feature_table 
+              feature_table
         cursor.execute(sql)
 
         bioentry_dict ={}
@@ -809,7 +810,7 @@ class DatabaseClient(object):
                 qf_dict[ft_data[1]] = None
             if ft_data[2]:
                 nexp_dict[ft_data[2]] = None
-            
+
         for tid in term_dict.iterkeys():
             cursor.execute("SELECT name FROM term WHERE term_id=%d" \
                            % tid)
@@ -829,7 +830,7 @@ class DatabaseClient(object):
                 desc = "%s (%d, %d)" % (term_dict[tids[i][0]],
                                         tids[i][3]-1,
                                         tids[i][4])
-                
+
                 if tids[i][1]:
                     desc += ": %s" % qf_dict[tids[i][1]]
                 if tids[i][2]:
@@ -844,7 +845,7 @@ class DatabaseClient(object):
         return bioentry_dict
 
     def get_bioentry_features(self, bioentry_table,
-                              feature_type, length): 
+                              feature_type, length):
         """
         Retrieve descriptions of features of type feature_type of
         bioentries given in bioentry_table from the database.
@@ -857,8 +858,8 @@ class DatabaseClient(object):
             return []
         elif feature_type == 'Uniprot Feature Keys':
             return self.get_full_uniprot_features(bioentry_table,
-                                                  length) 
-            
+                                                  length)
+
         cursor = self.conn.cursor()
 
         oid = self._ontologies[feature_type]
@@ -881,12 +882,12 @@ class DatabaseClient(object):
             else:
                 bioentry_dict[bid] = [tid]
             term_dict[tid] = None
-            
+
         for tid in term_dict.iterkeys():
             cursor.execute("SELECT %s FROM term WHERE term_id=%d" \
                            % (self._views[feature_type][1], tid))
             term_dict[tid] = cursor.fetchone()[0]
-        
+
         for tids in bioentry_dict.itervalues():
             for i in xrange(len(tids)):
                 tids[i] = term_dict[tids[i]]
