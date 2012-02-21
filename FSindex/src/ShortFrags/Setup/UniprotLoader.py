@@ -18,93 +18,42 @@
 # Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #
 
-
-from Bio.SwissProt import SProt
-from Bio.SeqRecord import SeqRecord
-from Bio.SeqFeature import *
-from Bio.Alphabet import IUPAC
-from Bio.Seq import Seq
-
+import re
+from Bio import SeqIO
+import Bio.SeqIO.SwissIO
 from BioSQL.Loader import DatabaseLoader
 from BioSQL import BioSeqDatabase
-import re
 
-class FeatureParser(SProt.RecordParser):
-    """Parses (selected) SwissProt data into a Feature object.
 
-    """
-    def __init__(self):
-        SProt.RecordParser.__init__(self)
-        p = r"(.*?) ?(?:\(?(Potential|Probable|By similarity)\)?)?\.?$" 
-        self.nonexp = re.compile(p)
+# We must resort to monkey-patching Bio.SeqIO.SwissIO in order to
+# avoid code duplication. It is not possible to subclass because
+# Bio.SeqIO.SwissIO._make_seqfeature is a module function rather
+# than method
+_old_make_seqfeature = Bio.SeqIO.SwissIO._make_seqfeature
+_nonexp = re.compile(r"(.*?) ?(?:\(?(Potential|Probable|By similarity)\)?)?\.?$")
 
-    def _get_qualifiers(self, desc, type=None):
-
-        # Must do this because the qualifiers for these
-        # feature types are too long to fit as term names
-        if type == 'CONFLICT' or type == 'VARIANT' or \
-           type == 'VARSPLIC' or type == 'MUTAGEN':
-            return {'value': [desc.rstrip('. ')]}
-
-        m = self.nonexp.match(desc)
-        if m == None: return {}
+def _new_make_seqfeature(name, from_res, to_res, description, ft_id):
+    feature = _old_make_seqfeature(name, from_res, to_res, description, ft_id)
+    # Must do this because the qualifiers for these
+    # feature types are too long to fit as term names
+    if type == 'CONFLICT' or type == 'VARIANT' or \
+       type == 'VARSPLIC' or type == 'MUTAGEN':
+        qualifiers = {'value': [description.rstrip('. ')]}
+    else:
         qualifiers = {}
-        g = m.groups()
-        if len(g[0]):
-           qualifiers['term'] = [g[0]]
-        if g[1] != None:
-           qualifiers['non_exp'] = [g[1]] 
-           
-        return qualifiers
+        m = _nonexp.match(description)
+        if m is not None:
+            g = m.groups()
+            if len(g[0]):
+                qualifiers['term'] = [g[0]]
+            if g[1] is not None:
+                qualifiers['non_exp'] = [g[1]]
 
-    def parse(self, handle):
-        self._scanner.feed(handle, self._consumer)
-        RC = self._consumer.data
+    feature.qualifiers.update(qualifiers)
+    return feature
 
-        seq = Seq(RC.sequence, IUPAC.protein)
-        id = RC.accessions[0]
-        name = RC.entry_name
-        description = RC.description.replace("\n", " ").rstrip()
+Bio.SeqIO.SwissIO._make_seqfeature = _new_make_seqfeature
 
-        features = []
-        for Ftype, Ffrom, Fto, Fdescr, not_used in RC.features:
-
-            if isinstance(Ffrom, int):
-                a = ExactPosition(Ffrom-1)
-            else:
-                if Ffrom[0] == '<':
-                    a = BeforePosition(int(Ffrom[1:])-1)
-                elif Ffrom[0] == '?' and len(Ffrom) > 1:
-                    # Uncertain position - we use exact
-                    a = ExactPosition(int(Ffrom[1:])-1)
-                else:
-                    # Totally uncertain - use BetweenPosition
-                    a = BetweenPosition(0, len(seq))
-                    
-            if isinstance(Fto, int):
-                b = ExactPosition(Fto)
-            else:
-                if Fto[0] == '>':
-                    b = BeforePosition(int(Fto[1:]))
-                elif Fto[0] == '?' and len(Fto) > 1:
-                    # Uncertain position - we use exact
-                    b = ExactPosition(int(Fto[1:]))
-                else:
-                    # Totally uncertain - use BetweenPosition
-                    b = BetweenPosition(0, len(seq))
-
-            location = FeatureLocation(a, b)
-            cur_feature = SeqFeature(location=location, type=Ftype)
-            cur_feature.qualifiers = self._get_qualifiers(Fdescr,
-                                                          Ftype)   
-            features.append(cur_feature)
-            
-
-        data = SeqRecord(seq, id, name, description, features=features)
-        data.annotations['ncbi_taxid'] = RC.taxonomy_id[0]
-        data.annotations['keywords'] = RC.keywords
-
-        return data
 
 
 class UniprotLoader(DatabaseLoader):
@@ -112,12 +61,12 @@ class UniprotLoader(DatabaseLoader):
         DatabaseLoader.__init__(self, *args, **kwargs)
 
         self.src_id = self._get_source_term_id()
-        self.kw_tag_id = self._get_ontology_id('Uniprot Keywords') 
+        self.kw_tag_id = self._get_ontology_id('Uniprot Keywords')
         self.ft_tag_id = self._get_ontology_id('Uniprot Feature Keys')
         onts = 'Uniprot Feature Qualifiers'
         self.qf_tag_id = self._get_ontology_id(onts)
         onts = 'Non Experimental Qualifiers'
-        self.nx_tag_id = self._get_ontology_id(onts)  
+        self.nx_tag_id = self._get_ontology_id(onts)
         self.term = self._get_terms()
 
         ann_tag_id = self._get_ontology_id('Annotation Tags')
@@ -139,14 +88,14 @@ class UniprotLoader(DatabaseLoader):
         source_cat_id = self._get_ontology_id('Source Tags')
 
         oids = self.adaptor.execute_and_fetch_col0(
-            "SELECT term_id FROM term WHERE name = %s AND ontology_id=%s", 
+            "SELECT term_id FROM term WHERE name = %s AND ontology_id=%s",
             ("Uniprot", source_cat_id))
         if oids:
             return oids[0]
-        
+
         sql = r"INSERT INTO term (name, ontology_id)" \
               r" VALUES (%s, %s)"
-        self.adaptor.execute(sql, ("Uniprot", source_cat_id)) 
+        self.adaptor.execute(sql, ("Uniprot", source_cat_id))
         return self.adaptor.last_id("term")
 
     def _get_terms(self):
@@ -157,7 +106,9 @@ class UniprotLoader(DatabaseLoader):
 
     def _get_term_id(self, name, ontology_id,
                      definition=None, identifier=None):
-        
+
+        # Sometimes name is too long
+        name = name[:255]
         if (name, ontology_id) not in self.term:
             sql = r"INSERT INTO term (name, definition," \
                   r" identifier, ontology_id)" \
@@ -165,7 +116,7 @@ class UniprotLoader(DatabaseLoader):
             self.adaptor.execute(sql, (name, definition,
                                        identifier, ontology_id))
             self.term[(name, ontology_id)] = self.adaptor.last_id("term")
-            
+
         return self.term[(name, ontology_id)]
 
     def load_seqrecord(self, record):
@@ -177,6 +128,9 @@ class UniprotLoader(DatabaseLoader):
         self._load_keywords(record, bioentry_id)
         for seq_feature_num in range(len(record.features)):
             seq_feature = record.features[seq_feature_num]
+            if seq_feature.location.start.position is None or \
+               seq_feature.location.end.position is None:
+                continue
             self._load_seqfeature(seq_feature,  self.current_rank, bioentry_id)
             self.current_rank += 1
 
@@ -191,32 +145,32 @@ class UniprotLoader(DatabaseLoader):
         if not ncbi_taxon_id:
             return None
         else:
-            return int(ncbi_taxon_id)
+            return int(ncbi_taxon_id[0])
 
     def _load_bioentry_table(self, record):
         """Fill the bioentry table with sequence information.
         """
         # get the pertinent info and insert it
-        
+
         if record.id.find('.') >= 0: # try to get a version from the id
             accession, version = record.id.split('.')
             version = int(version)
         else: # otherwise just use a version of 0
             accession = record.id
             version = 0
-            
+
         taxon_id = self._get_taxon_id(record)
         identifier = record.annotations.get('gi')
         description = getattr(record, 'description', None)
         division = record.annotations.get("data_file_division", "UNK")
-        
+
         sql = """
         INSERT INTO bioentry (
          biodatabase_id, taxon_id, name, accession, identifier, division,
          description, version) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
         self.adaptor.execute(sql, (self.dbid,
                                    taxon_id,
-                                   record.name, 
+                                   record.name,
                                    accession,
                                    identifier,
                                    division,
@@ -234,16 +188,16 @@ class UniprotLoader(DatabaseLoader):
 
         sql = r"INSERT INTO seqfeature" \
               r" (bioentry_id, type_term_id, source_term_id, rank)" \
-              r" VALUES (%s, %s, %s, %s)" 
+              r" VALUES (%s, %s, %s, %s)"
 
         for keyword in keywords:
             kw_id = self._get_term_id(keyword, self.kw_tag_id)
             self.adaptor.execute(sql, (bioentry_id, kw_id,
-                                       self.src_id, self.current_rank)) 
+                                       self.src_id, self.current_rank))
             self.current_rank += 1
 
     def _load_seqfeature_basic(self, feature_type, feature_rank,
-                               bioentry_id): 
+                               bioentry_id):
         """Load the first tables of a seqfeature and returns the id.
 
         This loads the "key" of the seqfeature (ie. CDS, gene) and
@@ -251,8 +205,8 @@ class UniprotLoader(DatabaseLoader):
         """
 
         seqfeature_key_id = self._get_term_id(feature_type,
-                                              self.ft_tag_id) 
-        
+                                              self.ft_tag_id)
+
         sql = r"INSERT INTO seqfeature (bioentry_id, type_term_id, " \
               r"source_term_id, rank) VALUES (%s, %s, %s, %s)"
         self.adaptor.execute(sql, (bioentry_id, seqfeature_key_id,
@@ -271,11 +225,13 @@ class UniprotLoader(DatabaseLoader):
                 qval = qualifiers[qk][0]
             elif qk == 'term':
                 qk_id = self._get_term_id(qualifiers[qk][0],
-                                          self.qf_tag_id) 
+                                          self.qf_tag_id)
             elif qk == 'non_exp':
                 qk_id = self._get_term_id(qualifiers[qk][0],
                                           self.nx_tag_id)
-                
+            else:
+                continue
+
             # Assume only one qualifier value per term_id
             sql = r"INSERT INTO seqfeature_qualifier_value VALUES" \
                   r" (%s, %s, %s, %s)"
@@ -289,9 +245,8 @@ def load_Uniprot(adaptor, dbid, filename):
     """
 
     db_loader = UniprotLoader(adaptor, dbid)
-    parser = FeatureParser()
     fp = file(filename)
-    record_iterator = SProt.Iterator(fp, parser)
+    record_iterator = SeqIO.parse(fp, "swiss")
 
     num_records = 0
     while 1:
@@ -304,69 +259,7 @@ def load_Uniprot(adaptor, dbid, filename):
         num_records += 1
         db_loader.load_seqrecord(cur_record)
         if (num_records+1) % 10000 == 0 :
-            print '      %d records loaded.' % (num_records+1) 
+            print '      %d records loaded.' % (num_records+1)
 
     fp.close()
     return num_records
-
-
-        
-if __name__ == "__main__":
-
-
-    count = 0
-    spfile = '/home/aleksand/data/bio/databases/UniProt/uniprot-03052005/uniprot_sprot_mammals.dat'
-
-    def test_input(filename, schema, commit=True):
-        server = BioSeqDatabase.open_database(driver = "psycopg", user = "aleksand", db = "test3")
-
-        server.adaptor.execute("SET search_path TO %s;" % schema)
-        db = server.new_database("m1")
-
-        n = PFMF_biosqldb_load(db.adaptor, db.dbid, filename)
-        if commit:
-            server.adaptor.commit()
-        server.adaptor.close()
-        fp.close()
-        print n, "sequences entered."
-        return n
-
-    def test_qualifiers(filename):
-        parser = FeatureParser()
-        fp = file(filename)
-        iterator = SProt.Iterator(fp, parser)
-        for R in iterator:
-            for F in R.features:
-                if len(F.qualifiers):
-                    print F.qualifiers
-
-    def full_test_all():
-        m1 = '/home/aleksand/data/bio/databases/UniProt/uniprot-03052005/uniprot_sprot_mammals.dat'
-        spf= '/home/aleksand/data/bio/databases/UniProt/uniprot-3.5/uniprot_sprot.dat'
-        trf= '/home/aleksand/data/bio/databases/UniProt/uniprot-3.5/uniprot_trembl.dat'
-
-        print 'Parsing SwissProt'
-        parser = FeatureParser()
-        fp = file(spf)
-        iterator = SProt.Iterator(fp, parser)
-
-        for i,R in enumerate(iterator):
-            if (i+1) % 10000 == 0 : print i+1 
-        fp.close()
-
-        print 'Parsing TrEMBL'
-        fp = file(trf)
-        iterator = SProt.Iterator(fp, parser)
-        for i,R in enumerate(iterator):
-            if (i+1) % 10000 == 0 : print i+1 
-        fp.close()
-
-
-    t3 = '/home/aleksand/data/bio/databases/UniProt/uniprot-03052005/test1.dat'
-    t5 = '/home/aleksand/data/bio/databases/UniProt/uniprot-03052005/test5.dat'
-    t6 = '/home/aleksand/data/bio/databases/UniProt/uniprot-03052005/uniprot_trembl_mammals.dat'
-
-    print "No constraints"
-    test_input(t6, 'biosqldb09nc', commit=True)
-
-
