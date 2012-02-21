@@ -169,9 +169,9 @@ class TaxonLoader(object):
         # First delete all old entries
         cur.execute("DELETE FROM taxon_name")
         self.adaptor.commit()
-        self.adaptor.conn.autocommit(1)
+        self.adaptor.conn.autocommit = True
         cur.execute("VACUUM FULL taxon_name")
-        self.adaptor.conn.autocommit(0)
+        self.adaptor.conn.autocommit = False
 
         # Now copy our new table
         path = os.path.join(os.getcwd(), 'taxon_name.tbl')
@@ -185,9 +185,9 @@ class TaxonLoader(object):
         # First delete all old entries
         cur.execute("DELETE FROM taxon")
         self.adaptor.commit()
-        self.adaptor.conn.autocommit(1)
+        self.adaptor.conn.autocommit = True
         cur.execute("VACUUM FULL taxon")
-        self.adaptor.conn.autocommit(0)
+        self.adaptor.conn.autocommit = False
 
         # Now copy our new table
         path = os.path.join(os.getcwd(), 'taxon.tbl')
