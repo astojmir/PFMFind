@@ -26,10 +26,10 @@ ALTER TABLE term ADD UNIQUE ( identifier ) ;
 CREATE INDEX term_ont ON term ( ontology_id );
 
 
-ALTER TABLE term_synonym ADD PRIMARY KEY ( term_id , dbxref_id ) ;
+ALTER TABLE term_synonym ADD PRIMARY KEY ( term_id , synonym ) ;
 
 
-ALTER TABLE term_dbxref ADD PRIMARY KEY ( term_id , synonym ) ;
+ALTER TABLE term_dbxref ADD PRIMARY KEY ( term_id , dbxref_id ) ;
 CREATE INDEX trmdbxref_dbxrefid ON term_dbxref ( dbxref_id );
 
 

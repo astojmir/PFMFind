@@ -63,9 +63,7 @@ CREATE TABLE term_relationship (
 
 CREATE TABLE term_relationship_term (
         term_relationship_id INTEGER NOT NULL,
-        term_id              INTEGER NOT NULL,
-        PRIMARY KEY ( term_relationship_id ),
-        UNIQUE ( term_id ) );
+        term_id              INTEGER NOT NULL );
 
 
 CREATE SEQUENCE term_path_pk_seq;
