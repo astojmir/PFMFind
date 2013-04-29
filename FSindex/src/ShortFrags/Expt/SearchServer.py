@@ -19,7 +19,7 @@
 #
 
 
-import types,
+import types
 import cPickle
 import sys
 import os
