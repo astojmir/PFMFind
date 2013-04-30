@@ -25,9 +25,6 @@ from tkMessageBox import showerror, showinfo, Message
 from ShortFrags.GUI.view import View
 
 
-_FIXED_RANGE = True # Allow only lengths from 6 to 20
-
-
 class ExperimentView(Tkinter.Frame, View):
 
     def __init__(self, parent, PFMF_client, set_exp_func):
@@ -137,29 +134,6 @@ class ExperimentView(Tkinter.Frame, View):
                                       command=self._update_database)
         self.wUpdate.pack(side='right', anchor='ne', padx=5, pady=5)
 
-##         if self.PFMF_client.conn:
-##             self.reset_experiment_list()
-
-        # Range - fixed to 6--20
-        if _FIXED_RANGE: return
-        # ********* NOT USED FOR NOW *********************************
-        self.vValid = {'validator':'numeric', 'min':0}
-        RF = Tkinter.Frame(w)
-        RF.grid(sticky='w', row=5, column=1, pady=10)
-
-        Tkinter.Label(w, text='Length Range:').grid(row=5, column=0)
-        self.L0 = Pmw.EntryField(RF, labelpos = 'w', label_text = 'From',
-                                 labelmargin=5, entry_width = 5,
-                                 validate = self.vValid, value=7)
-        self.L0.grid(row=5, column=1, padx=12)
-        self.L1 = Pmw.EntryField(RF, labelpos = 'w', label_text = 'To',
-                                 labelmargin=5, entry_width = 5,
-                                 validate = self.vValid, value=13)
-        self.L1.grid(row=5, column=2)
-        # ************************************************************
-
-
-
     def _change_experiment(self, text=None):
 
         if len(self.exp_list) == 0:
@@ -179,7 +153,6 @@ class ExperimentView(Tkinter.Frame, View):
                                args=(exp_id,))
         thr.start()
         self._insert_data(exp_id)
-
 
     def _db_get_data_thread(self, exp_id):
         self.db_access_lock.acquire()
@@ -210,17 +183,8 @@ class ExperimentView(Tkinter.Frame, View):
             self.wSeqText.setvalue(qseq)
             self._format_seq()
             self.wSeqText.configure(text_state='disabled')
-            if _FIXED_RANGE: return
-            # ********* NOT USED FOR NOW *****************************
-            self.L0.configure(entry_state='normal')
-            self.L0.setvalue(str(min_len))
-            self.L1.configure(entry_state='normal')
-            self.L1.setvalue(str(max_len))
-            # ********************************************************
         else:
             self.after(100, self._insert_data, exp_id)
-
-
 
     def _clear_data(self):
         self.wDescText.configure(text_state = 'normal')
@@ -232,15 +196,6 @@ class ExperimentView(Tkinter.Frame, View):
         self.wSeqText.configure(text_state = 'normal')
         self.wSeqText.setvalue("")
         self.wSeqText.configure(text_state = 'disabled')
-        if _FIXED_RANGE: return
-        # ********* NOT USED FOR NOW *********************************
-        self.L0.configure(entry_state='normal')
-        self.L0.setvalue("")
-        self.L0.configure(entry_state='disabled')
-        self.L1.configure(entry_state='normal')
-        self.L1.setvalue("")
-        self.L1.configure(entry_state='disabled')
-        # ************************************************************
 
     def _validate_input(self, exp_data, new_exp=False):
         name, desc, qseq, qdesc, min_len, max_len = exp_data
@@ -294,35 +249,6 @@ class ExperimentView(Tkinter.Frame, View):
                       parent=self.parent)
             return False
 
-        if _FIXED_RANGE: return True
-        # ********* NOT USED FOR NOW *********************************
-
-        # Range: HI <= LOW + reasonable values
-        if min_len == None or max_len == None:
-            showerror('Input Error',
-                      'At least one of length ranges is missing.',
-                      parent=self.parent)
-            return False
-
-        if min_len > max_len:
-            showerror('Input Error',
-                      'Minimum length is greater than maximum length.',
-                      parent=self.parent)
-            return False
-
-        if min_len < 6:
-            showerror('Input Error',
-                      'Minimum length is smaller than 6.',
-                      parent=self.parent)
-            return False
-
-        if max_len > 20:
-            showerror('Input Error',
-                      'Maximum length is greater than 20.',
-                      parent=self.parent)
-            return False
-        # ************************************************************
-
     def _new_experiment(self):
         self.new_exp=True
         self.selected_exp_id = None
@@ -336,7 +262,6 @@ class ExperimentView(Tkinter.Frame, View):
         self.wDtxt.setvalue("")
         self.wSeqText.configure(text_state = 'normal')
         self.wSeqText.setvalue("")
-
 
     def _delete_experiment(self):
         # Cannot delete the current experiment
@@ -378,7 +303,6 @@ class ExperimentView(Tkinter.Frame, View):
             if exp_data != self.selected_exp_data:
                 self._insert_data(self.selected_exp_id)
 
-
     def _update_database(self):
         exp_data = self.get_form_data()
         if self.new_exp:
@@ -418,28 +342,10 @@ class ExperimentView(Tkinter.Frame, View):
         name = self.wExpCombo.component('entryfield').getvalue()
         name = name.rstrip('\n ')
         desc = self.wDescText.getvalue().rstrip('\n ')
-
         qseq = str(self.wSeqText.getvalue())
         qseq = qseq.replace(' ', '').replace('\n', '').strip().upper()
-
         qdesc = self.wDtxt.getvalue().rstrip('\n ')
-
-        if _FIXED_RANGE:
-            min_len = 6
-            max_len = 20
-            return (name, desc, qseq, qdesc, min_len, max_len)
-
-        # ********* NOT USED FOR NOW *********************************
-        try:
-            min_len = int(self.L0.getvalue())
-        except ValueError:
-            min_len = None
-        try:
-            max_len = int(self.L1.getvalue())
-        except ValueError:
-            max_len = None
-        return (name, desc, qseq, qdesc, min_len, max_len)
-        # ************************************************************
+        return (name, desc, qseq, qdesc, 6, 20)
 
     def reset(self, state=None):
         self.reset_experiment_list()
