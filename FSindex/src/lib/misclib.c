@@ -26,11 +26,11 @@
 #include <math.h>
 #include "misclib.h"
 
-/********************************************************************/ 
+/********************************************************************/
 /*                                                                  */
-/*                     Exception handling                           */ 
+/*                     Exception handling                           */
 /*                                                                  */
-/********************************************************************/ 
+/********************************************************************/
 
 EXCEPTION *FSexcept(int code, const char *fmt, ...)
 {
@@ -43,18 +43,18 @@ EXCEPTION *FSexcept(int code, const char *fmt, ...)
   return FS_EXCEPTION;
 }
 
-  
-/********************************************************************/ 
+
+/********************************************************************/
 /*                                                                  */
-/*      Error checking wrappers to malloc, calloc and realloc       */ 
+/*      Error checking wrappers to malloc, calloc and realloc       */
 /*                                                                  */
-/********************************************************************/ 
+/********************************************************************/
 
 void *callocec(long int number, long int size)
 {
   void *memp;
 
-  if (number < 0)
+  if (number <= 0)
     Throw FSexcept(NEG_MEM_REQ, "Negative memory request.");
   memp=calloc(number, size);
   if (memp==NULL)
@@ -66,7 +66,7 @@ void *mallocec(long int size)
 {
   void *memp;
 
-  if (size < 0)
+  if (size <= 0)
     Throw FSexcept(NEG_MEM_REQ, "Negative memory request.");
   memp=malloc(size);
   if (memp==NULL)
@@ -78,7 +78,7 @@ void *reallocec(void *pt, long int size)
 {
   void *memp;
 
-  if (size < 0)
+  if (size <= 0)
     Throw FSexcept(NEG_MEM_REQ, "Negative memory request.");
   memp=realloc(pt, size);
   if (memp==NULL)
@@ -86,16 +86,16 @@ void *reallocec(void *pt, long int size)
   return(memp);
 }
 
-/********************************************************************/ 
+/********************************************************************/
 /*                                                                  */
-/*                    Unix path processing                          */ 
+/*                    Unix path processing                          */
 /*                                                                  */
-/********************************************************************/ 
+/********************************************************************/
 
 void path_split(const char *p, char **h, char **t)
 {
-  /* Equivalent to Python os.path.split except that we don't strip 
-     multiple '/' 
+  /* Equivalent to Python os.path.split except that we don't strip
+     multiple '/'
   */
 
   int L = strlen(p);
@@ -147,25 +147,25 @@ char *path_join(const char *h, const char *t)
   return p;
 }
 
-/********************************************************************/ 
+/********************************************************************/
 /*                                                                  */
-/*                    I/O                                           */ 
+/*                    I/O                                           */
 /*                                                                  */
-/********************************************************************/ 
+/********************************************************************/
 
-void fwrite_string(char *s, FILE *fp) 
+void fwrite_string(char *s, FILE *fp)
 {
-  int len = strlen(s) + 1;    
-  fwrite(&len, sizeof(int), 1, fp);           
-  fwrite(s, sizeof(char), len, fp);           
-} 
+  int len = strlen(s) + 1;
+  fwrite(&len, sizeof(int), 1, fp);
+  fwrite(s, sizeof(char), len, fp);
+}
 
 void fread_string(char **s, FILE *fp)
 {
-  int len;                                        
-  fread(&len, sizeof(int), 1, fp);            
-  *s = mallocec(len);                         
-  fread(*s, sizeof(char), len, fp);           
+  int len;
+  fread(&len, sizeof(int), 1, fp);
+  *s = mallocec(len);
+  fread(*s, sizeof(char), len, fp);
 }
 
 
@@ -223,11 +223,11 @@ void fread_int32(void *ptr, size_t nmemb, FILE *stream)
 }
 
 
-/********************************************************************/ 
+/********************************************************************/
 /*                                                                  */
-/*                Comparison functions for qsort                    */ 
+/*                Comparison functions for qsort                    */
 /*                                                                  */
-/********************************************************************/ 
+/********************************************************************/
 
 int compare_int(const void *M1, const void *M2)
 {
@@ -265,11 +265,11 @@ int compare_dbl(const void *M1, const void *M2)
     return 0;
 }
 
-/********************************************************************/ 
+/********************************************************************/
 /*                                                                  */
-/*                Check validity of strings                         */ 
+/*                Check validity of strings                         */
 /*                                                                  */
-/********************************************************************/ 
+/********************************************************************/
 
 int check_word_alphabet(const char *word, int word_len,
 			const char *alphabet, int alphabet_len)
@@ -278,25 +278,25 @@ int check_word_alphabet(const char *word, int word_len,
      alphabet must be sorted using compare_char */
   int i;
 
-  for (i=0; i < word_len; i++, word++) 
-    if (bsearch(word, alphabet, alphabet_len, 1, 
+  for (i=0; i < word_len; i++, word++)
+    if (bsearch(word, alphabet, alphabet_len, 1,
 		compare_char) == NULL)
       return 0;
 
   return 1;
 }
 
-/********************************************************************/ 
+/********************************************************************/
 /*                                                                  */
-/*                Print into buffer that can grow                   */ 
+/*                Print into buffer that can grow                   */
 /*                                                                  */
-/********************************************************************/ 
+/********************************************************************/
 
 #define ABSPRINTF_BUF 256
 void absprintf(char **buf, int *size, int *len, const char *fmt, ...)
 {
   va_list ap;
-  int remaining_size; 
+  int remaining_size;
   int n;
 
   if (*buf == NULL) {
@@ -323,4 +323,4 @@ void absprintf(char **buf, int *size, int *len, const char *fmt, ...)
 	  *size += ABSPRINTF_BUF;
       *buf = reallocec(*buf, *size);
   }
-} 
+}
