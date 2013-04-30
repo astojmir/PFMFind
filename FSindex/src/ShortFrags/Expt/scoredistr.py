@@ -24,13 +24,13 @@ import cPickle
 from cStringIO import StringIO
 import numpy as np
 import numpy.fft as fft
-from ShortFrags.Expt.matrix import POSITIONAL
-from ShortFrags.Expt.matrix import SCORE
-from ShortFrags.Expt.matrix import SIMILARITY
-from ShortFrags.Expt.matrix import DISTANCE
-from ShortFrags.Expt.matrix import ScoreMatrix
-from ShortFrags.Expt.matrix import ProfileMatrix
-from ShortFrags.Expt.DirichletMix import BKGRND_PROBS as BG
+from pfmfind.Expt.matrix import POSITIONAL
+from pfmfind.Expt.matrix import SCORE
+from pfmfind.Expt.matrix import SIMILARITY
+from pfmfind.Expt.matrix import DISTANCE
+from pfmfind.Expt.matrix import ScoreMatrix
+from pfmfind.Expt.matrix import ProfileMatrix
+from pfmfind.Expt.DirichletMix import BKGRND_PROBS as BG
 
 # Use Biopython matrices
 

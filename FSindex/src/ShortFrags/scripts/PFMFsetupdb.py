@@ -42,7 +42,7 @@ argument. Alternatively, it can be entered through standard input.
 """
 
 import getopt, sys
-from ShortFrags.Setup.SetupDb import PFMF_DatabaseLoader
+from pfmfind.Setup.SetupDb import PFMF_DatabaseLoader
 
 __version__ = "$Revision: 1.1 $"
 __date__ = "$Date$"

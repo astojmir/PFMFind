@@ -1,4 +1,4 @@
-"""Distutils based setup script for ShortFrags.
+"""Distutils based setup script for pfmfind.
 
 This uses Distutils (http://python.org/sigs/distutils-sig/) the standard
 python mechanism for installing packages. For the easiest installation
@@ -12,17 +12,17 @@ import sys
 from os.path import join
 
 PACKAGES = [
-    'ShortFrags',
-    'ShortFrags.GUI',
-    'ShortFrags.Expt',
-    'ShortFrags.Setup',
-    'ShortFrags.plugins',
+    'pfmfind',
+    'pfmfind.GUI',
+    'pfmfind.Expt',
+    'pfmfind.Setup',
+    'pfmfind.plugins',
     ]
 
 libs=["gcc"]
 
 EXTENSIONS = [
-    Extension('ShortFrags.Expt.FS',
+    Extension('pfmfind.Expt.FS',
               ['swig/FS_wrap.c',
                'lib/bioseq.c',
                'lib/FSindex.c',
@@ -34,7 +34,7 @@ EXTENSIONS = [
                ],
               include_dirs=['include'],
               define_macros=[('GCC_INLINE', None),
-                             ('THREADS', 1)
+                             ('THREADS', 2)
                              ],
               libraries=libs,
               extra_compile_args=['-O3'],
@@ -42,30 +42,30 @@ EXTENSIONS = [
     ]
 
 SCRIPTS = [
-    'ShortFrags/scripts/FSsearchc.py',
-    'ShortFrags/scripts/PFMFind.pyw',
-    'ShortFrags/scripts/PFMFsetupdb.py',
-    'ShortFrags/scripts/PFMFsetupix.py',
+    'pfmfind/scripts/FSsearchc.py',
+    'pfmfind/scripts/PFMFind.pyw',
+    'pfmfind/scripts/PFMFsetupdb.py',
+    'pfmfind/scripts/PFMFsetupix.py',
     ]
 
-from ShortFrags import CONFIG_DATA_DIR, SQL_DATA_DIR
+from pfmfind import CONFIG_DATA_DIR, SQL_DATA_DIR
 
 cfg_files = ['PFMFcf.dtd', 'PFMFdb.dtd', 'PFMFix.dtd',
              'dbsetup_sample01.xml', 'ixsetup_sample01.xml',
              ]
-full_cfg_files = [join('ShortFrags/data/setup_config', f) \
+full_cfg_files = [join('pfmfind/data/setup_config', f) \
                   for f in cfg_files]
 
 sql_files = ['biosqldb-pg-cnstr.sql',
              'biosqldb-pg-fk.sql',
-             'biosqldb-pg-ix.sql',
              'biosqldb-pg-nocnstr.sql',
-             'biosqldb-pg-nofk.sql',
-             'biosqldb-pg-plain.sql',
              'biosqldb-pg.sql',
              ]
-full_sql_files = [join('ShortFrags/data/sql-schema', f) \
+full_sql_files = [join('pfmfind/data/sql-schema', f) \
                   for f in sql_files]
+
+PACKAGE_DATA = {}
+
 
 DATA_FILES = [
     (CONFIG_DATA_DIR, full_cfg_files),
@@ -73,21 +73,18 @@ DATA_FILES = [
     ]
 
 
-# Windows specific things
-if sys.platform == 'win32':
-    libs.append("gw32c")
-    SCRIPTS.append('ShortFrags/scripts/FSsearchs.py')
-else:
-    SCRIPTS.append('ShortFrags/scripts/FSsearchd.py')
+SCRIPTS.append('pfmfind/scripts/FSsearchd.py')
 
 
 setup(
     name='PFMFind',
-    version='0.48',
+    version='0.5',
     author='Aleksandar Stojmirovic',
     author_email='stojmira@ncbi.nlm.nih.gov',
     url='http://www.vuw.ac.nz/biodiscovery/publications/centre/pfmfind.aspx',
+    package_dir={'pfmfind': '.'},
     packages=PACKAGES,
+    package_data=PACKAGE_DATA,
     scripts=SCRIPTS,
     ext_modules=EXTENSIONS,
     data_files=DATA_FILES,
@@ -95,7 +92,7 @@ setup(
     long_description='Set of routines/scripts supporting similarity search'\
     ' of datasets of short protein fragments of fixed length.',
     license='GNU GPL',
-    platforms='POSIX, Windows',
+    platforms='POSIX',
     classifiers = [
       'Development Status :: 3 - Alpha',
       'Environment :: X11 Applications',
@@ -103,7 +100,6 @@ setup(
       'Intended Audience :: Science/Research',
       'License :: OSI Approved :: GNU General Public License (GPL)',
       'Operating System :: POSIX',
-      'Operating System :: Microsoft :: Windows',
       'Programming Language :: Python',
       'Topic :: Scientific/Engineering :: Bio-Informatics',
     ]

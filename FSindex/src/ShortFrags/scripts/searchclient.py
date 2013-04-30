@@ -23,8 +23,8 @@
 
 
 import socket, sys
-from ShortFrags.Expt.SearchClient import SearchClient, send_obj
-from ShortFrags.Expt.matrix import SCORE, POSITIONAL
+from pfmfind.Expt.SearchClient import SearchClient, send_obj
+from pfmfind.Expt.matrix import SCORE, POSITIONAL
 from Bio.SubsMat import MatrixInfo
 
 

@@ -23,7 +23,7 @@ import Tkinter, tkMessageBox, Pmw
 from tkMessageBox import askquestion
 import os, sys
 
-from ShortFrags.Expt import fragexpt
+from pfmfind.Expt import fragexpt
 
 from view import View
 from status import StatusShow

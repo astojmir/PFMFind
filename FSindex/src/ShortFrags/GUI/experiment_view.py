@@ -22,7 +22,7 @@
 import Tkinter, tkFont, Pmw, threading
 from tkMessageBox import askquestion
 from tkMessageBox import showerror, showinfo, Message
-from ShortFrags.GUI.view import View
+from pfmfind.GUI.view import View
 
 
 class ExperimentView(Tkinter.Frame, View):

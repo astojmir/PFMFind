@@ -19,12 +19,12 @@
 #
 
 
-from ShortFrags.GUI.view import View
-from ShortFrags.Expt.hit_list import HitList
+from pfmfind.GUI.view import View
+from pfmfind.Expt.hit_list import HitList
 import Pmw, Tkinter, string, threading
-from ShortFrags.Expt.matrix import ScoreMatrix, ProfileMatrix
-from ShortFrags.GUI.ScrolledSeq import ScrolledSeq, col_f
-from ShortFrags.GUI.optionmenu import OptionMenu
+from pfmfind.Expt.matrix import ScoreMatrix, ProfileMatrix
+from pfmfind.GUI.ScrolledSeq import ScrolledSeq, col_f
+from pfmfind.GUI.optionmenu import OptionMenu
 
 
 def _row(ind):

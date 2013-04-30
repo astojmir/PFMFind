@@ -18,7 +18,7 @@
 # Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #
 
-from ShortFrags.Expt.DirichletInfo import NAMES
+from pfmfind.Expt.DirichletInfo import NAMES
 from default_profile import get_matrix as default_get_matrix
 from default_profile import print_info as default_print_info
 

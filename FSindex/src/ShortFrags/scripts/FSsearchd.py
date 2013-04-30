@@ -55,7 +55,7 @@ OPTIONS:
 
 
 import sys, os, signal, os.path, string, resource, socket
-from ShortFrags.Expt import SearchServer
+from pfmfind.Expt import SearchServer
 
 __version__ = "$Revision: 1.1 $"
 __date__ = "$Date$"

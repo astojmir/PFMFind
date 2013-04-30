@@ -20,7 +20,7 @@
 
 
 import Tkinter, Pmw
-from ShortFrags.GUI.view import View
+from pfmfind.GUI.view import View
 
 def _null_func(*args, **kwargs):
     pass

@@ -24,10 +24,10 @@ __date__ = "$Date: 2006-03-02 15:48:06 -0500 (Thu, 02 Mar 2006) $"
 __author__ = "Aleksandar Stojmirovic"
 
 
-from ShortFrags.Expt.SearchClient import SearchClient
-from ShortFrags.Expt.fragexpt import PFMFindClient
-from ShortFrags.Expt.db import db 
-from ShortFrags.Expt.SearchServer import REL_SRCH
+from pfmfind.Expt.SearchClient import SearchClient
+from pfmfind.Expt.fragexpt import PFMFindClient
+from pfmfind.Expt.db import db 
+from pfmfind.Expt.SearchServer import REL_SRCH
 import sys, time, os
 
 _RUNS_PER_FORK = 500

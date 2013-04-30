@@ -26,13 +26,13 @@ import time
 import xml.parsers.expat
 from cStringIO import StringIO
 from BioSQL import BioSeqDatabase
-from ShortFrags.Expt.index import FSIndex
+from pfmfind.Expt.index import FSIndex
 
 
 _Create_Index_Script = \
 """
 import os
-from ShortFrags.Expt.index import FSIndex
+from pfmfind.Expt.index import FSIndex
 
 index_dir = '%s'
 fasta_name = '%s'

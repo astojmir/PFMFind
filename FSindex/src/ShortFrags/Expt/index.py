@@ -24,9 +24,9 @@ Wrapper around FSindex library.
 """
 
 import os, os.path
-from ShortFrags.Expt import FS
-from ShortFrags.Expt.db import db
-from ShortFrags.Expt.hit_list import HitList
+from pfmfind.Expt import FS
+from pfmfind.Expt.db import db
+from pfmfind.Expt.hit_list import HitList
 
 FS_BINS = FS.FS_BINS
 SUFFIX_ARRAY = FS.SUFFIX_ARRAY

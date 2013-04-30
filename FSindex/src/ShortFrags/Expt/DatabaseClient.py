@@ -23,7 +23,7 @@ import cPickle
 import threading
 from itertools import ifilterfalse
 from cStringIO import StringIO
-from ShortFrags.Expt.hit_list import HitList
+from pfmfind.Expt.hit_list import HitList
 from BioSQL import BioSeqDatabase
 
 

@@ -21,7 +21,7 @@
 
 import Tkinter
 import Pmw
-from ShortFrags.GUI.view import View
+from pfmfind.GUI.view import View
 
 class TextDisplay(Pmw.ScrolledText):
     def __init__(self, parent=None, label=None, text=None):

@@ -21,10 +21,10 @@
 
 import Tkinter, Pmw, string, threading
 from tkMessageBox import askquestion, showwarning
-from ShortFrags.GUI.view import View
-from ShortFrags.GUI.ScrolledSeq import ScrolledSeq, col_f
-from ShortFrags.Expt.SearchServer import RNG_SRCH, KNN_SRCH, REL_SRCH
-from ShortFrags.GUI.optionmenu import OptionMenu
+from pfmfind.GUI.view import View
+from pfmfind.GUI.ScrolledSeq import ScrolledSeq, col_f
+from pfmfind.Expt.SearchServer import RNG_SRCH, KNN_SRCH, REL_SRCH
+from pfmfind.GUI.optionmenu import OptionMenu
 
 
 def _empty_func():

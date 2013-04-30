@@ -28,8 +28,8 @@ Kills all subservers.
 
 ## import socket, sys, time, string
 
-from ShortFrags.Expt.SearchServer import parse_slaves_config
-from ShortFrags.Expt.SearchServer import terminate_slaves
+from pfmfind.Expt.SearchServer import parse_slaves_config
+from pfmfind.Expt.SearchServer import terminate_slaves
 
 
 ## def now():

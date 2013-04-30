@@ -33,12 +33,12 @@ from cStringIO import StringIO
 from threading import Thread
 from errno import EINTR
 
-from ShortFrags.Expt.index import FSIndex
-from ShortFrags.Expt.matrix import SCORE
-from ShortFrags.Expt.matrix import POSITIONAL
-from ShortFrags.Expt.matrix import ScoreMatrix
-from ShortFrags.Expt.matrix import ProfileMatrix
-from ShortFrags.Expt.scoredistr import ScoreDistr
+from pfmfind.Expt.index import FSIndex
+from pfmfind.Expt.matrix import SCORE
+from pfmfind.Expt.matrix import POSITIONAL
+from pfmfind.Expt.matrix import ScoreMatrix
+from pfmfind.Expt.matrix import ProfileMatrix
+from pfmfind.Expt.scoredistr import ScoreDistr
 
 
 RNG_SRCH = 0

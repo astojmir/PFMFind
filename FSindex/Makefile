@@ -27,7 +27,7 @@ INCS = -I../include
 DEBUG=-g -D DEBUG=2
 
 # This should be set to point to Python headers
-PYDIR = /home/aleksand/exec/VirtualEnv/pfmfind-2.7/include/python2.7
+PYDIR = /usr/include/python2.7
 
 LDFLAGS = "-L ../lib"
 
@@ -123,6 +123,3 @@ tarball:
 	tar -rvf FSindex.tar $(SWIGDIR)/Makefile; \
 	tar -rvf FSindex.tar $(SCRIPTDIR)/ShortFrags; \
 	gzip  FSindex.tar; \
-
-
-

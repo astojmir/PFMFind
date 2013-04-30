@@ -20,13 +20,13 @@
 
 
 
-from ShortFrags.Expt.DirichletMix import freq_counts, \
+from pfmfind.Expt.DirichletMix import freq_counts, \
      henikoff_weights, BKGRND_PROBS as bg_dict
 from Bio import SubsMat
 from Bio.SubsMat.FreqTable import FreqTable, FREQ
 from Bio.Alphabet import IUPAC
 from Bio.Align import Generic, AlignInfo
-from ShortFrags.Expt.matrix import SCORE 
+from pfmfind.Expt.matrix import SCORE 
 
 iteration = True
 arg_list = [('Scale', 'real', 2.0),

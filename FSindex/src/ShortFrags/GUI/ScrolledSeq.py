@@ -20,7 +20,7 @@
 
 
 import Tkinter, Pmw, string
-from ShortFrags.GUI.view import View
+from pfmfind.GUI.view import View
 
 BSIZE = 10
 def col_f(x0):

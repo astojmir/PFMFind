@@ -24,8 +24,8 @@ from tkFileDialog import askopenfilename, askdirectory,\
      asksaveasfilename
 from tkMessageBox import showerror, showinfo, Message,\
      askquestion
-from ShortFrags.GUI.view import View
-from ShortFrags.GUI.optionmenu import OptionMenu
+from pfmfind.GUI.view import View
+from pfmfind.GUI.optionmenu import OptionMenu
 
 _FIXED_RANGE = True # Allow only lengths from 6 to 20
 

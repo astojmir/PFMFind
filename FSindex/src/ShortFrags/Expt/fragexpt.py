@@ -29,14 +29,14 @@ import imp
 import xml.parsers.expat
 from cStringIO import StringIO
 
-import ShortFrags
-from ShortFrags.Expt.matrix import SCORE
-from ShortFrags.Expt.matrix import POSITIONAL
-from ShortFrags.Expt.matrix import ScoreMatrix
-from ShortFrags.Expt.matrix import ProfileMatrix
-from ShortFrags.Expt.SearchClient import SearchClient
-from ShortFrags.Expt.DatabaseClient import DatabaseClient
-from ShortFrags.Expt.SearchServer import REL_SRCH
+import pfmfind
+from pfmfind.Expt.matrix import SCORE
+from pfmfind.Expt.matrix import POSITIONAL
+from pfmfind.Expt.matrix import ScoreMatrix
+from pfmfind.Expt.matrix import ProfileMatrix
+from pfmfind.Expt.SearchClient import SearchClient
+from pfmfind.Expt.DatabaseClient import DatabaseClient
+from pfmfind.Expt.SearchServer import REL_SRCH
 
 _MAX_SUBMITTED_SEARCHES = 20
 
@@ -47,7 +47,7 @@ def _write_xml_tag(fp, tag, indent=0):
 
 class PFMFindClient(SearchClient, DatabaseClient):
     _default_plugin_dir = \
-        os.path.join(ShortFrags.__path__[0], 'plugins')
+        os.path.join(pfmfind.__path__[0], 'plugins')
 
     def __init__(self, plugin_dir=None):
         SearchClient.__init__(self)
@@ -134,7 +134,6 @@ class PFMFindClient(SearchClient, DatabaseClient):
             return False
         return True
 
-
     def _set_matrices_to_hit_lists(self, srch_args, results):
         """
         Assigns a query matrix to each hit list.
@@ -147,12 +146,6 @@ class PFMFindClient(SearchClient, DatabaseClient):
             PM = srch_args[i][2]
             results[i].matrix_name = getattr(PM, 'name', None)
             results[i].matrix = None
-
-##             if srch_args[i][3] == POSITIONAL:
-##                 results[i].matrix = PM
-##             else:
-##                 results[i].matrix = None
-
 
     def _insert_results_single(self, jobs, srch_args, results,
                                job_index):
@@ -293,7 +286,7 @@ class PFMFindClient(SearchClient, DatabaseClient):
 
         fp.write("""<?xml version="1.0" encoding="UTF-8"?>\n""")
         fp.write("""<!DOCTYPE PFMF_config SYSTEM "%s">\n""" %\
-             os.path.join(ShortFrags.CONFIG_DATA_DIR, 'PFMFcf.dtd' ))
+             os.path.join(pfmfind.CONFIG_DATA_DIR, 'PFMFcf.dtd' ))
         i = 0
         _write_xml_tag(fp, "<PFMF_config>\n", i)
         i += 1
@@ -526,4 +519,3 @@ class PFMFindClient(SearchClient, DatabaseClient):
 
         self.reset_current_experiment()
         return eid, final_len
-

@@ -17,7 +17,7 @@ use, modify, or distribute the software for any purpose is hereby granted."""
 
 from Tkinter import *
 import sys, string, traceback, types, __builtin__
-from ShortFrags.GUI.view import View
+from pfmfind.GUI.view import View
 
 REVISION = "$Revision: 1.2 $"
 VERSION = string.split(REVISION)[1]

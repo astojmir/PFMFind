@@ -19,10 +19,10 @@
 #
 
 
-from ShortFrags.GUI.view import View
-from ShortFrags.GUI.optionmenu import OptionMenu
-from ShortFrags.Expt.hit_list import HitList
-from ShortFrags.Expt.hit_list import description
+from pfmfind.GUI.view import View
+from pfmfind.GUI.optionmenu import OptionMenu
+from pfmfind.Expt.hit_list import HitList
+from pfmfind.Expt.hit_list import description
 from array import array
 from cStringIO import StringIO
 import Pmw, Tkinter, string, bisect, threading

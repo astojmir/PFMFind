@@ -22,7 +22,7 @@
 import socket
 from cStringIO import StringIO
 
-from ShortFrags.Expt.SearchServer import DIE, GET_INDEX_DATA, \
+from pfmfind.Expt.SearchServer import DIE, GET_INDEX_DATA, \
      GET_SERVERS, SEARCH, SCORE_DISTR, send_obj, receive_obj 
 
 class SearchClient(object):

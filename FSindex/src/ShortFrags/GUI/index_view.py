@@ -19,8 +19,8 @@
 #
 
 
-from ShortFrags.GUI.view import View
-from ShortFrags.GUI.text_display import TextDisplay
+from pfmfind.GUI.view import View
+from pfmfind.GUI.text_display import TextDisplay
 
 class IndexView(TextDisplay, View):
     def __init__(self, parent, PFMF_client):
