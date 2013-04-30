@@ -26,7 +26,7 @@ and waits for search requests.
 
 SYNOPSIS:
 
-    FSsearchd.py [--control-slaves] daemonid port workpath indexfile [pythonpath] 
+    FSsearchd.py [--control-slaves] daemonid port workpath indexfile [pythonpath]
     FSsearchd.py -h|--help
 
 DESCRIPTION:
@@ -75,7 +75,7 @@ def create_daemon(daemonid, port, workpath, indexfile, pythonpath=None, control_
     """
     Creates a daemon to run as PFMFind FSIndex server.
     """
-    
+
     if pythonpath != None:
         sys.path.append(pythonpath)
     workpath = os.path.expanduser(workpath)
@@ -109,16 +109,16 @@ def create_daemon(daemonid, port, workpath, indexfile, pythonpath=None, control_
         signal.signal(signal.SIGHUP, signal.SIG_IGN)
 
         try:  # Fork a first child.
-            pid = os.fork()       
+            pid = os.fork()
         except OSError, e:
             raise Exception, "%d (%s)" % (e.strerror, e.errno)
 
-        if (pid > 0):      
+        if (pid > 0):
             # The parent (the first child) writes the pid of the daemon,
             # the host and the command line, then exits
             pid_fp = file(pidfile,'w')
             pid_fp.write("%d\n" % pid)
-            pid_fp.write("%s\n" % socket.gethostname()) 
+            pid_fp.write("%s\n" % socket.gethostname())
             pid_fp.write("%s\n" % string.join(sys.argv, ' '))
             pid_fp.close()
             os._exit(0)     # Exit parent of the second child.
@@ -158,32 +158,32 @@ def create_daemon(daemonid, port, workpath, indexfile, pythonpath=None, control_
     if 'RLIMIT_RSS' in dir(resource):
         lim = resource.getrlimit(resource.RLIMIT_RSS)
         resource.setrlimit(resource.RLIMIT_RSS, (lim[1],lim[1]))
-    if 'RLIMIT_MEMLOCK' in dir(resource): 
+    if 'RLIMIT_MEMLOCK' in dir(resource):
         lim = resource.getrlimit(resource.RLIMIT_MEMLOCK)
         resource.setrlimit(resource.RLIMIT_MEMLOCK, (lim[1],lim[1]))
 
-    # Start the SearchServer 
+    # Start the SearchServer
     global SrchS
     SrchS = SearchServer.SearchServer(daemonid, port, indexfile, control_slaves)
 
     # Catch termination signal so we can write the log and kill all slaves
     signal.signal(signal.SIGTERM, signal_handler)
-    
+
     SrchS.start()
 
     # Exit when the server is stopped
     os._exit(0)
-    
+
 if __name__ == "__main__":
 
     import getopt
-    
+
     control_slaves = False
-    pythonpath=None
+    pythonpath = None
 
     options = 'hc'
     long_options = ['help', 'control-slaves']
-    
+
     try:
         opts, args = getopt.getopt(sys.argv[1:], options,
                                    long_options)
