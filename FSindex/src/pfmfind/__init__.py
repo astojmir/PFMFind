@@ -23,10 +23,5 @@
 __all__ = ['GUI', 'search', 'setup', 'plugins']
 
 
-import sys
 from os.path import join
-
-#CONFIG_DATA_DIR = join(sys.exec_prefix, 'share/pfmfind/setup_config')
-#SQL_DATA_DIR =  join(sys.exec_prefix, 'share/pfmfind/sql-schema')
 CONFIG_DATA_DIR = join('share', 'pfmfind', 'setup_config')
-SQL_DATA_DIR = join('share', 'pfmfind', 'sql-schema')
