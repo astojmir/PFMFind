@@ -32,6 +32,7 @@ from ShortFrags.Setup.UnirefLoader import UnirefLoader
 from ShortFrags.Setup.InterProLoader import Protein2IprParser
 from ShortFrags.Setup.InterProLoader import InterProLoader
 
+SCHEMA_DIR = os.path.join(os.path.dirname(__file__), 'sql-schema')
 
 class PFMF_DatabaseLoader(object):
     def __init__(self):
@@ -42,8 +43,8 @@ class PFMF_DatabaseLoader(object):
         self.schema_name = None
         self.schema_create = 0
         self.sql_dir = '.'
-        self.initial_sql = None
-        self.final_sql = None
+        self.initial_sql = os.path.join(SCHEMA_DIR, 'biosqldb-pg-nocnstr.sql')
+        self.final_sql = os.path.join(SCHEMA_DIR, 'biosqldb-pg-cnstr.sql')
 
         self.copy_taxonomy = 0
         self.taxon_dir = None
@@ -310,4 +311,3 @@ class PFMF_DatabaseLoader(object):
         fp.close()
         self.server.adaptor.commit()
         return (IP.total_lines, IL.total_domains)
-
