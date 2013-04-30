@@ -45,7 +45,9 @@ AVG = FS.AVG
 # would use the new -builtin flag to SWIG and forgo all these wrapper
 # files. However, this would break existing code and require extensive testing
 
-FS_Smatrix = type(FS.new_Smatrix({('A', 'A'): 0}, FS.SIMILARITY))
+_tmp_Smatrix = FS.new_Smatrix({('A', 'A'): 0}, FS.SIMILARITY)
+FS_Smatrix = type(_tmp_Smatrix)
+FS.delete_Smatrix(_tmp_Smatrix)
 
 # Dummy matrix classes
 class SubstitutionMatrix(dict):
