@@ -161,6 +161,10 @@ class ExperimentView(Tkinter.Frame, View):
 
 
     def _change_experiment(self, text=None):
+
+        if len(self.exp_list) == 0:
+            return
+
         index = int(self.wExpCombo.curselection()[0])
         exp_id = self.exp_list[index][0]
 
@@ -240,7 +244,6 @@ class ExperimentView(Tkinter.Frame, View):
 
     def _validate_input(self, exp_data, new_exp=False):
         name, desc, qseq, qdesc, min_len, max_len = exp_data
-
         if new_exp:
             # Name must be non-empty
             if len(name) == 0:
@@ -271,7 +274,7 @@ class ExperimentView(Tkinter.Frame, View):
                           'No sequence input.',
                           parent=self.parent)
                 return False
-            if len(qseq.translate('#'*256,a)) > 0:
+            if len(qseq.translate('#'*256, a)) > 0:
                 showerror('Input Error',
                           'Sequence contains invalid letters.',
                           parent=self.parent)
@@ -416,7 +419,7 @@ class ExperimentView(Tkinter.Frame, View):
         name = name.rstrip('\n ')
         desc = self.wDescText.getvalue().rstrip('\n ')
 
-        qseq = self.wSeqText.getvalue()
+        qseq = str(self.wSeqText.getvalue())
         qseq = qseq.replace(' ', '').replace('\n', '').strip().upper()
 
         qdesc = self.wDtxt.getvalue().rstrip('\n ')
