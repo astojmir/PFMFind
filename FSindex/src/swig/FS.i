@@ -65,7 +65,7 @@ extern int next_avail_srch;
   int val;
   PyObject *key, *value;
   PyObject *Pa, *Pb;
-  int pos = 0;
+  Py_ssize_t pos = 0;
 
   if (!PyDict_Check($input)) {
     PyErr_SetString(PyExc_ValueError, "Expecting a dictionary");
@@ -73,8 +73,9 @@ extern int next_avail_srch;
   }
   memset(a_set, 0 , A_SIZE * sizeof(int));
   $1 = callocec(A_SIZE, sizeof(int *));
-  for (i=0; i < A_SIZE; i++)
+  for (i=0; i < A_SIZE; i++) {
     $1[i] = callocec(A_SIZE, sizeof(int));
+  }
   while (PyDict_Next($input, &pos, &key, &value)) {
     if (PyTuple_Check(key) && PyTuple_GET_SIZE(key) == 2) {
       Pa = PyTuple_GetItem(key, 0);
@@ -86,29 +87,36 @@ extern int next_avail_srch;
 	}
       }
       else continue;
-      if (PyInt_Check(value))
+      if (PyInt_Check(value)) {
 	val = (int) PyInt_AsLong(value);
-      else if (PyFloat_Check(value))
+      }
+      else if (PyFloat_Check(value)) {
 	val = (int) PyFloat_AsDouble(value);
+      }
       else continue;
       $1[*a & A_SIZE_MASK][*b & A_SIZE_MASK] = val;
       $1[*b & A_SIZE_MASK][*a & A_SIZE_MASK] = val;
-      if (++(a_set[*a & A_SIZE_MASK]) == 1)
+      if (++(a_set[*a & A_SIZE_MASK]) == 1) {
 	a_len++;
-      if (++(a_set[*b & A_SIZE_MASK]) == 1)
+      }
+      if (++(a_set[*b & A_SIZE_MASK]) == 1) {
 	a_len++;
+      }
     }
   }
   if (!a_len) {
     PyErr_SetString(PyExc_ValueError, "No valid entry given");
-    for (i=0; i < A_SIZE; i++)
+    for (i=0; i < A_SIZE; i++) {
       free($1[i]);
+    }
     free($1);
     return NULL;
   }
   $2 = callocec(a_len+1,1);
   for (j=0, i=0; i < A_SIZE; i++)
-    if (a_set[i]) $2[j++] = 64+i;
+    if (a_set[i]) {
+      $2[j++] = 64+i;
+    }
 }
 
 /* Converting pssm as list of dictionaries into M + alphabet + len */
@@ -121,7 +129,7 @@ extern int next_avail_srch;
   PyObject *key, *value;
   PyObject *row;
   PyObject *dict;
-  int pos = 0;
+  Py_ssize_t pos = 0;
 
   if (!PyList_Check($input)) {
     PyErr_SetString(PyExc_ValueError, "Expecting a list");
@@ -726,5 +734,3 @@ typedef enum {SARRAY, DUPS_ONLY, FULL_SCAN} PFUNC_TYPE;
     *res = FSINDX_threaded_srch(self, args, n);
   }
 }
-
-
