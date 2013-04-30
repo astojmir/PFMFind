@@ -129,8 +129,11 @@ def parse_slaves_config(serverfile):
     fp = file(serverfile, 'r')
     servers = []
     for line in fp:
-        sp_line = line.split()
+        sp_line = line.strip().split()
+        assert len(sp_line) >= 2
         sp_line[1] = int(sp_line[1])
+        if len(sp_line) < 4:
+            sp_line += [''] * (4 - len(sp_line))
         servers.append(sp_line)
     fp.close()
     return servers
