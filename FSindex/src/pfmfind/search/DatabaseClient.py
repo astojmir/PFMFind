@@ -307,7 +307,7 @@ class DatabaseClient(object):
         """
 
         sql = "SELECT experiment_id, name FROM experiments ORDER BY" \
-              " experiment_id DESC"
+              " experiment_id"
         cursor = self.conn.cursor()
         cursor.execute(sql)
         results = cursor.fetchall()
@@ -895,4 +895,3 @@ class DatabaseClient(object):
 
         cursor.close()
         return bioentry_dict
-

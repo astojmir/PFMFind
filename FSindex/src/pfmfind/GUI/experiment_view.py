@@ -20,10 +20,13 @@
 
 
 import Tkinter, tkFont, Pmw, threading
+import os.path
 from tkMessageBox import askquestion
 from tkMessageBox import showerror, showinfo, Message
+from tkFileDialog import askopenfilename
 from pfmfind.GUI.view import View
-
+from pfmfind.GUI.progress_dialog import ProgressDialog
+from pfmfind.search.db import db
 
 class ExperimentView(Tkinter.Frame, View):
 
@@ -130,6 +133,10 @@ class ExperimentView(Tkinter.Frame, View):
                                      command=self._reset_form)
         self.wReset.pack(side='left', anchor='nw', padx=5, pady=5)
 
+        self.wBatch = Tkinter.Button(self, text='Upload From File',
+                                     command=self._load_batch)
+        self.wBatch.pack(side='left', anchor='nw', padx=5, pady=5)
+
         self.wUpdate = Tkinter.Button(self, text='Update',
                                       command=self._update_database)
         self.wUpdate.pack(side='right', anchor='ne', padx=5, pady=5)
@@ -197,60 +204,47 @@ class ExperimentView(Tkinter.Frame, View):
         self.wSeqText.setvalue("")
         self.wSeqText.configure(text_state = 'disabled')
 
-    def _validate_input(self, exp_data, new_exp=False):
+    def _validate_input(self, exp_data, new_exp=False, show_errors=True):
+
+        names = set(s[1] for s in self.exp_list)
+        a = 'ACDEFGHIKLMNPQRSTVWY'
+
         name, desc, qseq, qdesc, min_len, max_len = exp_data
-        if new_exp:
-            # Name must be non-empty
-            if len(name) == 0:
-                showerror('Input Error',
-                          'No experiment name given.',
-                          parent=self.parent)
-                return False
-
-            # Name may have no more than 40 chars.
-            if len(name) > 40:
-                showerror('Input Error',
-                          'Experiment name too long.',
-                          parent=self.parent)
-                return False
-
-            # Name must be unique
-            names = [s[1] for s in self.exp_list]
-            if name in names:
-                showerror('Input Error',
-                          'Experiment name must be unique.',
-                          parent=self.parent)
-                return False
-
-            # Sequence non-empty and valid
-            a = 'ACDEFGHIKLMNPQRSTVWY'
-            if len(qseq) == 0:
-                showerror('Input Error',
-                          'No sequence input.',
-                          parent=self.parent)
-                return False
-            if len(qseq.translate('#'*256, a)) > 0:
-                showerror('Input Error',
-                          'Sequence contains invalid letters.',
-                          parent=self.parent)
-                return False
-
-            # Sequence description non-empty
-            if len(qdesc) == 0:
-                showerror('Input Error',
-                          'Must have sequence description.',
-                          parent=self.parent)
-                return False
+        errmsg = None
 
         # Non-empty experiment description
         if len(desc) == 0:
-            showerror('Input Error',
-                      'Must have experiment description.',
-                      parent=self.parent)
+            errmsg = 'Must have experiment description.'
+
+        if new_exp and errmsg is None:
+            # Name must be non-empty
+            if len(name) == 0:
+                errmsg = 'No experiment name given.'
+
+            # Name may have no more than 40 chars.
+            elif len(name) > 40:
+                errmsg = 'Experiment name too long.',
+
+            # Name must be unique
+            elif name in names:
+                errmsg = 'Experiment name must be unique.'
+
+            # Sequence non-empty and valid
+            elif len(qseq) == 0:
+                errmsg = 'No sequence input.'
+
+            elif len(qseq.translate('#'*256, a)) > 0:
+                errmsg = 'Sequence contains invalid letters.'
+
+            # Sequence description non-empty
+            elif len(qdesc) == 0:
+                errmsg = 'Must have sequence description.'
+
+        if errmsg is not None:
+            if show_errors:
+                showerror('Input Error', errmsg, parent=self.parent)
             return False
-
         return True
-
 
     def _new_experiment(self):
         self.new_exp=True
@@ -335,11 +329,58 @@ class ExperimentView(Tkinter.Frame, View):
             self.wSeqText.insert('end', s[i-10:i])
             self.wSeqText.insert('end', ' ')
 
-    def reset_experiment_list(self):
+    def _load_batch(self):
+
+        path = askopenfilename(defaultextension='.fas',
+                               filetypes=[('FASTA File','.fas'),
+                                          ('FASTA File','.fasta')],
+                               parent = self.parent,
+                               title = 'Choose FASTA-formatted File',
+                               initialdir=os.getcwd())
+        if not len(path): return
+        root_name = os.path.basename(path)
+
+        try:
+            batchdb = db(path)
+        except:
+            showerror('Batch Loading Error',
+                      'Could not process selected FASTA file.',
+                      parent=self.parent)
+            return
+
+        # pb = ProgressDialog(self.parent, text="Uploading query sequences",
+        #                     max=batchdb.no_seq+1)
+        # pb.activate(geometry = 'centerscreenalways')
+        names = set(s[1] for s in self.exp_list)
+        num_invalid = 0
+        for i in xrange(batchdb.no_seq):
+            name = root_name[:33] + '-%6.6d' % i
+            if name in names:
+                num_invalid += 1
+                continue
+            qseq = batchdb.get_seq(i)
+            qdesc = batchdb.get_def(i)
+            desc = name + ' : ' + qdesc
+            exp_data = (name, desc, qseq, qdesc, 6, 20)
+            if self._validate_input(exp_data, new_exp=True, show_errors=False):
+                eid = self.PFMF_client.create_experiment(*exp_data)
+                self.reset_experiment_list(set_gui=False)
+            else:
+                num_invalid += 1
+        # pb.deactivate()
+        if num_invalid:
+            showerror('Batch Loading Error',
+                      '%d sequences from the selected'
+                      ' FASTA file could not be loaded.' % num_invalid,
+                      parent=self.parent)
+        self.reset_experiment_list(set_gui=True)
+
+    def reset_experiment_list(self, set_gui=True):
         self.exp_list = self.PFMF_client.get_experiment_names()
         names = [s[1] for s in self.exp_list]
 
-        self.wExpCombo.setlist(names)
+        if set_gui:
+            self.wExpCombo.setlist(names)
 
     def get_form_data(self):
 
