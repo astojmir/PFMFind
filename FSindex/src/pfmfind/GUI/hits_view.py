@@ -20,9 +20,9 @@
 
 
 from pfmfind.GUI.view import View
-from pfmfind.Expt.hit_list import HitList
+from pfmfind.search.hit_list import HitList
 import Pmw, Tkinter, string, threading
-from pfmfind.Expt.matrix import ScoreMatrix, ProfileMatrix
+from pfmfind.search.matrix import ScoreMatrix, ProfileMatrix
 from pfmfind.GUI.ScrolledSeq import ScrolledSeq, col_f
 from pfmfind.GUI.optionmenu import OptionMenu
 

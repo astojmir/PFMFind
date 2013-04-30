@@ -20,7 +20,7 @@
 
 
 # Module pfmfind
-__all__ = ['GUI', 'Expt', 'Setup', 'plugins']
+__all__ = ['GUI', 'search', 'setup', 'plugins']
 
 
 import sys

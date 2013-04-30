@@ -28,8 +28,8 @@ Kills all subservers.
 
 ## import socket, sys, time, string
 
-from pfmfind.Expt.SearchServer import parse_slaves_config
-from pfmfind.Expt.SearchServer import terminate_slaves
+from pfmfind.search.SearchServer import parse_slaves_config
+from pfmfind.search.SearchServer import terminate_slaves
 
 
 ## def now():

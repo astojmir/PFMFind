@@ -24,10 +24,10 @@ __date__ = "$Date: 2006-03-02 15:48:06 -0500 (Thu, 02 Mar 2006) $"
 __author__ = "Aleksandar Stojmirovic"
 
 
-from pfmfind.Expt.SearchClient import SearchClient
-from pfmfind.Expt.fragexpt import PFMFindClient
-from pfmfind.Expt.db import db 
-from pfmfind.Expt.SearchServer import REL_SRCH
+from pfmfind.search.SearchClient import SearchClient
+from pfmfind.search.fragexpt import PFMFindClient
+from pfmfind.search.db import db 
+from pfmfind.search.SearchServer import REL_SRCH
 import sys, time, os
 
 _RUNS_PER_FORK = 500
@@ -227,7 +227,7 @@ def one_search_fork(server_host, server_port, tag,
         sequence = fasta_db.get_seq(i)
         description = fasta_db.get_def(i)
         
-        exp_name = 'Expt%4.4d %s' % (i, description.split(None,1)[0]) 
+        exp_name = 'search%4.4d %s' % (i, description.split(None,1)[0]) 
 
 
         final_motifs = iterated_rel_search(search_client,

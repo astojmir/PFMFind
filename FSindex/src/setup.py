@@ -14,15 +14,15 @@ from os.path import join
 PACKAGES = [
     'pfmfind',
     'pfmfind.GUI',
-    'pfmfind.Expt',
-    'pfmfind.Setup',
+    'pfmfind.search',
+    'pfmfind.setup',
     'pfmfind.plugins',
     ]
 
 libs=["gcc"]
 
 EXTENSIONS = [
-    Extension('pfmfind.Expt.FS',
+    Extension('pfmfind.search.FS',
               ['swig/FS_wrap.c',
                'lib/bioseq.c',
                'lib/FSindex.c',

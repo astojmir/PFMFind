@@ -23,8 +23,8 @@
 
 
 import socket, sys
-from pfmfind.Expt.SearchClient import SearchClient, send_obj
-from pfmfind.Expt.matrix import SCORE, POSITIONAL
+from pfmfind.search.SearchClient import SearchClient, send_obj
+from pfmfind.search.matrix import SCORE, POSITIONAL
 from Bio.SubsMat import MatrixInfo
 
 

@@ -21,8 +21,8 @@
 
 from pfmfind.GUI.view import View
 from pfmfind.GUI.optionmenu import OptionMenu
-from pfmfind.Expt.hit_list import HitList
-from pfmfind.Expt.hit_list import description
+from pfmfind.search.hit_list import HitList
+from pfmfind.search.hit_list import description
 from array import array
 from cStringIO import StringIO
 import Pmw, Tkinter, string, bisect, threading

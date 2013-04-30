@@ -23,7 +23,7 @@ import Tkinter, Pmw, string, threading
 from tkMessageBox import askquestion, showwarning
 from pfmfind.GUI.view import View
 from pfmfind.GUI.ScrolledSeq import ScrolledSeq, col_f
-from pfmfind.Expt.SearchServer import RNG_SRCH, KNN_SRCH, REL_SRCH
+from pfmfind.search.SearchServer import RNG_SRCH, KNN_SRCH, REL_SRCH
 from pfmfind.GUI.optionmenu import OptionMenu
 
 

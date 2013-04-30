@@ -23,10 +23,10 @@
 
 from cStringIO import StringIO
 
-from pfmfind.Expt.DirichletMix import DirichletMix, freq_counts, \
+from pfmfind.search.DirichletMix import DirichletMix, freq_counts, \
      henikoff_weights, BKGRND_PROBS as bg_dict
-from pfmfind.Expt.DirichletInfo import get_mix, NAMES
-from pfmfind.Expt.matrix import POSITIONAL 
+from pfmfind.search.DirichletInfo import get_mix, NAMES
+from pfmfind.search.matrix import POSITIONAL 
 
 
 

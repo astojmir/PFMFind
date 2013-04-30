@@ -23,7 +23,7 @@ import Tkinter, tkMessageBox, Pmw
 from tkMessageBox import askquestion
 import os, sys
 
-from pfmfind.Expt import fragexpt
+from pfmfind.search import fragexpt
 
 from view import View
 from status import StatusShow

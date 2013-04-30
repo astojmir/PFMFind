@@ -24,9 +24,9 @@ Wrapper around FSindex library.
 """
 
 import os, os.path
-from pfmfind.Expt import FS
-from pfmfind.Expt.db import db
-from pfmfind.Expt.hit_list import HitList
+from pfmfind.search import FS
+from pfmfind.search.db import db
+from pfmfind.search.hit_list import HitList
 
 FS_BINS = FS.FS_BINS
 SUFFIX_ARRAY = FS.SUFFIX_ARRAY

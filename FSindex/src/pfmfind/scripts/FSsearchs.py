@@ -22,7 +22,7 @@
 
 import sys, os.path
 import win32serviceutil, win32service
-from pfmfind.Expt import SearchServer
+from pfmfind.search import SearchServer
 
 __version__ = "$Rev: 1.1 $"
 __date__ = "$Date: 2006-03-02 15:48:06 -0500 (Thu, 02 Mar 2006) $"

@@ -30,13 +30,13 @@ import xml.parsers.expat
 from cStringIO import StringIO
 
 import pfmfind
-from pfmfind.Expt.matrix import SCORE
-from pfmfind.Expt.matrix import POSITIONAL
-from pfmfind.Expt.matrix import ScoreMatrix
-from pfmfind.Expt.matrix import ProfileMatrix
-from pfmfind.Expt.SearchClient import SearchClient
-from pfmfind.Expt.DatabaseClient import DatabaseClient
-from pfmfind.Expt.SearchServer import REL_SRCH
+from pfmfind.search.matrix import SCORE
+from pfmfind.search.matrix import POSITIONAL
+from pfmfind.search.matrix import ScoreMatrix
+from pfmfind.search.matrix import ProfileMatrix
+from pfmfind.search.SearchClient import SearchClient
+from pfmfind.search.DatabaseClient import DatabaseClient
+from pfmfind.search.SearchServer import REL_SRCH
 
 _MAX_SUBMITTED_SEARCHES = 20
 

@@ -21,8 +21,8 @@
 
 
 from Bio.SubsMat import MatrixInfo
-from pfmfind.Expt.matrix import QUASI, MAX, AVG, SCORE
-from pfmfind.Expt.matrix import SubstitutionMatrix
+from pfmfind.search.matrix import QUASI, MAX, AVG, SCORE
+from pfmfind.search.matrix import SubstitutionMatrix
 
 _MATRIX_CTYPE = {'None': 0, 'Quasi': QUASI, 'Avg': AVG, 'Max': MAX} 
 

@@ -24,13 +24,13 @@ import cPickle
 from cStringIO import StringIO
 import numpy as np
 import numpy.fft as fft
-from pfmfind.Expt.matrix import POSITIONAL
-from pfmfind.Expt.matrix import SCORE
-from pfmfind.Expt.matrix import SIMILARITY
-from pfmfind.Expt.matrix import DISTANCE
-from pfmfind.Expt.matrix import ScoreMatrix
-from pfmfind.Expt.matrix import ProfileMatrix
-from pfmfind.Expt.DirichletMix import BKGRND_PROBS as BG
+from pfmfind.search.matrix import POSITIONAL
+from pfmfind.search.matrix import SCORE
+from pfmfind.search.matrix import SIMILARITY
+from pfmfind.search.matrix import DISTANCE
+from pfmfind.search.matrix import ScoreMatrix
+from pfmfind.search.matrix import ProfileMatrix
+from pfmfind.search.DirichletMix import BKGRND_PROBS as BG
 
 # Use Biopython matrices
 

@@ -33,12 +33,12 @@ from cStringIO import StringIO
 from threading import Thread
 from errno import EINTR
 
-from pfmfind.Expt.index import FSIndex
-from pfmfind.Expt.matrix import SCORE
-from pfmfind.Expt.matrix import POSITIONAL
-from pfmfind.Expt.matrix import ScoreMatrix
-from pfmfind.Expt.matrix import ProfileMatrix
-from pfmfind.Expt.scoredistr import ScoreDistr
+from pfmfind.search.index import FSIndex
+from pfmfind.search.matrix import SCORE
+from pfmfind.search.matrix import POSITIONAL
+from pfmfind.search.matrix import ScoreMatrix
+from pfmfind.search.matrix import ProfileMatrix
+from pfmfind.search.scoredistr import ScoreDistr
 
 
 RNG_SRCH = 0

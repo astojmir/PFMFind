@@ -25,12 +25,12 @@ from cStringIO import StringIO
 
 from BioSQL import BioSeqDatabase
 
-from pfmfind.Setup.TaxonLoader import TaxonLoader
-from pfmfind.Setup.UniprotLoader import load_Uniprot
-from pfmfind.Setup.UnirefLoader import UnirefParser
-from pfmfind.Setup.UnirefLoader import UnirefLoader
-from pfmfind.Setup.InterProLoader import Protein2IprParser
-from pfmfind.Setup.InterProLoader import InterProLoader
+from pfmfind.setup.TaxonLoader import TaxonLoader
+from pfmfind.setup.UniprotLoader import load_Uniprot
+from pfmfind.setup.UnirefLoader import UnirefParser
+from pfmfind.setup.UnirefLoader import UnirefLoader
+from pfmfind.setup.InterProLoader import Protein2IprParser
+from pfmfind.setup.InterProLoader import InterProLoader
 
 SCHEMA_DIR = os.path.join(os.path.dirname(__file__), 'sql-schema')
 

@@ -53,7 +53,7 @@ OPTIONS:
 
 
 import getopt, sys
-from pfmfind.Setup.SetupIndex import PFMF_IndexCreator
+from pfmfind.setup.setupIndex import PFMF_IndexCreator
 
 __version__ = "$Revision: 1.1 $"
 __date__ = "$Date$"
