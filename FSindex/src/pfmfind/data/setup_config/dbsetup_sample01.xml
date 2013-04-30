@@ -3,7 +3,7 @@
 <PFMF_db_setup>
   <Database driver="psycopg" user="aleksander" db="PFMFind"/>
   <Schema name="PFMFind02" create="1"/>
-  <Sql_dir>/home/aleksander/FSindex/src/ShortFrags/data/sql-schema</Sql_dir>
+  <Sql_dir>/home/aleksander/FSindex/src/pfmfind/data/sql-schema</Sql_dir>
   <Sql_scripts sql_start="biosqldb-pg-nocnstr.sql" sql_end="biosqldb-pg-cnstr.sql"/>
   <Taxonomy copy="1">
     <Taxon_dir>/home/aleksander/data/taxon_tables</Taxon_dir>

@@ -37,7 +37,7 @@ a GUI form. Optionally, a Python console can be provided.
 """
 
 import Pmw, sys, getopt
-from ShortFrags.GUI.PFMFindGUI import PFMFindGUI
+from pfmfind.GUI.PFMFindGUI import PFMFindGUI
 
 __version__ = "$Revision: 1.1 $"
 __date__ = "$Date$"
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     # Parse Arguments
     options = ''
     long_options = ['console']
-    
+
     try:
         opts, args = getopt.getopt(sys.argv[1:], options,
                                    long_options)
@@ -72,7 +72,3 @@ if __name__ == "__main__":
     root.title("PFMFind")
     PFMF_GUI = PFMFindGUI(root, config_file, globals_dict)
     root.mainloop()
-
-
-
-

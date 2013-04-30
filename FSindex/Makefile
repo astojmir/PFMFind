@@ -121,5 +121,5 @@ tarball:
 	tar -rvf FSindex.tar Makefile; \
 	tar -rvf FSindex.tar $(SWIGDIR)/*.i; \
 	tar -rvf FSindex.tar $(SWIGDIR)/Makefile; \
-	tar -rvf FSindex.tar $(SCRIPTDIR)/ShortFrags; \
+	tar -rvf FSindex.tar $(SRCDIR)/pfmfind; \
 	gzip  FSindex.tar; \

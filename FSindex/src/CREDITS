@@ -8,10 +8,10 @@ following exceptions:
 * include/pqueue.h is a Public Domain code taken from
   http://www.sbhatnagar.com/SourceCode/pqueue.html;
 
-* ShortFrags/GUI/Console.py was created by Ka-Ping Yee and is in the
+* pfmfind/GUI/Console.py was created by Ka-Ping Yee and is in the
   Public Domain.
 
-The file ShortFrags/scripts/FSsearchd.py is largely based on the
+The file pfmfind/scripts/FSsearchd.py is largely based on the
 recipies from the Active State Programming Network Python Cookbook:
 http://aspn.activestate.com/ASPN/Cookbook/Python/ See the source code
 file for details.
