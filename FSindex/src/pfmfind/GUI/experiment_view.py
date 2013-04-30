@@ -249,6 +249,9 @@ class ExperimentView(Tkinter.Frame, View):
                       parent=self.parent)
             return False
 
+        return True
+
+
     def _new_experiment(self):
         self.new_exp=True
         self.selected_exp_id = None
@@ -339,12 +342,13 @@ class ExperimentView(Tkinter.Frame, View):
         self.wExpCombo.setlist(names)
 
     def get_form_data(self):
-        name = self.wExpCombo.component('entryfield').getvalue()
+
+        name = str(self.wExpCombo.component('entryfield').getvalue())
         name = name.rstrip('\n ')
-        desc = self.wDescText.getvalue().rstrip('\n ')
+        desc = str(self.wDescText.getvalue().rstrip('\n '))
         qseq = str(self.wSeqText.getvalue())
         qseq = qseq.replace(' ', '').replace('\n', '').strip().upper()
-        qdesc = self.wDtxt.getvalue().rstrip('\n ')
+        qdesc = str(self.wDtxt.getvalue().rstrip('\n '))
         return (name, desc, qseq, qdesc, 6, 20)
 
     def reset(self, state=None):
