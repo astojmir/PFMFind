@@ -26,6 +26,4 @@ clean_lib:
 clean: clean_wrap clean_lib
 
 srcclean: clean
-	rm -f *~; 
-
-
+	rm -f *~;
