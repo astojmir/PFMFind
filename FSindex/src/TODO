@@ -26,7 +26,7 @@ Some things that could be improved:
 
 * General
 
-  - Remove SWIG - make native Python types
+  - Make native Python types
   - Handle matrices better, remove 31 letter alphabet limit
   - Code to allow filtering of hits based on annotations
   - Proper handling of invalid letters (shorter fragments)
