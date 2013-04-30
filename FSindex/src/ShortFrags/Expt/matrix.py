@@ -40,6 +40,13 @@ MAX = FS.MAX
 AVG = FS.AVG
 
 
+# SWIG types - I don't know how to get them directly so I am using constructors
+# to get their instances. Then, I get types from these instances. Ideally, I
+# would use the new -builtin flag to SWIG and forgo all these wrapper
+# files. However, this would break existing code and require extensive testing
+
+FS_Smatrix = type(FS.new_Smatrix({('A', 'A'): 0}, FS.SIMILARITY))
+
 # Dummy matrix classes
 class SubstitutionMatrix(dict):
     """
@@ -55,7 +62,7 @@ class MatrixColumn(object):
         self.this = this
         self.thisown = 0
         self._abet = list(alphabet)
-    
+
     def __len__(self):
         return len(self._abet)
 
@@ -65,7 +72,7 @@ class MatrixColumn(object):
         elif key not in self._abet:
             raise IndexError, 'Invalid letter.'
         return self.get_func(self, self._col, key)
-        
+
     def __setitem__(self, key, value):
         if type(key) is not types.StringType and len(key) != 1:
             raise TypeError, 'Invalid key type.'
@@ -87,13 +94,13 @@ class MatrixColumn(object):
 
     def values(self):
         return [self.__getitem__(a) for a in self._abet]
-    
+
     def get(self, key, x=None):
         if self.has_key(key):
             return self.__getitem__(key)
         else:
             return x
-    
+
     def iteritems(self):
         return iter(self.items)
 
@@ -102,7 +109,7 @@ class MatrixColumn(object):
 
     def itervalues(self):
         return iter(self.values)
-    
+
 class ScoreColumn(MatrixColumn):
     def __init__(self, col, this, alphabet):
         MatrixColumn.__init__(self, col, this, alphabet)
@@ -116,7 +123,7 @@ class ProfileColumn(MatrixColumn):
         self.set_func = FS.Smatrix_profile_set_item
 
 
-        
+
 
 class Smatrix(object): # Base class for matrices
     def __del__(self):
@@ -140,7 +147,7 @@ class Smatrix(object): # Base class for matrices
             return self.__getitem__(key)
         else:
             return x
-    
+
     def iteritems(self):
         return iter(self.items)
 
@@ -161,7 +168,7 @@ class Smatrix(object): # Base class for matrices
 
 
     Mtype = property(FS.Smatrix_Mtype_get)
-    
+
     Stype = property(FS.Smatrix_Stype_get)
 
     conv_type = property(FS.Smatrix_conv_type_get, FS.Smatrix_conv_type_set)
@@ -169,28 +176,32 @@ class Smatrix(object): # Base class for matrices
 
 class ScoreMatrix(Smatrix):
     def __init__(self, inarg, Stype=FS.SIMILARITY, new=True):
+
         self.thisown = 0
-        if type(inarg) is types.StringType:
-            if new == True:
-                # Load from file 
-                self.this = FS.Smatrix_load(inarg)
+        # First check if we are passing the SWIG wrapped type.
+        if isinstance(inarg, FS_Smatrix):
+            if new:
+                self.this = FS.Smatrix_copy(inarg)
                 self.thisown = 1
             else:
-                # SWIG string
                 self.this = inarg
                 self.thisown = 1
-            # Dictionary - Biopython matrix 
+        elif isinstance(inarg, str):
+            # Load from file
+            self.this = FS.Smatrix_load(inarg)
+            self.thisown = 1
+            # Dictionary - Biopython matrix
         elif isinstance(inarg, dict):
             self.this = FS.new_Smatrix(inarg, Stype)
             self.thisown = 1
             # Instance of ScoreMatrix
         elif isinstance(inarg, ScoreMatrix):
-            self.this = FS.Smatrix_copy(inarg)
+            self.this = FS.Smatrix_copy(inarg.this)
             self.thisown = 1
         else:
             raise TypeError, "Constructor only accepts"\
                   " a filename, a dictionary"\
-                  " and an instance of ScoreMatrix." 
+                  " and an instance of ScoreMatrix."
 
         self.alphabet = FS.Smatrix_alphabet_get(self)
         self.mean = self._calc_mean()
@@ -228,13 +239,13 @@ class ScoreMatrix(Smatrix):
         sum = 0
 ##         for i in self.alphabet:
 ##             for j in self.alphabet:
-##                 sum += bg_dict[i] * bg_dict[j] * self[i][j] 
-        return sum 
+##                 sum += bg_dict[i] * bg_dict[j] * self[i][j]
+        return sum
 
     def test_separation(self, alphabet=None):
         V = {}
         if alphabet == None:
-            alphabet = self.alphabet        
+            alphabet = self.alphabet
         for x in alphabet:
             t=0
             sxx = self[x][x]
@@ -249,14 +260,14 @@ class ScoreMatrix(Smatrix):
         V = {}
         if alphabet == None:
             alphabet = self.alphabet
-            
+
         if self.Stype == FS.SIMILARITY:
             ineq_func = lambda x,y,z: self[y][y] + self[x][z] -\
                         self[x][y] - self[y][z]
         else:
             ineq_func = lambda x,y,z: self[x][y] + self[y][z] -\
                         self[x][z]
-            
+
         for x in alphabet:
             for y in alphabet:
                 for z in alphabet:
@@ -264,7 +275,7 @@ class ScoreMatrix(Smatrix):
                     if r < 0:
                         V[(x,y,z)] = r
         return V
-                    
+
     def latex_repr(self, alphabet=None):
         if alphabet == None:
             alphabet = self.alphabet
@@ -284,30 +295,35 @@ class ScoreMatrix(Smatrix):
         fs.write('\\end{tabular}')
         return fs.getvalue()
 
+
 class ProfileMatrix(Smatrix):
     def __init__(self, inarg, Stype=FS.SIMILARITY, new=True):
         self.thisown = 0
-        if type(inarg) is types.StringType:
-            # SWIG string
-            self.this = inarg
-            self.thisown = 1
-        elif type(inarg) is types.ListType:
+        if isinstance(inarg, FS_Smatrix):
+            if new:
+                self.this = FS.Smatrix_copy(inarg)
+                self.thisown = 1
+            else:
+                self.this = inarg
+                self.thisown = 1
+        elif isinstance(inarg, list):
             # List - Biopython PSSM
             self.this = FS.Smatrix_pssm(inarg)
             self.thisown = 1
         elif isinstance(inarg, ProfileMatrix):
             # Instance of ProfileMatrix
-            self.this = FS.Smatrix_copy(inarg)
+            self.this = FS.Smatrix_copy(inarg.this)
             self.thisown = 1
         else:
             raise TypeError, "Constructor only accepts"\
                   " a Biopython PSSM"\
-                  " and an instance of ProfileMatrix." 
+                  " and an instance of ProfileMatrix."
 
         self.mean = self._calc_mean()
         self.alphabet = FS.Smatrix_alphabet_get(self)
         self._len = FS.Smatrix_len_get(self)
         self.qseq = FS.Smatrix_qseq_get(self)
+
     def __len__(self):
         return self._len
 
@@ -340,9 +356,5 @@ class ProfileMatrix(Smatrix):
         sum = 0
 ##         for i in self.alphabet:
 ##             for j in self.alphabet:
-##                 sum += bg_dict[i] * bg_dict[j] * self[i][j] 
-        return sum 
-
-
-
-
+##                 sum += bg_dict[i] * bg_dict[j] * self[i][j]
+        return sum
