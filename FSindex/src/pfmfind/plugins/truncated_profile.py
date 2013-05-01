@@ -19,8 +19,8 @@
 #
 
 from pfmfind.search.DirichletInfo import NAMES
-from default_profile import get_matrix as default_get_matrix
-from default_profile import print_info as default_print_info
+from pfmfind.plugins.default_profile import get_matrix as default_get_matrix
+from pfmfind.plugins.default_profile import print_info as default_print_info
 
 iteration = True
 arg_list = [('Scale', 'real', 2.0),
@@ -32,13 +32,13 @@ arg_list = [('Scale', 'real', 2.0),
 def get_matrix(HL, scale, weight_type, dirichlet_type, min_hits):
     """
     Returns default profile if the number of hits is not less than
-    min_hits. 
+    min_hits.
     """
 
     if len(HL) < min_hits:
         return None, 0, 0
 
-    return default_get_matrix(HL, scale, weight_type, dirichlet_type) 
+    return default_get_matrix(HL, scale, weight_type, dirichlet_type)
 
 def print_info(HL, scale, weight_type, dirichlet_type, min_hits):
     """
@@ -46,8 +46,6 @@ def print_info(HL, scale, weight_type, dirichlet_type, min_hits):
     """
 
     if len(HL) < min_hits:
-        return ""
-    
-    return default_print_info(HL, scale, weight_type, dirichlet_type) 
+        return "Too few hits to construct PSSM"
 
-
+    return default_print_info(HL, scale, weight_type, dirichlet_type)
