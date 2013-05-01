@@ -24,7 +24,7 @@ from Bio.SubsMat import MatrixInfo
 from pfmfind.search.matrix import QUASI, MAX, AVG, SCORE
 from pfmfind.search.matrix import SubstitutionMatrix
 
-_MATRIX_CTYPE = {'None': 0, 'Quasi': QUASI, 'Avg': AVG, 'Max': MAX} 
+_MATRIX_CTYPE = {'None': 0, 'Quasi': QUASI, 'Avg': AVG, 'Max': MAX}
 
 
 iteration = False
@@ -46,10 +46,8 @@ def get_matrix(HL, matrix_name, conv_type):
     S = SubstitutionMatrix()
     S.update(MatrixInfo.__dict__[matrix_name])
     S.name = matrix_name
-    
-##     S = MatrixInfo.__dict__[matrix_name]
+
     _filter_non_standard_letters(S)
     matrix_type = SCORE
     ctype = _MATRIX_CTYPE[conv_type]
     return S, matrix_type, ctype
-

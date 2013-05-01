@@ -203,6 +203,7 @@ class SearchView(Tkinter.Frame, View):
                 b.update()
 
     def _highlight_jobs(self):
+
         self.wSeqText.tag_remove('green yellow', '1.0', '3.0')
         self.wSeqText.tag_remove('green', '1.0', '3.0')
         self.wSeqText.tag_remove('royal blue', '1.0', '3.0')
@@ -217,7 +218,7 @@ class SearchView(Tkinter.Frame, View):
             if f in self.PFMF_client.max_iters:
                 max_iters = self.PFMF_client.max_iters[f].get(l, -1)
             else:
-                max_iters=-1
+                max_iters = -1
             if self.jobs[(l,f)][0] == max_iters + 1:
                 self.wSeqText.tag_add('green yellow', pos)
             elif self.jobs[(l,f)][0] > max_iters + 1:
@@ -504,4 +505,3 @@ class SearchView(Tkinter.Frame, View):
             else:
                 plugin_args.append(default_choice)
         return plugin, plugin_args
-
