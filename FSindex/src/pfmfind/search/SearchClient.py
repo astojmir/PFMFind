@@ -23,16 +23,16 @@ import socket
 from cStringIO import StringIO
 
 from pfmfind.search.SearchServer import DIE, GET_INDEX_DATA, \
-     GET_SERVERS, SEARCH, SCORE_DISTR, send_obj, receive_obj 
+     GET_SERVERS, SEARCH, SCORE_DISTR, send_obj, receive_obj
 
 class SearchClient(object):
     def __init__(self):
         self.detach()
 
     def _master_data(self, opcode, address=None, data=0):
-        if address == None:
+        if address is None:
             address = (self.host, self.port)
-        try: 
+        try:
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.connect(address)
@@ -43,21 +43,21 @@ class SearchClient(object):
         except Exception, inst:
             return None
         return mdata
-        
+
     def poll(self):
         if not self.attached: return
-        if self.get_ix_data() == None:
+        if self.get_ix_data() is None:
             return False
         else:
             return True
 
     def get_ix_data(self, address=None):
-        if not self.attached and address == None:
+        if not self.attached and address is None:
             return None
         return self._master_data(GET_INDEX_DATA, address)
 
     def get_servers(self, address=None):
-        if not self.attached and address == None:
+        if not self.attached and address is None:
             return None
         return self._master_data(GET_SERVERS, address)
 
@@ -67,7 +67,7 @@ class SearchClient(object):
                   "Must be detached before attaching"
 
         ix_data = self.get_ix_data((host,port))
-        if ix_data == None: return False
+        if ix_data is None: return False
 
         self.host = host
         self.port = port
@@ -102,21 +102,23 @@ class SearchClient(object):
         self.detach()
 
     def search(self, search_args):
-        if not self.attached: return
 
-        # Convert E-value to P-value 
+        if not self.attached or not search_args:
+            return []
+
+        # Convert E-value to P-value
         for j,srch in enumerate(search_args):
             srch.extend([None, self.fragments])
 
         # Search
         results = self._master_data(SEARCH, address=None, data=search_args)
-        if results == None:
+        if results is None:
             return [None] * len(search_args)
 
         return results
-    
-    def index_data_str(self): 
-        if self.ix_data == None:
+
+    def index_data_str(self):
+        if self.ix_data is None:
             return ""
 
         fs = StringIO()
@@ -124,7 +126,7 @@ class SearchClient(object):
         fs.write("********* OVERALL SIZE *********\n")
         fs.write("Total fragments: %d\n" % self.fragments)
         fs.write("Total bins: %d\n\n" % self.bins)
-        
+
         for j,ixdict in enumerate(self.ix_data):
             fs.write("********* INDEX #%d *********\n" % j)
             fs.write("***** Database Details *****\n")
