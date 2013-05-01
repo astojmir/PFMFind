@@ -22,7 +22,7 @@
 from pfmfind.GUI.view import View
 from pfmfind.search.hit_list import HitList
 import Pmw, Tkinter, string, threading
-from pfmfind.search.matrix import ScoreMatrix, ProfileMatrix
+from pfmfind.search.matrix import ProfileMatrix
 from pfmfind.GUI.ScrolledSeq import ScrolledSeq, col_f
 from pfmfind.GUI.optionmenu import OptionMenu
 
@@ -157,7 +157,8 @@ class HitsView(Tkinter.Frame, View):
 
     def reset(self, state=(None, None, None)):
 
-        if state == self.state: return
+        if state == self.state:
+            return
 
         self.state = length, fragment, iteration = state
 
@@ -188,7 +189,8 @@ class HitsView(Tkinter.Frame, View):
         is_current_thread = (thread_id == self.current_thread)
         self.thread_lock.release()
 
-        if not is_current_thread: return
+        if not is_current_thread:
+            return
 
         if self.HL_done:
             if self.HL == None:
@@ -225,7 +227,9 @@ class HitsView(Tkinter.Frame, View):
 
 
     def _show_hits(self):
-        if self.HL == None: return
+
+        if self.HL == None:
+            return
 
         HL = self.HL
         self.wScText.tag_remove('click', '1.0', 'end')
@@ -253,13 +257,13 @@ class HitsView(Tkinter.Frame, View):
         self.wScText.tag_add('click','%d.0' % (s+2), '%d.0' % (d-1))
 
     def _get_pos(self, x, y):
-        pos = string.split(self.wScText.index("@%d,%d" % (x,y)),'.')
+        pos = string.split(self.wScText.index("@%d,%d" % (x, y)), '.')
         return (int(pos[1]), int(pos[0]))
 
     def _click_event(self, event):
         if self.HL == None:
             return
-        x1,y1 = self._get_pos(event.x, event.y)
+        x1, y1 = self._get_pos(event.x, event.y)
 
         s = _row(self.ind['Summary'])
         d = _row(self.ind['Details'])

@@ -27,7 +27,7 @@ class IndexView(TextDisplay, View):
         TextDisplay.__init__(self, parent, label='Index')
         View.__init__(self)
         self.PFMF_client = PFMF_client
-        
-    def reset(self, state):
+
+    def reset(self, state=(None, None, None)):
         text = self.PFMF_client.index_data_str()
         self.set_text('Index', text)

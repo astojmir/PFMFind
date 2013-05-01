@@ -19,13 +19,13 @@
 #
 
 
-import Tkinter, tkFont, Pmw, threading
+import Tkinter, Pmw, threading
 import os.path
 from tkMessageBox import askquestion
-from tkMessageBox import showerror, showinfo, Message
+from tkMessageBox import showerror
 from tkFileDialog import askopenfilename
 from pfmfind.GUI.view import View
-from pfmfind.GUI.progress_dialog import ProgressDialog
+# from pfmfind.GUI.progress_dialog import ProgressDialog
 from pfmfind.search.db import db
 
 class ExperimentView(Tkinter.Frame, View):
@@ -325,7 +325,7 @@ class ExperimentView(Tkinter.Frame, View):
         s = self.get_form_data()[2]
         self.wSeqText.setvalue("")
 
-        for i in range(10, len(s)+10,10):
+        for i in range(10, len(s)+10, 10):
             self.wSeqText.insert('end', s[i-10:i])
             self.wSeqText.insert('end', ' ')
 

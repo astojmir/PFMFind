@@ -19,12 +19,10 @@
 #
 
 
-import Tkinter, tkMessageBox, Pmw
-from tkMessageBox import askquestion
-import os, sys
+import Tkinter
+import Pmw
 
 from pfmfind.search.PFMFindClient import PFMFindClient
-
 from view import View
 from status import StatusShow
 from index_view import IndexView
@@ -42,7 +40,6 @@ _SEARCH = 2
 _RESULTS = 3
 _INDEX = 4
 
-from view import View
 class DummyView(Tkinter.Frame, View):
     def __init__(self, parent, PFMF_client):
         Tkinter.Frame.__init__(self, parent)
@@ -51,7 +48,7 @@ class PFMFindGUI(Tkinter.Frame):
     def __init__(self, parent=None, config_file=None, globals_dict=None):
         Tkinter.Frame.__init__(self, parent)
         self.pack(fill='both', expand = 1)
-        self.parent=parent
+        self.parent = parent
 
 
         # State variables
@@ -180,12 +177,14 @@ class PFMFindGUI(Tkinter.Frame):
         self.update_tab_state()
 
     def _create_view(self, name):
-        if name not in self.wViews: return
+        if name not in self.wViews:
+            return
         w = self.wViews[name][0]
         w.set_size(self.work_height, self.work_width)
 
     def _raise_view(self, name):
-        if name not in self.wViews: return
+        if name not in self.wViews:
+            return
         w = self.wViews[name][0]
         w.set_size(self.work_height, self.work_width)
         w.reset(self.state)
