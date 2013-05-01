@@ -21,7 +21,3 @@
 
 # Module pfmfind
 __all__ = ['GUI', 'search', 'setup', 'plugins']
-
-
-from os.path import join
-CONFIG_DATA_DIR = join('share', 'pfmfind', 'setup_config')
