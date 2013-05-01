@@ -34,7 +34,9 @@ LDFLAGS = "-L ../lib"
 # gcc flags
 GPROF = -pg
 CC = gcc
-CWARNINGS = -pipe -Wall -Wno-char-subscripts -Wshadow \
+CWARNINGS = -pipe -Wall -Wunused-result -Wno-char-subscripts -Wshadow \
+            -D_FORTIFY_SOURCE=2 -fstack-protector -funwind-tables \
+            -fasynchronous-unwind-tables \
           -Wwrite-strings -Wstrict-prototypes \
           -Wformat -Wmissing-prototypes -funsigned-char #-Werror
 COPTIM=-O3 -fomit-frame-pointer -finline-functions -funroll-loops -D GCC_INLINE
@@ -53,7 +55,7 @@ LDLIBS = "-lFSindex -lgcc -lm -lpthread"
 
 VPATH = src/lib:src/swig
 
-CFLAGS = $(DEBUG) $(INCS) -fPIC # -D THREADS=4
+CFLAGS = $(COPTIM) $(INCS) -fPIC # -D THREADS=4
 
 all: progs
 
