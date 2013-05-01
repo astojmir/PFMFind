@@ -19,11 +19,11 @@
  */
 
 
-/********************************************************************/    
+/********************************************************************/
 /*                                                                  */
-/*                    FS_PARTITION module                           */ 
+/*                    FS_PARTITION module                           */
 /*                                                                  */
-/********************************************************************/    
+/********************************************************************/
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -34,16 +34,20 @@
 /* Main constructor */
 FS_TABLE *FS_TABLE_init(const char **sepn, int len)
 {
-  int i, j, l, m, p;
+  int i;
+  int j;
+  int l = 0;
+  int m;
+  int p;
   const char *c;
   char *abet;
   ULINT KK = 1;
-  FS_TABLE *ptable; 
+  FS_TABLE *ptable;
 
   /* Make sure that alphabet is in the right format and
      alphabets at all positions are the same. We do it
      here rather than later so that we can abort without
-     allocating anything. The code following the check 
+     allocating anything. The code following the check
      assumes everything is as it should be. */
 
   /* Check format */
@@ -66,21 +70,21 @@ FS_TABLE *FS_TABLE_init(const char **sepn, int len)
   qsort(abet, l, 1, compare_char);
 
   /* Check that each letter appears only once */
-  for (j=1; j < l; j++) 
+  for (j=1; j < l; j++)
     if (abet[j] == abet[j-1]) {
       free(abet);
       return NULL;
     }
 
-  /* Check if other positions have the same alphabet as the first. 
-     It is sufficient to check that 
+  /* Check if other positions have the same alphabet as the first.
+     It is sufficient to check that
      - the lengths of alphabets match, and
-     - each letter in abet matches one and only one letter 
+     - each letter in abet matches one and only one letter
      in sepn[i]. */
 
   for (i=1; i < len; i++) {
     for (j=0; j < l; j++) {
-      for (c=sepn[i], p=0; *c; c++) 
+      for (c=sepn[i], p=0; *c; c++)
 	if (*c == abet[j]) p++;
       if (p != 1) {
 	free(abet);
@@ -113,7 +117,7 @@ FS_TABLE *FS_TABLE_init(const char **sepn, int len)
   for (i=0; i < len; i++) {
     ptable->rank[i] = callocec(A_SIZE, sizeof(int));
     for (c = sepn[i], j= A_SIZE - l; *c; c++)
-      if (*c != '#') 
+      if (*c != '#')
 	ptable->rank[i][*c & A_SIZE_MASK] = j++;
     for (j=0, m=1; j < A_SIZE; j++) {
       if (j == ('_' & A_SIZE_MASK)) continue;
@@ -124,7 +128,7 @@ FS_TABLE *FS_TABLE_init(const char **sepn, int len)
   /* Check if order is the same at each position */
   ptable->same_order = 1;
   for (i=1; i < len; i++) {
-    for (j=0; j < A_SIZE; j++) 
+    for (j=0; j < A_SIZE; j++)
       if (ptable->rank[i][j] != ptable->rank[0][j]) {
 	ptable->same_order = 0;
 	break;
@@ -155,7 +159,7 @@ FS_TABLE *FS_TABLE_init(const char **sepn, int len)
       return NULL;
     }
     KK *= p;
-  }   
+  }
   ptable->bins = KK;
   return ptable;
 }
@@ -185,8 +189,8 @@ void FS_TABLE_del(FS_TABLE *ptable)
 void FS_TABLE_write(FS_TABLE *ptable, FILE *fp)
 {
   int i;
-  fwrite(&(ptable->len), sizeof(int), 1, fp);
-  for (i=0; i < ptable->len; i++) 
+  fwrite_(&(ptable->len), sizeof(int), 1, fp);
+  for (i=0; i < ptable->len; i++)
     fwrite_string(ptable->sepn[i], fp);
 }
 
@@ -196,11 +200,11 @@ FS_TABLE *FS_TABLE_read(FILE *fp)
   int i, len;
   FS_TABLE *ptable;
 
-  fread(&len, sizeof(int), 1, fp);
+  fread_(&len, sizeof(int), 1, fp);
   sepn = mallocec(len * sizeof(char *));
-  for (i=0; i < len; i++) 
+  for (i=0; i < len; i++)
     fread_string(sepn + i, fp);
-  
+
   ptable = FS_TABLE_init((const char **)sepn, len);
 
   for (i=0; i < len; i++)
@@ -245,7 +249,7 @@ char *FS_SEQ_print(FS_TABLE *ptable, FS_SEQ_t FSseq)
     FSseq /= ptable->K[i];
   }
   for (i=0; i < ptable->len; i++) {
-    for (q=0, c=ptable->sepn[i]; *c; c++) 
+    for (q=0, c=ptable->sepn[i]; *c; c++)
       if (*c == '#') q++;
       else if (p[i] == q) break;
     for (l=0; c[l] != '#'; l++);

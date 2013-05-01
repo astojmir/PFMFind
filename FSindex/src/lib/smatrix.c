@@ -465,15 +465,15 @@ void SCORE_MATRIX_write(SCORE_MATRIX *S, FILE *fp)
 {
   int i, m;
 
-  fwrite(&S->Mtype, sizeof(MATRIX_TYPE), 1, fp);
-  fwrite(&S->Stype, sizeof(SCORE_TYPE), 1, fp);
-  fwrite(&S->len, sizeof(int), 1, fp);
-  fwrite(&S->alen, sizeof(int), 1, fp);
-  fwrite(S->alphabet, sizeof(char), S->alen, fp);
+  fwrite_(&S->Mtype, sizeof(MATRIX_TYPE), 1, fp);
+  fwrite_(&S->Stype, sizeof(SCORE_TYPE), 1, fp);
+  fwrite_(&S->len, sizeof(int), 1, fp);
+  fwrite_(&S->alen, sizeof(int), 1, fp);
+  fwrite_(S->alphabet, sizeof(char), S->alen, fp);
 
   m = S->Mtype == SCORE ? A_SIZE : S->len;
   for (i=0; i < m; i++)
-    fwrite(S->M[i], sizeof(int), A_SIZE, fp);
+    fwrite_(S->M[i], sizeof(int), A_SIZE, fp);
 }
 
 SCORE_MATRIX *SCORE_MATRIX_read(FILE *fp)
@@ -487,18 +487,18 @@ SCORE_MATRIX *SCORE_MATRIX_read(FILE *fp)
   char *alphabet;
 
 
-  fread(&Mtype, sizeof(MATRIX_TYPE), 1, fp);
-  fread(&Stype, sizeof(SCORE_TYPE), 1, fp);
-  fread(&len, sizeof(int), 1, fp);
-  fread(&alen, sizeof(int), 1, fp);
+  fread_(&Mtype, sizeof(MATRIX_TYPE), 1, fp);
+  fread_(&Stype, sizeof(SCORE_TYPE), 1, fp);
+  fread_(&len, sizeof(int), 1, fp);
+  fread_(&alen, sizeof(int), 1, fp);
   alphabet = callocec(alen+1, sizeof(char));
-  fread(alphabet, sizeof(char), alen, fp);
+  fread_(alphabet, sizeof(char), alen, fp);
 
   m = Mtype == SCORE ? A_SIZE : len;
   M = mallocec(m * sizeof(int *));
   for (i=0; i < m; i++) {
     M[i] = mallocec(A_SIZE * sizeof(int));
-    fread(M[i], sizeof(int), A_SIZE, fp);
+    fread_(M[i], sizeof(int), A_SIZE, fp);
   }
 
   return SCORE_MATRIX_init(M, len, Mtype, Stype, alphabet);

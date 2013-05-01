@@ -86,6 +86,38 @@ void *reallocec(void *pt, long int size)
   return(memp);
 }
 
+
+
+/********************************************************************/
+/*                                                                  */
+/*      Error checking wrappers to fgets, fread and fwrite          */
+/*                                                                  */
+/********************************************************************/
+
+void fgets_(char *s, int size, FILE *stream)
+{
+  char *d = fgets(s, size, stream);
+  if (d==NULL && ferror(stream)) {
+    Throw FSexcept(IO_ERR, "Problem reading file (fgets).");
+  }
+}
+
+void fread_(void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+  size_t count = fread(ptr, size, nmemb, stream);
+  if (count != nmemb) {
+    Throw FSexcept(IO_ERR, "Problem reading file (fread).");
+  }
+}
+
+void fwrite_(const void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+  size_t count = fwrite(ptr, size, nmemb, stream);
+  if (count != nmemb) {
+    Throw FSexcept(IO_ERR, "Problem writing to file.");
+  }
+}
+
 /********************************************************************/
 /*                                                                  */
 /*                    Unix path processing                          */
@@ -156,16 +188,16 @@ char *path_join(const char *h, const char *t)
 void fwrite_string(char *s, FILE *fp)
 {
   int len = strlen(s) + 1;
-  fwrite(&len, sizeof(int), 1, fp);
-  fwrite(s, sizeof(char), len, fp);
+  fwrite_(&len, sizeof(int), 1, fp);
+  fwrite_(s, sizeof(char), len, fp);
 }
 
 void fread_string(char **s, FILE *fp)
 {
   int len;
-  fread(&len, sizeof(int), 1, fp);
+  fread_(&len, sizeof(int), 1, fp);
   *s = mallocec(len);
-  fread(*s, sizeof(char), len, fp);
+  fread_(*s, sizeof(char), len, fp);
 }
 
 

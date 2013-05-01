@@ -32,7 +32,7 @@
 #define BUF_SIZE 512
 
 static inline
-int fastadb_put_line(char *buffer, char **heap, ULINT *len, 
+int fastadb_put_line(char *buffer, char **heap, ULINT *len,
 		     ULINT *max_len)
 {
   int l;
@@ -40,22 +40,22 @@ int fastadb_put_line(char *buffer, char **heap, ULINT *len,
 
   if (*len + l + 2 >= *max_len) {
     *max_len += ALLOC_BLOCK_SIZE;
-    *heap = reallocec(*heap, *max_len); 
+    *heap = reallocec(*heap, *max_len);
   }
   if (buffer[l-1] == '\n')
     l--;
-  
+
   if (l > 0)
     memcpy(*heap+*len, buffer, l);
 
   *len += l;
-  return l;  
+  return l;
 }
 
 SEQUENCE_DB *fastadb_open(const char *db_name)
 {
   FILE *fp;
-  SEQUENCE_DB *s_db;  
+  SEQUENCE_DB *s_db;
   int l, i;
   static char buffer[BUF_SIZE+1];
   char *s1, *s2;
@@ -64,8 +64,8 @@ SEQUENCE_DB *fastadb_open(const char *db_name)
 
   /* Current variables */
   char **heap_pter;
-  ULINT *heap_len; 
-  ULINT *heap_size;  
+  ULINT *heap_len;
+  ULINT *heap_size;
   char *buff_pter;
 
 
@@ -76,7 +76,7 @@ SEQUENCE_DB *fastadb_open(const char *db_name)
     db_name = "stdin";
   }
   else if ((fp = fopen(db_name, "r")) == NULL)
-    Throw FSexcept(FOPEN_ERR, 
+    Throw FSexcept(FOPEN_ERR,
 		   "fastadb_open(): Could not open fasta database %s",
 		   db_name);
 
@@ -93,16 +93,16 @@ SEQUENCE_DB *fastadb_open(const char *db_name)
 
   /* We start in the sequence state */
   heap_pter = &(s_db->seq_data);
-  heap_len = &(s_db->seq_data_len); 
-  heap_size = &data_size;  
+  heap_len = &(s_db->seq_data_len);
+  heap_size = &data_size;
 
   while(!feof(fp)) {
     /* This ensures that the last sequence is loaded correctly */
     buffer[0] = '\0';
 
-    fgets(buffer, BUF_SIZE, fp);
-    buff_pter = buffer; 
-    if ((heap_pter == &(s_db->seq_data)) && (buffer[0] == '>')) { 
+    fgets_(buffer, BUF_SIZE, fp);
+    buff_pter = buffer;
+    if ((heap_pter == &(s_db->seq_data)) && (buffer[0] == '>')) {
 
       /* New sequence */
       if (s_db->seq_data_len) {
@@ -112,21 +112,21 @@ SEQUENCE_DB *fastadb_open(const char *db_name)
 
       /* Switch to defline state */
       heap_pter = &(s_db->deflines);
-      heap_len = &(s_db->deflines_len); 
-      heap_size = &desc_size;  
+      heap_len = &(s_db->deflines_len);
+      heap_size = &desc_size;
       buff_pter = buffer+1;
     }
 
     l = fastadb_put_line(buff_pter, heap_pter, heap_len, heap_size);
-      
+
     if ((heap_pter == &(s_db->deflines)) && (buff_pter[l] == '\n')) {
 
       s_db->deflines[s_db->deflines_len++] = '\0';
 
       /* Switch to sequence state */
       heap_pter = &(s_db->seq_data);
-      heap_len = &(s_db->seq_data_len); 
-      heap_size = &data_size;  
+      heap_len = &(s_db->seq_data_len);
+      heap_size = &data_size;
     }
   }
 
@@ -146,7 +146,7 @@ SEQUENCE_DB *fastadb_open(const char *db_name)
 
   /* Allocate sequences */
   s_db->seq = mallocec(s_db->no_seq * sizeof(BIOSEQ));
-  
+
   /* Write offsets */
   s1 = s_db->seq_data;
   s2 = s_db->deflines;
@@ -155,7 +155,7 @@ SEQUENCE_DB *fastadb_open(const char *db_name)
     s_db->seq[i].len = strlen(s1);
     s1 += s_db->seq[i].len + 1;
     s_db->length += s_db->seq[i].len;
-    
+
     s_db->seq[i].id.defline = s2;
     s2 += strlen(s2) + 1;
   }
@@ -179,17 +179,17 @@ ULINT fastadb_count_Ffrags(SEQUENCE_DB *s_db, ULINT len)
   ULINT i;
   ULINT S = 0;
   for (i=0; i < s_db->no_seq; i++)
-    if (s_db->seq[i].len >= len) 
+    if (s_db->seq[i].len >= len)
       S += s_db->seq[i].len - len + 1;
   return S;
 }
 
-int fastadb_find_Ffrag_seq(SEQUENCE_DB *s_db, BIOSEQ *frag, 
-			   ULINT *seq_id, ULINT *rel_offset) 
+int fastadb_find_Ffrag_seq(SEQUENCE_DB *s_db, BIOSEQ *frag,
+			   ULINT *seq_id, ULINT *rel_offset)
 {
   ULINT a = 0;
   ULINT b = s_db->no_seq - 1;
-  ULINT k = b/2; 
+  ULINT k = b/2;
 
   if (frag->start > s_db->seq[s_db->no_seq - 1].start) {
     *seq_id = s_db->no_seq - 1;
@@ -213,4 +213,3 @@ int fastadb_find_Ffrag_seq(SEQUENCE_DB *s_db, BIOSEQ *frag,
   *rel_offset = frag->start - s_db->seq[k].start;
   return 1;
 }
-

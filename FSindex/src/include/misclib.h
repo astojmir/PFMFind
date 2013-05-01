@@ -97,6 +97,10 @@ int min(int a, int b);
 
 /* I/O */
 
+void fgets_(char *s, int size, FILE *stream);
+void fread_(void *ptr, size_t size, size_t nmemb, FILE *stream);
+void fwrite_(const void *ptr, size_t size, size_t nmemb, FILE *stream);
+
 void fwrite_string(char *s, FILE *fp);
 void fread_string(char **s, FILE *fp);
 
