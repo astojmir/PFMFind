@@ -23,7 +23,7 @@ import Tkinter, tkMessageBox, Pmw
 from tkMessageBox import askquestion
 import os, sys
 
-from pfmfind.search import fragexpt
+from pfmfind.search.PFMFindClient import PFMFindClient
 
 from view import View
 from status import StatusShow
@@ -55,7 +55,7 @@ class PFMFindGUI(Tkinter.Frame):
 
 
         # State variables
-        self.PFMF_client = fragexpt.PFMFindClient()
+        self.PFMF_client = PFMFindClient()
         self.state = (None, None, None)
 
         # Try to get the client running with a given config
@@ -252,5 +252,3 @@ class PFMFindGUI(Tkinter.Frame):
 
     def quit(self):
         self.parent.destroy()
-
-
