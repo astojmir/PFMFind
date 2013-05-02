@@ -78,7 +78,7 @@ def create_daemon(daemonid, port, workpath, indexfile, pythonpath=None, control_
 
     if pythonpath != None:
         sys.path.append(pythonpath)
-    workpath = os.path.expanduser(workpath)
+    workpath = os.path.abspath(os.path.expanduser(workpath))
     logfile = os.path.join(workpath, "FSsearchd_%s.log" % daemonid)
     pidfile = os.path.join(workpath, "FSsearchd_%s.pid" % daemonid)
 
