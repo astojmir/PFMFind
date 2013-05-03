@@ -23,12 +23,13 @@
 
 from cStringIO import StringIO
 
-from pfmfind.search.DirichletMix import DirichletMix, freq_counts, \
-     henikoff_weights, BKGRND_PROBS as bg_dict
-from pfmfind.search.DirichletInfo import get_mix, NAMES
+from pfmfind.search.DirichletMix import DirichletMix
+from pfmfind.search.DirichletMix import freq_counts
+from pfmfind.search.DirichletMix import henikoff_weights
+from pfmfind.search.DirichletMix import BKGRND_PROBS as bg_dict
+from pfmfind.search.DirichletInfo import get_mix
+from pfmfind.search.DirichletInfo import NAMES
 from pfmfind.search.matrix import POSITIONAL
-
-
 
 
 iteration = True
@@ -80,6 +81,7 @@ def print_info(HL, scale, weight_type, dirichlet_type):
 
     if weight_type is None:
         return ""
+
     seqs = HL.get_seqs()
     deflines = HL.get_deflines()
 
@@ -99,7 +101,5 @@ def print_info(HL, scale, weight_type, dirichlet_type):
     file_str.write('\n***** DIRICHLET MIXTURE PROBABILITIES *****\n')
     bprobs = DM.block_probs(wcounts)
     file_str.write(DM.print_block_data(bprobs, 6, 4, 'float'))
-    # file_str.write('\n***** INFORMATION CONTENT *****\n')
-    # file_str.write(DM.block2pssm(wcounts, seqs[0]).__str__())
-    file_str.write("\n"+ PM.__str__())
+    file_str.write("\n"+ str(PM))
     return file_str.getvalue()

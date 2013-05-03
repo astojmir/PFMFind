@@ -41,10 +41,11 @@ def _filter_non_standard_letters(S):
            b not in _std_alphabet_map:
             del(S[(a,b)])
 
+
 def get_matrix(HL, matrix_name, conv_type):
 
     S = SubstitutionMatrix()
-    S.update(MatrixInfo.__dict__[matrix_name])
+    S.update(getattr(MatrixInfo, matrix_name))
     S.name = matrix_name
 
     _filter_non_standard_letters(S)
