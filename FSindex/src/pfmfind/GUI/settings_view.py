@@ -51,7 +51,7 @@ class SettingsView(Tkinter.Frame, View):
 
         Tkinter.Label(w, text="PostgreSQL Driver:").grid(row=0,\
             column=0, padx=5, pady=5, sticky='w')
-        self.wDriverMenu = OptionMenu(w, items=['psycopg2', 'pgdb'],
+        self.wDriverMenu = OptionMenu(w, items=['psycopg2'],
                                       menubutton_width=20,
                                       menu_font=self.ffont,
                                       menubutton_font=self.ffont)
