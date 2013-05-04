@@ -11,8 +11,8 @@
 % ***** Margins ************
 \oddsidemargin 0.12 in
 \evensidemargin 0.12 in
-\textwidth 6.5in 
-\textheight 8.2in 
+\textwidth 6.5in
+\textheight 8.2in
 \marginparwidth 0pt
 \hoffset -0.1in
 \voffset -0.3in
@@ -66,7 +66,7 @@ PFMFind is installed in the standard distutils way (see \url{http://docs.python.
 \begin{verbatim}
 $ python setup.py install
 \end{verbatim}
-Please read the `Installing Python Modules' page (\url{http://docs.python.org/inst/inst.html}) for 
+Please read the `Installing Python Modules' page (\url{http://docs.python.org/inst/inst.html}) for
 customisation options. Note that you need a C compiler (such as gcc) to build the C extensions included in PFMFind.
 
 \subsection{Other platforms}
@@ -117,7 +117,7 @@ Depending on the configuration file, each step can be done separately or all tog
 <PFMF_db_setup>
   <Database driver="psycopg" user="aleksand" db="PFMFind"/>
   <Schema name="SwissProt02082005" create="1"/>
-  <Sql_scripts sql_start="biosqldb-pg-nocnstr.sql" 
+  <Sql_scripts sql_start="biosqldb-pg-nocnstr.sql"
       sql_end="biosqldb-pg-cnstr.sql"/>
   <Taxonomy copy="1">
   <Taxon_dir>/home/aleksand/data/bio/taxon_tables</Taxon_dir>
@@ -167,7 +167,7 @@ An optional element indicating the SQL scripts to be run to create the required 
 
 \subsubsection*{\texttt{ <Taxonomy>}}
 
-Optional element with one optional attribute (\texttt{ copy}). If specified, it must include the element \texttt{ <Taxon\_dir>}, which indicates the storage directory for the taxon data from NCBI. The \texttt{ copy} attribute can be set to 0 (default), 1 or 2. If it is 2, only the tab-separated tables will be loaded into database (this can be used to reuse the tables from several PostgreSQL schemas); if it is 1 the tables will in addition be created from the NCBI taxon data; if it is 0 the taxon data will be downloaded from the NCBI ftp site. 
+Optional element with one optional attribute (\texttt{ copy}). If specified, it must include the element \texttt{ <Taxon\_dir>}, which indicates the storage directory for the taxon data from NCBI. The \texttt{ copy} attribute can be set to 0 (default), 1 or 2. If it is 2, only the tab-separated tables will be loaded into database (this can be used to reuse the tables from several PostgreSQL schemas); if it is 1 the tables will in addition be created from the NCBI taxon data; if it is 0 the taxon data will be downloaded from the NCBI ftp site.
 
 \subsubsection*{\texttt{ <Uniprot\_file>}, \texttt{ <Uniref\_file>}, \texttt{ <InterPro\_file>}}
 
@@ -188,7 +188,7 @@ Indexes should be setup once the database is loaded using the script {\it PFMFse
   <Database driver="psycopg" host="130.195.61.38" port="5432"
             user="aleksander" password="aleksander" db="PFMFind"/>
   <Index_dir>/home/aleksander/data/uniprot-3.5/FSindex</Index_dir>
-  <Dataset name="sprot" schema="PFMFind02" namespace="SwissProt" 
+  <Dataset name="sprot" schema="PFMFind02" namespace="SwissProt"
            max_residues="80000000">
     <Index length="10">
       <Partition>STAN#ILVM#KRDEQ#WFYH#GPC</Partition>
@@ -230,7 +230,7 @@ It has four possible attributes:
 
 Each \texttt{<Dataset>} can contain one or more \texttt{<Index>} elements, whose only (mandatory) element is \texttt{length}, giving the fragment length to be used to create the index. In turn, each \texttt{<Index>} element contains one or more \texttt{<Partition>} elements, having no attributes and containing a string specifying the amino acid alphabet partitions.
 
-Alphabet partitions are separated by \texttt{\#} (e.g. \texttt{STAN\#ILVM\#KRDEQ\#WFYH\#GPC}) and each \texttt{<Partition>} element specifies an alphabet partition for a single position in the fragment (up to the fragment length). If there are fewer \texttt{<Partition>} elements than the specified fragment length, the last \texttt{<Partition>} element is used for all remaining positions. Hence, in order to have the same alphabet partitions at all positions, it is sufficient to specify a single \texttt{<Partition>} element. 
+Alphabet partitions are separated by \texttt{\#} (e.g. \texttt{STAN\#ILVM\#KRDEQ\#WFYH\#GPC}) and each \texttt{<Partition>} element specifies an alphabet partition for a single position in the fragment (up to the fragment length). If there are fewer \texttt{<Partition>} elements than the specified fragment length, the last \texttt{<Partition>} element is used for all remaining positions. Hence, in order to have the same alphabet partitions at all positions, it is sufficient to specify a single \texttt{<Partition>} element.
 
 \section{Running FSIndex search servers}
 
@@ -273,13 +273,13 @@ Each server produces two files: a log file and a pid file. The log file receives
 
 Since \textit{FSsearchd.py} is a daemon and hence not connected to any terminal, the best way to terminate it is to send it a SIGTERM signal. To do so, find out (from a pid file or the output of \textit{ps}) its process id (\texttt{pid} and type
 \begin{verbatim}
-$ kill pid 
+$ kill pid
 \end{verbatim}
 This is a clean way to shutdown an FSIndex server since the logs are written and any pending requests are handled before shutdown.
 
 \subsection{FSsearchc.py script}\label{sec:FSscript}
 
-\textit{FSsearchc.py} script runs an FSIndex server from the command line, printing log to the standard output. It should run on all platforms and is started by 
+\textit{FSsearchc.py} script runs an FSIndex server from the command line, printing log to the standard output. It should run on all platforms and is started by
 \begin{verbatim}
 $ FSsearchc.py port indexfile
 \end{verbatim}
@@ -294,13 +294,15 @@ The GUI client can be started (on both UNIX and Windows) from the command line u
 $ PFMFind.pyw [--console] [config_file]
 \end{verbatim}
 
-The client will contain a Python console if the option \texttt{--console} is set. The \texttt{config\_file} optional argument is the path to the XML file containing the information about the database and the index to be connected. This file can also be specified from the GUI.
+The client will contain a Python console if the option \texttt{--console} is set. The \texttt{config\_file} optional argument is the path to an XML file containing the information about the database and the index to be connected. This file can also be specified from the GUI.
 
 \subsection{GUI functionality}
 
 TO DO.
 
-\section{Plugins}
+\section{Beyond GUI}
+
+\subsection{Search matrix plugins}
 
 Writing plugins is quite easy (as far as the interface is concerned). A plugin is a python module that defines two global variables, \texttt{iteration} and \texttt{arg\_list} as well as two functions: \texttt{get\_matrix} and \texttt{print\_info} (optional).
 
@@ -315,4 +317,4 @@ Writing plugins is quite easy (as far as the interface is concerned). A plugin i
 
 \end{itemize}
 
-\end{document}          
+\end{document}
