@@ -50,7 +50,11 @@ connection, enter the same settings that were specfied in the ``PFMFsetupdb.py``
 :ref:`configuration file<sec-dbconfig>`. Specifically, attributes of the
 `<Database>` tags should give you the entries for *Database*, *Host*, *Port*,
 *User* and *Password*.  The *Dataset schema* entry should come from the
-`<Schema>` tag attribute.
+`<Schema>` tag attribute. The *PFMFind schema* stores the results of your searches.
+It can be set to any identifier: if it does not exist it will be automatically
+created. After entering all necessary information, press **Connect** to establish
+connection.
+
 
 
 .. _sec-gui-expt:
