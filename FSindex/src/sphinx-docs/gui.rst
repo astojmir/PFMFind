@@ -44,6 +44,15 @@ Entering PFMFind client settings
 
    Settings tab
 
+Database and index connection settings are entered through the
+:ref:`**Settings** tab<fig-pfmfind-settings>`.  To establish database
+connection, enter the same settings that were specfied in the ``PFMFsetupdb.py``
+:ref:`configuration file<sec-dbconfig>`. Specifically, attributes of the
+`<Database>` tags should give you the entries for *Database*, *Host*, *Port*,
+*User* and *Password*.  The *Dataset schema* entry should come from the
+`<Schema>` tag attribute.
+
+
 .. _sec-gui-expt:
 
 Specifying query sequence
