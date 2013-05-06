@@ -1,6 +1,9 @@
+================================================================
 PFMFind: a system for discovery of peptide homology and function
+================================================================
 
-* Summary
+Summary
+=======
 
 Protein Fragment Motif Finder (PFMFind) is a system that enables
 efficient discovery of relationships between short fragments of
@@ -12,17 +15,18 @@ algorithm using an index for fast similarity search and a relational
 database for storing search results and sequence annotations. It is
 written mostly in Python. All components communicate between
 themselves using TCP/IP sockets and can be located on different
-physical machines. PFMFind is available for UNIX and Windows
-platforms. 
+physical machines.
 
-* Documentation
+Documentation
+=============
 
-The documentation for PFMFind can be found in the doc subdirectory. It
-includes detailed installation and setup instructions, in the html and
-pdf format. More information can be found at
-http://www.vuw.ac.nz/biodiscovery/publications/centre/pfmfind.aspx 
+The documentation for PFMFind can be found in the sphinx-docs subdirectory.
+It includes detailed installation and setup instructions, in ReST format.
+HTML or PDF documentation can be generated from the rst files using Sphinx
+Python package.
 
-* Licence
+Licence
+=======
 
 PFMFind package is Copyright 2004-2006 Victoria University of
 Wellington and is released under the GNU General Public Licence (GPL)

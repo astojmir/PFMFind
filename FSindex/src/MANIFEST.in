@@ -1,4 +1,7 @@
 include include/*.h
+include lib/Makefile
+include progs/*.c
+include progs/Makefile
 include pfmfind/scripts/FSsearchd.py
 include pfmfind/scripts/FSsearchc.py
 include pfmfind/scripts/FSsearchs.py
@@ -7,9 +10,12 @@ include pfmfind/scripts/PFMFsetupdb.py
 include pfmfind/scripts/PFMFsetupix.py
 include examples/setup_config/*.xml
 include examples/setup_config/*.dtd
-include doc/*.tex
-include doc/*.pdf
-include doc/*.eps
+include sphinx-docs/*.rst
+include sphinx-docs/*.png
+include sphinx-docs/conf.py
+include sphinx-docs/Makefile
+include swig/FS.i
+include swig/Makefile
 include COPYING
 include README
 include CREDITS
