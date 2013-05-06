@@ -79,6 +79,8 @@ class ExperimentView(Tkinter.Frame, View):
                                       listbox_font=self.ffont,
                                       entry_font=self.ffont)
         self.wExpCombo.grid(row=0, column=1, padx=5, pady=10, sticky='we')
+        self.wName = self.wExpCombo.component('entryfield').component('entry')
+        self.wName.configure(state='disabled')
         self.wExpList.interior().columnconfigure(1, weight=2)
         self.wDescText = Pmw.ScrolledText(self.wExpList.interior(),
                                           labelpos='w',
@@ -149,7 +151,8 @@ class ExperimentView(Tkinter.Frame, View):
         index = int(self.wExpCombo.curselection()[0])
         exp_id = self.exp_list[index][0]
 
-        if exp_id == self.selected_exp_id: return
+        if exp_id == self.selected_exp_id:
+            return
 
         self.selected_exp_id = exp_id
         self.inserted_exp_id = None
@@ -194,6 +197,8 @@ class ExperimentView(Tkinter.Frame, View):
             self.after(100, self._insert_data, exp_id)
 
     def _clear_data(self):
+
+        self.wName.configure(state='disabled')
         self.wDescText.configure(text_state = 'normal')
         self.wDescText.setvalue("")
         self.wDescText.configure(text_state = 'disabled')
@@ -247,17 +252,19 @@ class ExperimentView(Tkinter.Frame, View):
         return True
 
     def _new_experiment(self):
+
         self.new_exp=True
         self.selected_exp_id = None
         self.inserted_exp_id = None
         self.selected_exp_data = None
 
         self.wExpCombo.component('entryfield').clear()
-        self.wDescText.configure(text_state = 'normal')
+        self.wName.configure(state='normal')
+        self.wDescText.configure(text_state='normal')
         self.wDescText.setvalue("")
-        self.wDtxt.configure(text_state = 'normal')
+        self.wDtxt.configure(text_state='normal')
         self.wDtxt.setvalue("")
-        self.wSeqText.configure(text_state = 'normal')
+        self.wSeqText.configure(text_state='normal')
         self.wSeqText.setvalue("")
 
     def _delete_experiment(self):
@@ -280,7 +287,15 @@ class ExperimentView(Tkinter.Frame, View):
         self.wExpCombo.component('entryfield').clear()
 
     def _set_experiment(self):
-        index = int(self.wExpCombo.curselection()[0])
+
+        sel = self.wExpCombo.curselection()
+        if not len(sel):
+            showerror('Cannot set current experiment',
+                      'No experiment is currently selected.',
+                      parent=self.parent)
+            return
+
+        index = int(sel[0])
         exp_id = self.exp_list[index][0]
 
         if exp_id == self.PFMF_client.cur_expt:
@@ -303,18 +318,21 @@ class ExperimentView(Tkinter.Frame, View):
     def _update_database(self):
         exp_data = self.get_form_data()
         if self.new_exp:
-            if not self._validate_input(exp_data, new_exp=True): return
+            if not self._validate_input(exp_data, new_exp=True):
+                return
             # This needs to block - too complicated to spawn
             # a thread
             eid = self.PFMF_client.create_experiment(*exp_data)
             self.reset_experiment_list()
             # Select the name
             self.wExpCombo.selectitem(exp_data[0])
-            self.new_exp=False
+            self.new_exp = False
             self._change_experiment()
         else:
-            if exp_data[1] == self.selected_exp_data[1]: return
-            if not self._validate_input(exp_data): return
+            if exp_data[1] == self.selected_exp_data[1]:
+                return
+            if not self._validate_input(exp_data):
+                return
             thr = threading.Thread(\
                 target=self.PFMF_client.update_experiment,
                 args=(self.selected_exp_id, exp_data[1]))
