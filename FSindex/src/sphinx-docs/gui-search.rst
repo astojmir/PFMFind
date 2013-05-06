@@ -20,14 +20,17 @@ To schedule and perform a search
 
 * Select the appropriate sequence fragment and iteration using the counters
   within the top status bar.
-    - *Fragment Length* selects a fragment length between 6 and 20 residues.
-    - *Current Iteration* selects an iteration (0 for the initial search,
-      1 or more for searches based on the results of previous searches (similar
-      to PSI-BLAST).
-    - *Current Fragment* selects a particular fragment of a given
-      length. Fragments are numbered from 1. An *n*-th fragment consists of
-      the *n*-th residue within the query sequence plus the subsequent *m-1*
-      residues, where *m* is the specified fragment length.
+
+    o *Fragment Length* selects a fragment length between 6 and 20 residues.
+
+    o *Current Iteration* selects an iteration (0 for the initial search,
+    1 or more for searches based on the results of previous searches (similar
+    to PSI-BLAST).
+
+    o *Current Fragment* selects a particular fragment of a given
+    length. Fragments are numbered from 1. An *n*-th fragment consists of
+    the *n*-th residue within the query sequence plus the subsequent *m-1*
+    residues, where *m* is the specified fragment length.
 
 * Specify search parameters using the *Cutoff Options* and *Matrix Options*
   panels.
