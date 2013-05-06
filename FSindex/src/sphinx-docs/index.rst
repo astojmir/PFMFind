@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to PFMFind's documentation!
-===================================
+PFMFind Documentation
+=====================
 
 :Author: Aleksandar Stojmirovic
 :Contact: aleksandar-at-stojmirovic.org
@@ -21,6 +21,7 @@ Contents:
    fsindex.rst
    gui.rst
    beyond.rst
+   references.rst
 
 
 .. Indices and tables

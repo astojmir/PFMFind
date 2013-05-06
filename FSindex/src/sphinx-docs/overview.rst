@@ -10,7 +10,6 @@ PFMFind components communicate using the standard TCP/IP socket interface and ca
 .. _fig-pfmfind-system:
 
 .. figure:: PFMFind_struct.png
-   :scale: 100 %
    :alt: PFMFind system
 
    Structure of the PFMFind system.
