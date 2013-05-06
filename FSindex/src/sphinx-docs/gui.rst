@@ -17,109 +17,14 @@ PFMFind GUI allows users to perform searches of protein sequence databases using
 
 The PFMFind GUI workflow consists of the following steps:
 
-(1) :ref:`sec-gui-settings` (**Settings** tab)
+.. toctree::
+   :maxdepth: 1
 
-(2) :ref:`sec-gui-expt` (**Experiment** tab)
-
-(3) :ref:`sec-gui-index` (**Index** tab)
-
-(4) :ref:`sec-gui-search` (**Search** tab)
-
-(5) :ref:`sec-gui-hits` (**Hits** tab)
-
-(6) :ref:`sec-gui-keywords` (**Keyword** tab)
+   gui-settings.rst
+   gui-expt.rst
+   gui-index.rst
+   gui-search.rst
+   gui-hits.rst
+   gui-keywords.rst
 
 When the GUI is started the first time, only the **Settings** tab is enabled. Once the connection to the PostgreSQL database is established, the **Experiment** tab is also enabled. The **Index** tab is enabled when the client connects to a master search index. The final three tabs require the user to set a particular :ref:`experiment <sec-gui-expt>`, in addition to acquiring a database connection. The **Search** tab also requires a connection to an index. In this way, it is possible to examine previous search results without establishing a connection to an index.
-
-.. _sec-gui-settings:
-
-Entering PFMFind client settings
---------------------------------
-
-.. _fig-pfmfind-settings:
-
-.. figure:: pfmfind-gui-settings2.png
-   :scale: 100 %
-   :alt: PFMFind Settings tab
-
-   Settings tab
-
-Database and index connection settings are entered through the
-:ref:`**Settings** tab<fig-pfmfind-settings>`.  To establish database
-connection, enter the same settings that were specfied in the ``PFMFsetupdb.py``
-:ref:`configuration file<sec-dbconfig>`. Specifically, attributes of the
-`<Database>` tags should give you the entries for *Database*, *Host*, *Port*,
-*User* and *Password*.  The *Dataset schema* entry should come from the
-`<Schema>` tag attribute. The *PFMFind schema* stores the results of your searches.
-It can be set to any identifier: if it does not exist it will be automatically
-created. After entering all necessary information, press **Connect** to establish
-connection.
-
-
-
-.. _sec-gui-expt:
-
-Specifying query sequence
--------------------------
-
-.. _fig-pfmfind-expt:
-
-.. figure:: pfmfind-gui-expt2.png
-   :scale: 100 %
-   :alt: PFMFind Experiment tab
-
-   Experiment tab
-
-.. _sec-gui-index:
-
-Viewing index information
--------------------------
-
-.. _fig-pfmfind-index:
-
-.. figure:: pfmfind-gui-FSindex2.png
-   :scale: 100 %
-   :alt: PFMFind Index tab
-
-   Index tab
-
-.. _sec-gui-search:
-
-Setting up and running searches
--------------------------------
-
-
-.. _fig-pfmfind-search:
-
-.. figure:: pfmfind-gui-search.png
-   :scale: 100 %
-   :alt: PFMFind Search tab
-
-   Search tab
-
-.. _sec-gui-hits:
-
-Examining search hits
----------------------
-
-.. _fig-pfmfind-hits:
-
-.. figure:: pfmfind-gui-hits2.png
-   :scale: 100 %
-   :alt: PFMFind Hits tab
-
-   Hits tab
-
-
-.. _sec-gui-keywords:
-
-Associating search hits with sequence annotations
--------------------------------------------------
-
-.. _fig-pfmfind-keywords:
-
-.. figure:: pfmfind-gui-keywords2.png
-   :scale: 100 %
-   :alt: PFMFind Keywords tab
-
-   Keywords tab

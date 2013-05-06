@@ -3,6 +3,8 @@ Beyond GUI
 
 While the graphical interface is very useful for visualising search results and performing indivudual searches, it also has some limitations. For example, the selection of search matrices is limited and large iterated batch searches are not easy to perform. To perform these advanced tasks, it may be necessary to write your own Python code that interfaces with PFMFind as a library. PFMFind allows custom user plugins that provide additional search matrices, and it is relatively easy to write short scripts to automate some tasks.
 
+.. _sec-search-plugins:
+
 Search matrix plugins
 ---------------------
 

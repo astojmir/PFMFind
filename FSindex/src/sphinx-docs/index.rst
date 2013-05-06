@@ -8,6 +8,7 @@ PFMFind Documentation
 
 :Author: Aleksandar Stojmirovic
 :Contact: aleksandar-at-stojmirovic.org
+:Download:
 
 Contents:
 
