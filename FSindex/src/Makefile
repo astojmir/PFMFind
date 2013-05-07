@@ -3,7 +3,7 @@
 SHELL=/bin/sh
 MAKE = make
 
-SRCDIR = ./src
+SRCDIR = ./
 BINDIR = ./bin
 
 PROGSDIR = $(SRCDIR)/FSindex-testing/progs
