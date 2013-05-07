@@ -1,7 +1,5 @@
 include include/*.h
 include lib/Makefile
-include progs/*.c
-include progs/Makefile
 include pfmfind/scripts/FSsearchd.py
 include pfmfind/scripts/FSsearchc.py
 include pfmfind/scripts/FSsearchs.py
@@ -20,3 +18,8 @@ include COPYING
 include README
 include CREDITS
 include TODO
+include Makefile
+include FSindex-testing/data/*
+include FSindex-testing/matrix/*
+recursive-include FSindex-testing/other-schemes *.c *.h *.3 Makefile
+recursive-include FSindex-testing/progs *.c Makefile
