@@ -18,7 +18,7 @@ A boolean constant (either ``True`` or ``False``). If it is set to ``True``, the
 
 .. py:data:: arg_list
 
-A list specifying the arguments of the functions :py:func:`get_matrix` and :py:func:`print_info`. Its elements are triplets of the form ``(name, type, default_value)``, where ``name`` is a string identifying the variable (it is displayed on the GUI), the ``type`` is either a string or a list of strings. In the former case the GUI sets up a ``Pmw.EntryField`` widget whose value type is given by the string (Please refer to Pmw documentation). In the latter case, a ``Pmw.OptionMenu`` is setup with options being the members of lists. In both cases the given ``default_value`` is preselected.
+A list specifying the arguments of the functions :py:func:`get_matrix` and :py:func:`print_info`. Its elements are triplets of the form ``(name, type, default_value)``, where ``name`` is a string identifying the variable, the ``type`` is either a string or a list of strings. The corresponding GUI element, labeled with ``name``, is shown as a part of the :ref:`Matrix Options<subsec-matrix-options>` panel of the **Search** tab. If ``type`` is a string, the GUI element is a ``Pmw.EntryField`` widget whose value type is given by the string (Please refer to Pmw documentation). If ``type`` is a list of strings, a ``Pmw.OptionMenu`` is shown with options being the members of lists. In both cases, the given ``default_value`` is preselected.
 
 .. py:function:: get_matrix(HL, *args)
 
