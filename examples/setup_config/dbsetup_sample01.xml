@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE PFMF_db_setup SYSTEM "PFMFdb.dtd">
+<PFMF_db_setup>
+  <Database driver="psycopg" user="aleksander" db="PFMFind"/>
+  <Schema name="PFMFind02" create="1"/>
+  <Sql_dir>/home/aleksander/FSindex/src/pfmfind/data/sql-schema</Sql_dir>
+  <Sql_scripts sql_start="biosqldb-pg-nocnstr.sql" sql_end="biosqldb-pg-cnstr.sql"/>
+  <Taxonomy copy="1">
+    <Taxon_dir>/home/aleksander/data/taxon_tables</Taxon_dir>
+  </Taxonomy>
+  <Uniprot_file namespace="SwissProt">/home/aleksander/data/uniprot-3.5/flatfiles/uniprot_sprot.dat</Uniprot_file>
+  <Uniref_file namespace="SwissProt">/home/aleksander/data/uniprot-3.5/uniref/uniref50/uniref50.xml</Uniref_file>
+  <InterPro_file namespace="SwissProt">/home/aleksander/data/uniprot-3.5/InterPro/Rel10.0-26042005/protein2interpro.dat</InterPro_file>
+</PFMF_db_setup>

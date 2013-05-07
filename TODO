@@ -1,0 +1,28 @@
+Some things that could be improved:
+
+* FSIndex server/client
+
+  - New protocol for socket communication
+  - Better handling of requests - streaming
+  - Scoredistr module in pure C.
+  - Whole or most of the server in C (?)
+     - it would not be as portable as now !
+
+* Database client
+
+  - Sort out thread access
+  - Dump/restore utility
+
+* GUI
+
+  - GPL notice on startup
+  - Editor for plugins
+  - Make it nicer
+  - More intuitive colour scheme for keyword view
+
+* General
+
+  - Make native Python types
+  - Handle matrices better, remove 31 letter alphabet limit
+  - Code to allow filtering of hits based on annotations
+  - Proper handling of invalid letters (shorter fragments)
