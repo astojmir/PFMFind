@@ -273,7 +273,7 @@ class SearchView(Tkinter.Frame, View):
         conflicts = []
         remaining = []
         if job_type1 == 'Current':
-            # Only one coordnate
+            # Only one coordinate
             if (length, fragment) in self.jobs:
                 conflicts = [(length, fragment)]
             else:
