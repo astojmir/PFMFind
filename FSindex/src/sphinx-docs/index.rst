@@ -1,14 +1,11 @@
-.. PFMFind documentation master file, created by
-   sphinx-quickstart on Thu May  2 18:09:24 2013.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 PFMFind Documentation
 =====================
 
 :Author: Aleksandar Stojmirovic
 :Contact: aleksandar-at-stojmirovic.org
-:Download:
+:Download: `PFMFind Downloads <http://pfmfind.stojmirovic.org/downloads/>`_
+:Git repository: `git.stojmirovic.org/PFMFind.git <http://git.stojmirovic.org/PFMFind.git>`_
+
 
 Contents:
 
