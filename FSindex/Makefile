@@ -1,18 +1,18 @@
-# This makefile is very old and provisional
-# a configure script would be very useful
+# Makefile to compile C libraries and programs
+
 SHELL=/bin/sh
 MAKE = make
 
-SRCDIR = src/
-BINDIR = bin/
-# All subdirs of $(SRCDIR) are relative to $(SRCDIR)
-PROGSDIR = src/progs/
-LIBSDIR = src/lib/
-SWIGDIR = src/swig
-SCRIPTDIR = src/scripts
-LIBDIR = ../lib
-INCLUDEDIR = src/include/
-INCS = -I../include
+SRCDIR = ./src
+BINDIR = ./bin
+
+PROGSDIR = $(SRCDIR)/FSindex-testing/progs
+LIBSDIR = $(SRCDIR)/lib
+SWIGDIR = $(SRCDIR)/swig
+INCLUDEDIR = $(SRCDIR)/include
+INCS = -I $(abspath $(INCLUDEDIR))
+LDFLAGS = -L $(abspath $(LIBSDIR))
+BINSDIR = $(abspath $(BINDIR))
 
 # # mpatrol is a useful malloc debugger - commented out for now
 # # http://mpatrol.sourceforge.net/
@@ -29,7 +29,6 @@ DEBUG=-g -D DEBUG=2
 # This should be set to point to Python headers
 PYDIR = /usr/include/python2.7
 
-LDFLAGS = "-L ../lib"
 
 # gcc flags
 GPROF = -pg
@@ -43,85 +42,29 @@ COPTIM=-O3 -fomit-frame-pointer -finline-functions -funroll-loops -D GCC_INLINE
 LDLIBS = "-lFSindex -lgcc -lm -lpthread"
 
 
-# # Solaris cc flags
-# GPROF = -xpg
-# CC = cc
-# CWARNINGS =  -errwarn -v
-# COPTIM = -xO5 -fast -xipo -s
-# LDLIBS = "-lFSindex"
-
-
-
-
-VPATH = src/lib:src/swig
+# VPATH = src/lib:src/swig
 
 CFLAGS = $(COPTIM) $(INCS) -fPIC # -D THREADS=4
 
-all: progs
+all: progs $(SWIGDIR)/FS.so
 
-progs: libFSindex swig
+progs: $(LIBSDIR)/libFSindex.a
 	if [ ! -d  $(BINDIR) ]; then \
 	   mkdir $(BINDIR); \
 	fi
-	cd $(PROGSDIR); \
-	$(MAKE) CC=$(CC) CFLAGS="$(CFLAGS) $(CWARNINGS)" LDFLAGS=$(LDFLAGS) LDLIBS=$(LDLIBS); \
+	$(MAKE) -C $(PROGSDIR) CC=$(CC) CFLAGS="$(CFLAGS) $(CWARNINGS)" LDFLAGS=$(LDFLAGS) LDLIBS=$(LDLIBS); \
 	for x in *; do if [ -x $$x -a -f $$x.c ]; \
 	then mv $$x "../../$(BINDIR)"; fi done; \
 	cd ..; \
 
-swig:	libFSindex
-	cd $(SWIGDIR); \
-	$(MAKE) CC=$(CC) CFLAGS="$(CFLAGS)" LDFLAGS=$(LDFLAGS) \
-	LDLIBS=$(LDLIBS) PYDIR=$(PYDIR); \
+$(SWIGDIR)/FS.so: $(LIBSDIR)/libFSindex.a
+	$(MAKE) -C $(SWIGDIR) CC=$(CC) CFLAGS="$(CFLAGS)" LDFLAGS=$(LDFLAGS) LDLIBS=$(LDLIBS) PYDIR=$(PYDIR)
 
-libFSindex:
-	cd $(LIBSDIR); \
-	$(MAKE) CC=$(CC) CFLAGS="$(CFLAGS) $(CWARNINGS)"\
+$(LIBSDIR)/libFSindex.a:
+	$(MAKE) -C $(LIBSDIR) CC=$(CC) CFLAGS="$(CFLAGS) $(CWARNINGS)"
 
 clean:
-	rm -f core; \
-	cd $(PROGSDIR); \
-	$(MAKE) clean; \
-	cd ../..; \
-	cd $(LIBSDIR); \
-	$(MAKE) clean; \
-	cd ../..; \
-	cd $(SWIGDIR); \
-	$(MAKE) clean_lib; \
-	cd ../..;\
-	cd $(BINDIR); \
-	rm -f core; \
-	for x in *; do if [ -x $$x -a -f ../$(PROGSDIR)$$x.c ]; \
-	then rm -f $$x; fi done; \
-	rm -f *.py*; \
-	cd ..; \
-
-srcclean:
-	rm -f *~; \
-	cd $(PROGSDIR); \
-	$(MAKE) srcclean; \
-	cd ../..; \
-	cd $(LIBSDIR); \
-	$(MAKE) srcclean; \
-	cd ../..; \
-	cd $(INCLUDEDIR); \
-	rm -f *~; \
-	cd ../..; \
-	cd $(SWIGDIR); \
-	$(MAKE) srcclean; \
-	cd ../..; \
-
-tarball:
-	tar -cvf FSindex.tar Makefile; \
-	tar -rvf FSindex.tar data/*.*; \
-	tar -rvf FSindex.tar --exclude=CVS matrix/*; \
-	tar -rvf FSindex.tar $(PROGSDIR)*.c; \
-	tar -rvf FSindex.tar $(PROGSDIR)Makefile; \
-	tar -rvf FSindex.tar $(LIBSDIR)*.c; \
-	tar -rvf FSindex.tar $(LIBSDIR)Makefile; \
-	tar -rvf FSindex.tar $(INCLUDEDIR)*.h; \
-	tar -rvf FSindex.tar Makefile; \
-	tar -rvf FSindex.tar $(SWIGDIR)/*.i; \
-	tar -rvf FSindex.tar $(SWIGDIR)/Makefile; \
-	tar -rvf FSindex.tar $(SRCDIR)/pfmfind; \
-	gzip  FSindex.tar; \
+	$(MAKE) -C $(PROGSDIR) clean; \
+	$(MAKE) -C $(LIBSDIR) clean; \
+	$(MAKE) -C $(SWIGDIR) clean_lib; \
+	rm -f $(BINSDIR)/*; \
