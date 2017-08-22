@@ -40,9 +40,10 @@ help:
 
 clean:
 	-rm -rf $(BUILDDIR)/*
+	-rm -rf ../docs/*
 
 html:
-	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
+	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) ../docs
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 

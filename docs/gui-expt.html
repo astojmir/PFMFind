@@ -1,0 +1,161 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Specifying query sequence &mdash; PFMFind 0.5 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="PFMFind 0.5 documentation" href="index.html" />
+    <link rel="up" title="Running GUI client" href="gui.html" />
+    <link rel="next" title="Viewing index information" href="gui-index.html" />
+    <link rel="prev" title="Entering PFMFind client settings" href="gui-settings.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="gui-index.html" title="Viewing index information"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="gui-settings.html" title="Entering PFMFind client settings"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PFMFind 0.5 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="gui.html" accesskey="U">Running GUI client</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="specifying-query-sequence">
+<span id="sec-gui-expt"></span><h1>Specifying query sequence<a class="headerlink" href="#specifying-query-sequence" title="Permalink to this headline">¶</a></h1>
+<p>In PFMFind terminology, an <em>experiment</em> consists of an annotated protein sequence that serves as a source of query fragments together with associated search results. Exactly one experiment must be active in order to run searches and examine search results. Experiments are created and set active through the <a class="reference internal" href="#fig-pfmfind-expt"><span class="std std-ref">Experiment tab</span></a>.</p>
+<div class="figure" id="id1">
+<span id="fig-pfmfind-expt"></span><img alt="PFMFind Experiment tab" src="_images/pfmfind-gui-expt2.png" />
+<p class="caption"><span class="caption-text">Experiment tab</span></p>
+</div>
+<p><strong>Experiment</strong> tab consists of two panels: <em>Experiments</em> and <em>Query sequence</em>. The <em>Experiments</em> panel shows all available experiments, while the <em>Query sequence</em> panel displays the sequence associated with the current experiment.</p>
+<div class="section" id="creating-a-new-experiment">
+<h2>Creating a new experiment<a class="headerlink" href="#creating-a-new-experiment" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Click the <strong>New</strong> button. The boxes for entering data will become enabled.</li>
+<li>Enter
+- Experiment name in the entry field above the list (<em>Experiments</em> panel). This will be used to identify experiment in the list.
+- Experiment description in the <em>Description</em> box (<em>Experiments</em> panel).
+- Sequence description in the <em>Description</em> box (<em>Query sequence</em> panel).
+- Protein sequence in the <em>Sequence</em> box (<em>Query sequence</em> panel).</li>
+<li>Click the <strong>Update</strong> button to enter the experiment into the database.</li>
+</ul>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The experiment description can be changed/updated at any time. Hence, it can serve to store the notes about the searches performed. After editing, click the <strong>Update</strong> button to save the changes. The other three fields cannot be changed after they are saved.</p>
+</div>
+</div>
+<div class="section" id="setting-the-current-experiment">
+<h2>Setting the current experiment<a class="headerlink" href="#setting-the-current-experiment" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Select an experiment by highlighting it in the list in the <em>Experiments</em> panel.</li>
+<li>Click the <strong>Set</strong> button. The selected experiment will become current.</li>
+</ul>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Pressing the <strong>Set</strong> button when the current experiment is selected in the list unsets the current experiment.</p>
+</div>
+</div>
+<div class="section" id="uploading-query-sequences-as-a-batch">
+<h2>Uploading query sequences as a batch<a class="headerlink" href="#uploading-query-sequences-as-a-batch" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Click <strong>Upload from file</strong> button.</li>
+<li>Select a file in FASTA format.</li>
+<li>PFMFind will automatically construct experiments by uploading all sequences from that file. Experiment names will be formed by concatenating the name of the file and the sequenctial number of the correpsonding protein sequence.</li>
+</ul>
+</div>
+<div class="section" id="deleting-an-experiment">
+<h2>Deleting an experiment<a class="headerlink" href="#deleting-an-experiment" title="Permalink to this headline">¶</a></h2>
+<p>Click the <strong>Delete</strong> button. You will get a confirmation dialog.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Specifying query sequence</a><ul>
+<li><a class="reference internal" href="#creating-a-new-experiment">Creating a new experiment</a></li>
+<li><a class="reference internal" href="#setting-the-current-experiment">Setting the current experiment</a></li>
+<li><a class="reference internal" href="#uploading-query-sequences-as-a-batch">Uploading query sequences as a batch</a></li>
+<li><a class="reference internal" href="#deleting-an-experiment">Deleting an experiment</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="gui-settings.html"
+                        title="previous chapter">Entering PFMFind client settings</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="gui-index.html"
+                        title="next chapter">Viewing index information</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/gui-expt.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="gui-index.html" title="Viewing index information"
+             >next</a></li>
+        <li class="right" >
+          <a href="gui-settings.html" title="Entering PFMFind client settings"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PFMFind 0.5 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="gui.html" >Running GUI client</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.1.
+    </div>
+  </body>
+</html>

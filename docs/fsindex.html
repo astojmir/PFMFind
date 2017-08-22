@@ -1,0 +1,160 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Running FSIndex search servers &mdash; PFMFind 0.5 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="PFMFind 0.5 documentation" href="index.html" />
+    <link rel="next" title="Running GUI client" href="gui.html" />
+    <link rel="prev" title="Index Setup" href="ixsetup.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="gui.html" title="Running GUI client"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="ixsetup.html" title="Index Setup"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PFMFind 0.5 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="running-fsindex-search-servers">
+<h1>Running FSIndex search servers<a class="headerlink" href="#running-fsindex-search-servers" title="Permalink to this headline">¶</a></h1>
+<p>There are two types of an FSIndex server: a slave, which loads an index and conducts searches and a master, which distributes and collects searches. They communicate between themselves and with clients using TCP/IP sockets.</p>
+<p>The master/slave configuration can be used in the case where indexes are located on different machines, even running different operating systems. If there is only one server, it runs under the slave configuration. This means that each slave can be queried individually and also that a more complicated tree-like structure, where inner nodes are master servers and leaves are slaves, can be constructed if needed.</p>
+<p>Two scripts can be used to run an FSIndex server: <code class="docutils literal"><span class="pre">FSsearchd.py</span></code>, and <code class="docutils literal"><span class="pre">FSsearchc.py</span></code>. <code class="docutils literal"><span class="pre">FSsearchd.py</span></code> runs as a UNIX daemon, while <code class="docutils literal"><span class="pre">FSsearchc.py</span></code> is a regular script for all platforms. Their arguments and options are similar and are described in detail only for <code class="docutils literal"><span class="pre">FSsearchd.py</span></code>.</p>
+<div class="section" id="fssearchd-py-daemon">
+<span id="subsec-fssearchd-py"></span><h2>FSsearchd.py daemon<a class="headerlink" href="#fssearchd-py-daemon" title="Permalink to this headline">¶</a></h2>
+<p>FSsearchd.py script starts an FSIndex server as a UNIX daemon. Unlike the other script, the master slave can be passed an option to control its slaves, in which case it starts the slaves using <code class="docutils literal"><span class="pre">ssh</span></code> on startup and shut them down when it terminates.. The current version assumes that the <code class="docutils literal"><span class="pre">ssh</span></code> login is using public key without a password.</p>
+<div class="section" id="starting">
+<h3>Starting<a class="headerlink" href="#starting" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">FSsearchd.py</span></code> daemon is started from the command line:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ FSsearchd.py [-c] serverid port workpath indexfile [pythonpath]
+</pre></div>
+</div>
+<p>where</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">serverid</span></code> is a string identifier of a particular index (or set of indexes) to be loaded;</li>
+<li><code class="docutils literal"><span class="pre">port</span></code> is the port the daemon should be listening to;</li>
+<li><code class="docutils literal"><span class="pre">workpath</span></code> is the path to the directory where log files are written;</li>
+<li><code class="docutils literal"><span class="pre">indexfile</span></code> is the path to the index file. If the file ends with <code class="docutils literal"><span class="pre">.cfg</span></code>, it is assumed to be a configuration file for the slaves;</li>
+<li><code class="docutils literal"><span class="pre">pythonpath</span></code> (optional) is appended to the system&#8217;s python path. This may help in the case that the path to Python modules required by <code class="docutils literal"><span class="pre">FSsearchd.py</span></code> is not set otherwise.</li>
+</ul>
+<p>The option <code class="docutils literal"><span class="pre">--control-slaves</span></code> or <code class="docutils literal"><span class="pre">-c</span></code> can be used to instruct a master server to attempt to start and terminate its slaves using ssh. If this option is omitted, the master will only attempt to contact each slave and, if any one is unavailable, shut itself down. In this case the slaves must be started separately.</p>
+<p>A master&#8217;s configuration file is a text file where each line gives parameters for a slave server to be started. The format of each line is:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">host</span> <span class="n">port</span> <span class="n">workpath</span> <span class="n">indexfile</span> <span class="p">[</span><span class="n">pythonpath</span> <span class="p">[</span><span class="n">binpath</span><span class="p">]]</span>
+</pre></div>
+</div>
+<p>where the fields are separated by spaces. The fields <code class="docutils literal"><span class="pre">port</span></code>, <code class="docutils literal"><span class="pre">workpath</span></code>, <code class="docutils literal"><span class="pre">indexfile</span></code> and <code class="docutils literal"><span class="pre">pythonpath</span></code> are used directly to start the slave server (see above for full description). The field <code class="docutils literal"><span class="pre">host</span></code> specifies the address of the machine the slave is running on. The optional parameter <code class="docutils literal"><span class="pre">binpath</span></code> provides the path to the <code class="docutils literal"><span class="pre">FSsearchd.py</span></code> executable on the host the slave should run on. Only <code class="docutils literal"><span class="pre">host</span></code> and <code class="docutils literal"><span class="pre">port</span></code> fields are used if <code class="docutils literal"><span class="pre">-c</span></code> option is not set.</p>
+<p>Each server produces two files: a log file and a pid file. The log file receives detailed messages about the running of the server while the pid file contains the UNIX process id of the daemon, the name of the host it is running on, as well as the command line used to start it. The name of the log file is generated from the <code class="docutils literal"><span class="pre">serverid</span></code> passed as a command line argument. If a master is starting its slaves, it passes its own <code class="docutils literal"><span class="pre">serverid</span></code> to them, concatenated with the number of the slave. For example, a master server passed <code class="docutils literal"><span class="pre">TEST2</span></code> as <code class="docutils literal"><span class="pre">serverid</span></code> will produce the logfile named <code class="docutils literal"><span class="pre">FSsearchd_TEST2.log</span></code> and its second slave will produce <code class="docutils literal"><span class="pre">FSsearchd\_TEST2\_s01.log</span></code>.</p>
+</div>
+<div class="section" id="terminating">
+<h3>Terminating<a class="headerlink" href="#terminating" title="Permalink to this headline">¶</a></h3>
+<p>Since <code class="docutils literal"><span class="pre">FSsearchd.py</span></code> is a daemon and hence not connected to any terminal, the best way to terminate it is to send it a SIGTERM signal. To do so, find out (from a pid file or the output of textit{ps}) its process id (<code class="docutils literal"><span class="pre">pid</span></code> and type:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ kill pid
+</pre></div>
+</div>
+<p>This is a clean way to shutdown an FSIndex server since the logs are written and any pending requests are handled before shutdown.</p>
+</div>
+</div>
+<div class="section" id="fssearchc-py-script">
+<h2>FSsearchc.py script<a class="headerlink" href="#fssearchc-py-script" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal"><span class="pre">FSsearchc.py</span></code> script runs an FSIndex server from the command line, printing log to the standard output. It should run on all platforms and is started by:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ FSsearchc.py port indexfile
+</pre></div>
+</div>
+<p>where the parameters are as described in <a class="reference internal" href="#subsec-fssearchd-py"><span class="std std-ref">FSsearchd.py daemon</span></a> above. It can be stopped by killing the server process.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Running FSIndex search servers</a><ul>
+<li><a class="reference internal" href="#fssearchd-py-daemon">FSsearchd.py daemon</a><ul>
+<li><a class="reference internal" href="#starting">Starting</a></li>
+<li><a class="reference internal" href="#terminating">Terminating</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#fssearchc-py-script">FSsearchc.py script</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ixsetup.html"
+                        title="previous chapter">Index Setup</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="gui.html"
+                        title="next chapter">Running GUI client</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/fsindex.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="gui.html" title="Running GUI client"
+             >next</a></li>
+        <li class="right" >
+          <a href="ixsetup.html" title="Index Setup"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PFMFind 0.5 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.1.
+    </div>
+  </body>
+</html>

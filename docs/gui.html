@@ -1,0 +1,135 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Running GUI client &mdash; PFMFind 0.5 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="PFMFind 0.5 documentation" href="index.html" />
+    <link rel="next" title="Entering PFMFind client settings" href="gui-settings.html" />
+    <link rel="prev" title="Running FSIndex search servers" href="fsindex.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="gui-settings.html" title="Entering PFMFind client settings"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="fsindex.html" title="Running FSIndex search servers"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PFMFind 0.5 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="running-gui-client">
+<h1>Running GUI client<a class="headerlink" href="#running-gui-client" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="starting">
+<h2>Starting<a class="headerlink" href="#starting" title="Permalink to this headline">¶</a></h2>
+<p>The GUI client can be started from the command line using the <code class="docutils literal"><span class="pre">PFMFind.pyw</span></code> script:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ PFMFind.pyw [--console] [config_file]
+</pre></div>
+</div>
+<p>The client will contain a Python console (useful for debugging) if the option <code class="docutils literal"><span class="pre">--console</span></code> is set. The <code class="docutils literal"><span class="pre">config_file</span></code> optional argument is the path to an XML file containing the information about the database and the index to be connected. This file can also be specified directly from the GUI.</p>
+</div>
+<div class="section" id="gui-workflow">
+<h2>GUI workflow<a class="headerlink" href="#gui-workflow" title="Permalink to this headline">¶</a></h2>
+<p>PFMFind GUI allows users to perform searches of protein sequence databases using queries consisting of short fragments with ungapped similarity measures. The fragment length can vary between 6 and 20. The user interface consists of a Menu Bar (with only two options <strong>File</strong> and <strong>View</strong>), a Query Navigation Bar, and the main functional area accessed through six tabs: <strong>Settings</strong>, <strong>Experiment</strong>, <strong>Index</strong>, <strong>Search</strong>, <strong>Hits</strong>, and <strong>Keyword</strong>. If the &#8211;console is specified on the command line, an additional <strong>Console</strong> tab containing a Python console appears.</p>
+<p>The PFMFind GUI workflow consists of the following steps:</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="gui-settings.html">Entering PFMFind client settings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gui-expt.html">Specifying query sequence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gui-index.html">Viewing index information</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gui-search.html">Setting up and running searches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gui-hits.html">Examining search hits</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gui-keywords.html">Associating search hits with sequence annotations</a></li>
+</ul>
+</div>
+<p>When the GUI is started the first time, only the <strong>Settings</strong> tab is enabled. Once the connection to the PostgreSQL database is established, the <strong>Experiment</strong> tab is also enabled. The <strong>Index</strong> tab is enabled when the client connects to a master search index. The final three tabs require the user to set a particular <a class="reference internal" href="gui-expt.html#sec-gui-expt"><span class="std std-ref">experiment</span></a>, in addition to acquiring a database connection. The <strong>Search</strong> tab also requires a connection to an index. In this way, it is possible to examine previous search results without establishing a connection to an index.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Running GUI client</a><ul>
+<li><a class="reference internal" href="#starting">Starting</a></li>
+<li><a class="reference internal" href="#gui-workflow">GUI workflow</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="fsindex.html"
+                        title="previous chapter">Running FSIndex search servers</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="gui-settings.html"
+                        title="next chapter">Entering PFMFind client settings</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/gui.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="gui-settings.html" title="Entering PFMFind client settings"
+             >next</a></li>
+        <li class="right" >
+          <a href="fsindex.html" title="Running FSIndex search servers"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PFMFind 0.5 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.1.
+    </div>
+  </body>
+</html>

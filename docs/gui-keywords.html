@@ -1,0 +1,156 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Associating search hits with sequence annotations &mdash; PFMFind 0.5 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="PFMFind 0.5 documentation" href="index.html" />
+    <link rel="up" title="Running GUI client" href="gui.html" />
+    <link rel="next" title="Beyond GUI" href="beyond.html" />
+    <link rel="prev" title="Examining search hits" href="gui-hits.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="beyond.html" title="Beyond GUI"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="gui-hits.html" title="Examining search hits"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PFMFind 0.5 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="gui.html" accesskey="U">Running GUI client</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="associating-search-hits-with-sequence-annotations">
+<span id="sec-gui-keywords"></span><h1>Associating search hits with sequence annotations<a class="headerlink" href="#associating-search-hits-with-sequence-annotations" title="Permalink to this headline">¶</a></h1>
+<p>The search hits obtained from all queries can be associated with the sequence annotations from the database through the <a class="reference internal" href="#fig-pfmfind-keywords"><span class="std std-ref">Keywords tab</span></a> tab.</p>
+<div class="figure" id="id1">
+<span id="fig-pfmfind-keywords"></span><a class="reference internal image-reference" href="_images/pfmfind-gui-keywords2.png"><img alt="PFMFind Keywords tab" src="_images/pfmfind-gui-keywords2.png" style="width: 872.0px; height: 672.0px;" /></a>
+<p class="caption"><span class="caption-text">Keywords tab</span></p>
+</div>
+<p>The tab consists of an action bar at the top and a viewing panel divided in two parts: the left part shows keywords, while the right shows the fragments associated with those keywords. On the top of the right part is the sequence viewer (current fragment is highlighted yellow). Each association of a keyword with a query fragment is indicated by a <code class="docutils literal"><span class="pre">*</span></code> that is placed on the same lrow as the keyword and in the same column as the first residue of the fragment. The <code class="docutils literal"><span class="pre">*</span></code> marker is highlighted according to the <em>keyword score</em>, which is the proportion of the retrieved hits annotated with the keyword out of all hits for that query fragment. The coloring scheme is shown in the table below:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="18%" />
+<col width="82%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Color</th>
+<th class="head">Keyword Score</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><img alt="red" src="_images/red.png" /></td>
+<td>less than 0.01</td>
+</tr>
+<tr class="row-odd"><td><img alt="orange" src="_images/orange.png" /></td>
+<td>between 0.01 and 0.05</td>
+</tr>
+<tr class="row-even"><td><img alt="yellow" src="_images/yellow.png" /></td>
+<td>between 0.05 and 0.1</td>
+</tr>
+<tr class="row-odd"><td><img alt="greenyellow" src="_images/greenyellow.png" /></td>
+<td>between 0.1 and 0.2</td>
+</tr>
+<tr class="row-even"><td><img alt="green" src="_images/green.png" /></td>
+<td>between 0.2 and 0.3</td>
+</tr>
+<tr class="row-odd"><td><img alt="cyan" src="_images/cyan.png" /></td>
+<td>between 0.3 and 0.4</td>
+</tr>
+<tr class="row-even"><td><img alt="blue" src="_images/blue.png" /></td>
+<td>between 0.4 and 0.5</td>
+</tr>
+<tr class="row-odd"><td><img alt="purple" src="_images/purple.png" /></td>
+<td>more than 0.5</td>
+</tr>
+</tbody>
+</table>
+<p>To display the keywords associated with retrieved fragments</p>
+<ol class="arabic simple">
+<li>Select appropriate fragment length and iteration.</li>
+<li>Select the range of interest. The computation time and the amount of information shown depends on the selected range so it is better to examine smaller parts of the query sequence one at a time.</li>
+<li>Choose <em>Ontology</em> (source of annotations) and sorting order using the corresponding pull-down lists.</li>
+<li>Click <strong>Compute</strong> to compute a view of the results. Computation may take some time.</li>
+</ol>
+<p>Clicking on the <code class="docutils literal"><span class="pre">*</span></code> marker displays the fragment hits associated with that marker in the text box at the bottom of the tab.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="gui-hits.html"
+                        title="previous chapter">Examining search hits</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="beyond.html"
+                        title="next chapter">Beyond GUI</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/gui-keywords.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="beyond.html" title="Beyond GUI"
+             >next</a></li>
+        <li class="right" >
+          <a href="gui-hits.html" title="Examining search hits"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PFMFind 0.5 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="gui.html" >Running GUI client</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.1.
+    </div>
+  </body>
+</html>

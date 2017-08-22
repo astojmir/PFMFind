@@ -1,0 +1,293 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Beyond GUI &mdash; PFMFind 0.5 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="PFMFind 0.5 documentation" href="index.html" />
+    <link rel="next" title="Additional Information" href="references.html" />
+    <link rel="prev" title="Associating search hits with sequence annotations" href="gui-keywords.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="references.html" title="Additional Information"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="gui-keywords.html" title="Associating search hits with sequence annotations"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PFMFind 0.5 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="beyond-gui">
+<h1>Beyond GUI<a class="headerlink" href="#beyond-gui" title="Permalink to this headline">¶</a></h1>
+<p>While the graphical interface is very useful for visualising search results and performing indivudual searches, it also has some limitations. For example, the selection of search matrices is limited and large iterated batch searches are not easy to perform. To perform these advanced tasks, it may be necessary to write your own Python code that interfaces with PFMFind as a library. PFMFind allows custom user plugins that provide additional search matrices, and it is relatively easy to write short scripts to automate some tasks.</p>
+<div class="section" id="module-search_plugin">
+<span id="search-matrix-plugins"></span><span id="sec-search-plugins"></span><h2>Search matrix plugins<a class="headerlink" href="#module-search_plugin" title="Permalink to this headline">¶</a></h2>
+<p>Writing plugins for PFMFind is quite easy as far as the interface is concerned. A PFMFind search matrix plugin is a Python module that defines two global variables, <a class="reference internal" href="#search_plugin.iteration" title="search_plugin.iteration"><code class="xref py py-data docutils literal"><span class="pre">iteration</span></code></a> and <a class="reference internal" href="#search_plugin.arg_list" title="search_plugin.arg_list"><code class="xref py py-data docutils literal"><span class="pre">arg_list</span></code></a>, as well as two functions: <a class="reference internal" href="#search_plugin.get_matrix" title="search_plugin.get_matrix"><code class="xref py py-func docutils literal"><span class="pre">get_matrix()</span></code></a> (mandatory) and <a class="reference internal" href="#search_plugin.print_info" title="search_plugin.print_info"><code class="xref py py-func docutils literal"><span class="pre">print_info()</span></code></a> (optional).</p>
+<dl class="data">
+<dt id="search_plugin.iteration">
+<code class="descclassname">search_plugin.</code><code class="descname">iteration</code><a class="headerlink" href="#search_plugin.iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>A boolean constant (either <code class="docutils literal"><span class="pre">True</span></code> or <code class="docutils literal"><span class="pre">False</span></code>). If it is set to <code class="docutils literal"><span class="pre">True</span></code>, the plugin can be used in the second or subsequent iterations, otherwise it is only used for the first iteration.</p>
+<dl class="data">
+<dt id="search_plugin.arg_list">
+<code class="descclassname">search_plugin.</code><code class="descname">arg_list</code><a class="headerlink" href="#search_plugin.arg_list" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>A list specifying the arguments of the functions <a class="reference internal" href="#search_plugin.get_matrix" title="search_plugin.get_matrix"><code class="xref py py-func docutils literal"><span class="pre">get_matrix()</span></code></a> and <a class="reference internal" href="#search_plugin.print_info" title="search_plugin.print_info"><code class="xref py py-func docutils literal"><span class="pre">print_info()</span></code></a>. Its elements are triplets of the form <code class="docutils literal"><span class="pre">(name,</span> <span class="pre">type,</span> <span class="pre">default_value)</span></code>, where <code class="docutils literal"><span class="pre">name</span></code> is a string identifying the variable, the <code class="docutils literal"><span class="pre">type</span></code> is either a string or a list of strings. The corresponding GUI element, labeled with <code class="docutils literal"><span class="pre">name</span></code>, is shown as a part of the <a class="reference internal" href="gui-search.html#subsec-matrix-options"><span class="std std-ref">Matrix Options</span></a> panel of the <strong>Search</strong> tab. If <code class="docutils literal"><span class="pre">type</span></code> is a string, the GUI element is a <code class="docutils literal"><span class="pre">Pmw.EntryField</span></code> widget whose value type is given by the string (Please refer to Pmw documentation). If <code class="docutils literal"><span class="pre">type</span></code> is a list of strings, a <code class="docutils literal"><span class="pre">Pmw.OptionMenu</span></code> is shown with options being the members of lists. In both cases, the given <code class="docutils literal"><span class="pre">default_value</span></code> is preselected.</p>
+<dl class="function">
+<dt id="search_plugin.get_matrix">
+<code class="descclassname">search_plugin.</code><code class="descname">get_matrix</code><span class="sig-paren">(</span><em>HL</em>, <em>*args</em><span class="sig-paren">)</span><a class="headerlink" href="#search_plugin.get_matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct the scoring matrix for similarity search.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>HL</strong> (<code class="xref py py-class docutils literal"><span class="pre">pfmfind.search.hit_list.HitList</span></code> instance) &#8211; a hit list from the previous iteration</li>
+<li><strong>args</strong> &#8211; additional positional arguments in the order they appear in <a class="reference internal" href="#search_plugin.arg_list" title="search_plugin.arg_list"><code class="xref py py-data docutils literal"><span class="pre">arg_list</span></code></a></li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A tuple of the form <code class="docutils literal"><span class="pre">(M,</span> <span class="pre">matrix_type,</span> <span class="pre">ctype)</span></code>, where <code class="docutils literal"><span class="pre">M</span></code> is a Biopython-style score matrix or PSSM, <code class="docutils literal"><span class="pre">matrix_type</span></code> is 0 if the matrix is a score matrix and 1 if it is a PSSM, while <code class="docutils literal"><span class="pre">ctype</span></code> should be set to 0 if the matrix contains similarity scores (the other values are for distance based matrices used by FSIndex).</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="search_plugin.print_info">
+<code class="descclassname">search_plugin.</code><code class="descname">print_info</code><span class="sig-paren">(</span><em>HL</em>, <em>*args</em><span class="sig-paren">)</span><a class="headerlink" href="#search_plugin.print_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct a printable representation of the matrix and the method used to obtain it. Can be omitted, in which case the default printout is produced. It takes the same arguments as <a class="reference internal" href="#search_plugin.get_matrix" title="search_plugin.get_matrix"><code class="xref py py-func docutils literal"><span class="pre">get_matrix()</span></code></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>HL</strong> (<code class="xref py py-class docutils literal"><span class="pre">pfmfind.search.hit_list.HitList</span></code> instance) &#8211; a hit list from the previous iteration</li>
+<li><strong>args</strong> &#8211; additional positional arguments in the order they appear in <a class="reference internal" href="#search_plugin.arg_list" title="search_plugin.arg_list"><code class="xref py py-data docutils literal"><span class="pre">arg_list</span></code></a></li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A string showing (in a human-readable way) the matrix produced by <a class="reference internal" href="#search_plugin.get_matrix" title="search_plugin.get_matrix"><code class="xref py py-func docutils literal"><span class="pre">get_matrix()</span></code></a>.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<div class="section" id="examples">
+<h3>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h3>
+<p>The listing below shows the code of the default first iteration search plugin as an example. It extracts available amino acid scoring matrices from Biopython and removes non-standard letters from them before returning them:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">Bio.SubsMat</span> <span class="k">import</span> <span class="n">MatrixInfo</span>
+<span class="kn">from</span> <span class="nn">pfmfind.search.matrix</span> <span class="k">import</span> <span class="n">QUASI</span><span class="p">,</span> <span class="n">MAX</span><span class="p">,</span> <span class="n">AVG</span><span class="p">,</span> <span class="n">SCORE</span>
+<span class="kn">from</span> <span class="nn">pfmfind.search.matrix</span> <span class="k">import</span> <span class="n">SubstitutionMatrix</span>
+
+<span class="n">_MATRIX_CTYPE</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;None&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;Quasi&#39;</span><span class="p">:</span> <span class="n">QUASI</span><span class="p">,</span> <span class="s1">&#39;Avg&#39;</span><span class="p">:</span> <span class="n">AVG</span><span class="p">,</span> <span class="s1">&#39;Max&#39;</span><span class="p">:</span> <span class="n">MAX</span><span class="p">}</span>
+
+<span class="n">iteration</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">arg_list</span> <span class="o">=</span> <span class="p">[(</span><span class="s1">&#39;Matrix Name&#39;</span><span class="p">,</span> <span class="n">MatrixInfo</span><span class="o">.</span><span class="n">available_matrices</span><span class="p">,</span> <span class="s1">&#39;blosum62&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;Conversion&#39;</span><span class="p">,</span> <span class="n">_MATRIX_CTYPE</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="s1">&#39;None&#39;</span><span class="p">),</span>
+            <span class="p">]</span>
+
+<span class="n">_std_alphabet_map</span> <span class="o">=</span> <span class="p">{}</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="s2">&quot;ACDEFGHIKLMNPQRSTVWY&quot;</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">_filter_non_standard_letters</span><span class="p">(</span><span class="n">S</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">S</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">a</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_std_alphabet_map</span> <span class="ow">or</span> <span class="n">b</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_std_alphabet_map</span><span class="p">:</span>
+            <span class="k">del</span><span class="p">(</span><span class="n">S</span><span class="p">[(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)])</span>
+
+
+<span class="k">def</span> <span class="nf">get_matrix</span><span class="p">(</span><span class="n">HL</span><span class="p">,</span> <span class="n">matrix_name</span><span class="p">,</span> <span class="n">conv_type</span><span class="p">):</span>
+
+    <span class="n">S</span> <span class="o">=</span> <span class="n">SubstitutionMatrix</span><span class="p">()</span>
+    <span class="n">S</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">MatrixInfo</span><span class="p">,</span> <span class="n">matrix_name</span><span class="p">))</span>
+    <span class="n">S</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">matrix_name</span>
+
+    <span class="n">_filter_non_standard_letters</span><span class="p">(</span><span class="n">S</span><span class="p">)</span>
+    <span class="n">matrix_type</span> <span class="o">=</span> <span class="n">SCORE</span>
+    <span class="n">ctype</span> <span class="o">=</span> <span class="n">_MATRIX_CTYPE</span><span class="p">[</span><span class="n">conv_type</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">S</span><span class="p">,</span> <span class="n">matrix_type</span><span class="p">,</span> <span class="n">ctype</span>
+</pre></div>
+</div>
+<p>The default profile plugin is more complicated:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cStringIO</span> <span class="k">import</span> <span class="n">StringIO</span>
+
+<span class="kn">from</span> <span class="nn">pfmfind.search.DirichletMix</span> <span class="k">import</span> <span class="n">DirichletMix</span>
+<span class="kn">from</span> <span class="nn">pfmfind.search.DirichletMix</span> <span class="k">import</span> <span class="n">freq_counts</span>
+<span class="kn">from</span> <span class="nn">pfmfind.search.DirichletMix</span> <span class="k">import</span> <span class="n">henikoff_weights</span>
+<span class="kn">from</span> <span class="nn">pfmfind.search.DirichletMix</span> <span class="k">import</span> <span class="n">BKGRND_PROBS</span> <span class="k">as</span> <span class="n">bg_dict</span>
+<span class="kn">from</span> <span class="nn">pfmfind.search.DirichletInfo</span> <span class="k">import</span> <span class="n">get_mix</span>
+<span class="kn">from</span> <span class="nn">pfmfind.search.DirichletInfo</span> <span class="k">import</span> <span class="n">NAMES</span>
+<span class="kn">from</span> <span class="nn">pfmfind.search.matrix</span> <span class="k">import</span> <span class="n">POSITIONAL</span>
+
+
+<span class="n">iteration</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">arg_list</span> <span class="o">=</span> <span class="p">[(</span><span class="s1">&#39;Scale&#39;</span><span class="p">,</span> <span class="s1">&#39;real&#39;</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;Weighting&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;None&#39;</span><span class="p">,</span> <span class="s1">&#39;Henikoff&#39;</span><span class="p">],</span> <span class="s1">&#39;Henikoff&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;Regulariser&#39;</span><span class="p">,</span> <span class="n">NAMES</span><span class="p">,</span> <span class="s1">&#39;recode3.20comp&#39;</span><span class="p">),</span>
+            <span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">_get_matrix_counts</span><span class="p">(</span><span class="n">HL</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">weight_type</span><span class="p">,</span> <span class="n">dirichlet_type</span><span class="p">):</span>
+
+    <span class="n">seqs</span> <span class="o">=</span> <span class="n">HL</span><span class="o">.</span><span class="n">get_seqs</span><span class="p">()</span>
+
+    <span class="c1"># Calculate sequence weights</span>
+    <span class="n">DM</span> <span class="o">=</span> <span class="n">get_mix</span><span class="p">(</span><span class="n">dirichlet_type</span><span class="p">)</span>
+    <span class="n">bcounts</span> <span class="o">=</span> <span class="n">DM</span><span class="o">.</span><span class="n">block_counts</span><span class="p">(</span><span class="n">seqs</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">weight_type</span> <span class="o">==</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">seqs</span><span class="p">)</span>
+        <span class="n">wcounts</span> <span class="o">=</span> <span class="n">bcounts</span>
+    <span class="k">elif</span> <span class="n">weight_type</span> <span class="o">==</span> <span class="s1">&#39;Henikoff&#39;</span><span class="p">:</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="n">henikoff_weights</span><span class="p">(</span><span class="n">seqs</span><span class="p">,</span> <span class="n">DM</span><span class="o">.</span><span class="n">alphabet</span><span class="p">,</span> <span class="n">bcounts</span><span class="p">)</span>
+        <span class="n">wcounts</span> <span class="o">=</span> <span class="n">DM</span><span class="o">.</span><span class="n">block_counts</span><span class="p">(</span><span class="n">seqs</span><span class="p">,</span> <span class="n">weights</span><span class="p">)</span>
+
+    <span class="n">wprobs</span> <span class="o">=</span> <span class="n">DM</span><span class="o">.</span><span class="n">block_probs</span><span class="p">(</span><span class="n">wcounts</span><span class="p">)</span>
+    <span class="n">bkgrnd</span> <span class="o">=</span> <span class="n">DM</span><span class="o">.</span><span class="n">aa_vector</span><span class="p">(</span><span class="n">bg_dict</span><span class="p">)</span>
+
+    <span class="n">PM</span> <span class="o">=</span> <span class="n">DM</span><span class="o">.</span><span class="n">block2pssm</span><span class="p">(</span><span class="n">DM</span><span class="o">.</span><span class="n">block_log_odds</span><span class="p">(</span><span class="n">wprobs</span><span class="p">,</span> <span class="n">bkgrnd</span><span class="p">,</span> <span class="n">scale</span><span class="p">),</span>
+                       <span class="n">HL</span><span class="o">.</span><span class="n">query_seq</span><span class="p">)</span>
+    <span class="n">PM</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;PSSM&#39;</span>
+    <span class="n">PM</span><span class="o">.</span><span class="n">module</span> <span class="o">=</span> <span class="n">__name__</span>
+    <span class="n">matrix_type</span> <span class="o">=</span> <span class="n">POSITIONAL</span>
+    <span class="n">ctype</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">return</span> <span class="n">PM</span><span class="p">,</span> <span class="n">matrix_type</span><span class="p">,</span> <span class="n">ctype</span><span class="p">,</span> <span class="n">bcounts</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">wcounts</span><span class="p">,</span> <span class="n">wprobs</span>
+
+
+<span class="k">def</span> <span class="nf">get_matrix</span><span class="p">(</span><span class="n">HL</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">weight_type</span><span class="p">,</span> <span class="n">dirichlet_type</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">HL</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+    <span class="k">return</span> <span class="n">_get_matrix_counts</span><span class="p">(</span><span class="n">HL</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">weight_type</span><span class="p">,</span>
+                              <span class="n">dirichlet_type</span><span class="p">)[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">print_info</span><span class="p">(</span><span class="n">HL</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">weight_type</span><span class="p">,</span> <span class="n">dirichlet_type</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">HL</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;Too few hits to construct PSSM&quot;</span>
+
+    <span class="k">if</span> <span class="n">weight_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;&quot;</span>
+
+    <span class="n">seqs</span> <span class="o">=</span> <span class="n">HL</span><span class="o">.</span><span class="n">get_seqs</span><span class="p">()</span>
+    <span class="n">deflines</span> <span class="o">=</span> <span class="n">HL</span><span class="o">.</span><span class="n">get_deflines</span><span class="p">()</span>
+
+    <span class="n">PM</span><span class="p">,</span> <span class="n">matrix_type</span><span class="p">,</span> <span class="n">ctype</span><span class="p">,</span> <span class="n">bcounts</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">wcounts</span><span class="p">,</span> <span class="n">wprobs</span> <span class="o">=</span> \
+        <span class="n">_get_matrix_counts</span><span class="p">(</span><span class="n">HL</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">weight_type</span><span class="p">,</span> <span class="n">dirichlet_type</span><span class="p">)</span>
+
+    <span class="n">DM</span> <span class="o">=</span> <span class="n">get_mix</span><span class="p">(</span><span class="n">dirichlet_type</span><span class="p">)</span>
+    <span class="n">file_str</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
+    <span class="n">file_str</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;***** ALIGNMENT *****</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">seqs</span><span class="p">)):</span>
+        <span class="n">file_str</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%8.4f</span><span class="s1"> </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">weights</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">seqs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">deflines</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+    <span class="n">file_str</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">***** COUNTS *****</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">file_str</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">DM</span><span class="o">.</span><span class="n">print_block_data</span><span class="p">(</span><span class="n">bcounts</span><span class="p">))</span>
+    <span class="n">file_str</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">***** WEIGHTED COUNTS *****</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">file_str</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">DM</span><span class="o">.</span><span class="n">print_block_data</span><span class="p">(</span><span class="n">wcounts</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;float&#39;</span><span class="p">))</span>
+    <span class="n">file_str</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">***** DIRICHLET MIXTURE PROBABILITIES *****</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">bprobs</span> <span class="o">=</span> <span class="n">DM</span><span class="o">.</span><span class="n">block_probs</span><span class="p">(</span><span class="n">wcounts</span><span class="p">)</span>
+    <span class="n">file_str</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">DM</span><span class="o">.</span><span class="n">print_block_data</span><span class="p">(</span><span class="n">bprobs</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">&#39;float&#39;</span><span class="p">))</span>
+    <span class="n">file_str</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">PM</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">file_str</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Beyond GUI</a><ul>
+<li><a class="reference internal" href="#module-search_plugin">Search matrix plugins</a><ul>
+<li><a class="reference internal" href="#examples">Examples</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="gui-keywords.html"
+                        title="previous chapter">Associating search hits with sequence annotations</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="references.html"
+                        title="next chapter">Additional Information</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/beyond.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="references.html" title="Additional Information"
+             >next</a></li>
+        <li class="right" >
+          <a href="gui-keywords.html" title="Associating search hits with sequence annotations"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PFMFind 0.5 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.1.
+    </div>
+  </body>
+</html>

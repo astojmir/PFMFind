@@ -1,0 +1,216 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Database Setup &mdash; PFMFind 0.5 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="PFMFind 0.5 documentation" href="index.html" />
+    <link rel="next" title="Index Setup" href="ixsetup.html" />
+    <link rel="prev" title="Installation" href="installation.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="ixsetup.html" title="Index Setup"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="installation.html" title="Installation"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PFMFind 0.5 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="database-setup">
+<h1>Database Setup<a class="headerlink" href="#database-setup" title="Permalink to this headline">¶</a></h1>
+<p>The first step in setting up a working PFMFind system is to populate a database of sequences and their annotations.</p>
+<div class="section" id="quick-guide">
+<h2>Quick guide<a class="headerlink" href="#quick-guide" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><p class="first">Download the NCBI Taxonomy database from <a class="reference external" href="ftp://ftp.ncbi.nih.gov/pub/taxonomy/">ftp://ftp.ncbi.nih.gov/pub/taxonomy/</a> (this can be skipped and the taxonomy downloaded automatically by the <code class="docutils literal"><span class="pre">PFMFsetupdb.py</span></code> script.</p>
+</li>
+<li><p class="first">Download the appropriate Uniprot, Uniref and Interpro files:</p>
+<ul class="simple">
+<li><a class="reference external" href="http://www.uniprot.org/downloads">UniprotKB files</a> in text (.dat) format;</li>
+<li><a class="reference external" href="http://www.uniprot.org/downloads">Uniref files</a> in XML format;</li>
+<li>Interpro file <code class="docutils literal"><span class="pre">protein2ipr.dat</span></code> from <a class="reference external" href="http://www.ebi.ac.uk/interpro/download.html">http://www.ebi.ac.uk/interpro/download.html</a>.</li>
+</ul>
+</li>
+<li><p class="first">Prepare the configuration file (see <a class="reference internal" href="#sec-dbconfig"><span class="std std-ref">Configuration file</span></a> below).</p>
+</li>
+<li><p class="first">Run the <code class="docutils literal"><span class="pre">PFMFsetupdb.py</span></code> script (for example with configuration file <code class="docutils literal"><span class="pre">dbsetup.xml</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ PFMFsetupdb.py dbsetup.xml
+</pre></div>
+</div>
+</li>
+<li><p class="first">Wait until the database is populated. If you have several configuration files associated with different steps, repeat the step 4. as needed.</p>
+</li>
+</ul>
+</div>
+<div class="section" id="pfmfsetupdb-py-script">
+<h2><code class="docutils literal"><span class="pre">PFMFsetupdb.py</span></code> script<a class="headerlink" href="#pfmfsetupdb-py-script" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal"><span class="pre">PFMFsetupdb.py</span></code> creates and loads the sequence database schema in the following sequence:</p>
+<ul class="simple">
+<li>Create a database schema and BioSQL tables;</li>
+<li>Load NCBI taxonomy information;</li>
+<li>Load Uniprot sequences and annotations;</li>
+<li>Load Uniref cluster information;</li>
+<li>Load Interpro domain informations.</li>
+</ul>
+<p>Depending on the configuration file, each step can be done separately or all together. The sequence however should be preserved except that steps 4. and 5. may be interchanged (or even totally omitted if only sequence/Uniprot data is required).</p>
+<div class="admonition tip">
+<p class="first admonition-title">Tip</p>
+<p class="last">While PFMFind requires certain file formats, it does not require that the data originates from the Uniprot, Uniref or Interpro databases. For example, you may supply your own custom sequence database in Uniprot format, or a set of sequence features in Interpro format.</p>
+</div>
+</div>
+<div class="section" id="configuration-file">
+<span id="sec-dbconfig"></span><h2>Configuration file<a class="headerlink" href="#configuration-file" title="Permalink to this headline">¶</a></h2>
+<p>An example of a <code class="docutils literal"><span class="pre">PFMFsetupdb.py</span></code> configuration file in XML format is shown below:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;!DOCTYPE PFMF_db_setup SYSTEM &quot;PFMFdb.dtd&quot;&gt;
+&lt;PFMF_db_setup&gt;
+  &lt;Database driver=&quot;psycopg2&quot; user=&quot;aleksand&quot; db=&quot;PFMFind&quot;/&gt;
+  &lt;Schema name=&quot;SwissProt02082005&quot; create=&quot;1&quot;/&gt;
+  &lt;Sql_scripts sql_start=&quot;biosqldb-pg-nocnstr.sql&quot; sql_end=&quot;biosqldb-pg-cnstr.sql&quot;/&gt;
+  &lt;Taxonomy copy=&quot;1&quot;&gt;
+     &lt;Taxon_dir&gt;/home/aleksand/data/bio/taxon_tables&lt;/Taxon_dir&gt;
+  &lt;/Taxonomy&gt;
+  &lt;Uniprot_file namespace=&quot;SwissProt&quot;&gt;uniprot_sprot.dat&lt;/Uniprot_file&gt;
+  &lt;Uniref_file namespace=&quot;SwissProt&quot;&gt;uniref50.xml&lt;/Uniref_file&gt;
+  &lt;InterPro_file namespace=&quot;SwissProt&quot;&gt;protein2interpro.dat&lt;/InterPro_file&gt;
+&lt;/PFMF_db_setup&gt;
+</pre></div>
+</div>
+<p>All configuration tags are under <code class="docutils literal"><span class="pre">&lt;PFMF_db_setup&gt;</span></code> tag and the specification is given in the file <code class="docutils literal"><span class="pre">PFMFdb.dtd</span></code> located in the <code class="docutils literal"><span class="pre">examples/setup_config</span></code> directory of the PFMFind distribution. Hence, each configuration file can be checked for validity before being passed to <code class="docutils literal"><span class="pre">PFMFsetupdb.py</span></code>. Below is the description of each element and its attributes.</p>
+<div class="section" id="database">
+<h3><code class="docutils literal"><span class="pre">&lt;Database&gt;</span></code><a class="headerlink" href="#database" title="Permalink to this headline">¶</a></h3>
+<p>This is a mandatory element that is empty and that must start the configuration options. It has six possible attributes:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">driver</span></code> (mandatory): the PostgreSQL Python driver, usually <em>psycopg2</em> but others may work as well;</li>
+<li><code class="docutils literal"><span class="pre">db</span></code> (mandatory): the name of the PostgreSQL database to connect;</li>
+<li><code class="docutils literal"><span class="pre">user</span></code> (optional): database user name;</li>
+<li><code class="docutils literal"><span class="pre">password</span></code> (optional): database password;</li>
+<li><code class="docutils literal"><span class="pre">host</span></code> (optional): the host the database is running on (if left out, <em>localhost</em> is assumed);</li>
+<li><code class="docutils literal"><span class="pre">port</span></code> (optional): the port on the host the database is listening to.</li>
+</ul>
+</div>
+<div class="section" id="schema">
+<h3><code class="docutils literal"><span class="pre">&lt;Schema&gt;</span></code><a class="headerlink" href="#schema" title="Permalink to this headline">¶</a></h3>
+<p>An optional empty element (the default PostgreSQL schema is used if omitted) describing the schema that will contain the dataset and annotations. Two attributes:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">name</span></code> (mandatory): the name of the schema;</li>
+<li><code class="docutils literal"><span class="pre">create</span></code> (optional): whether to create the schema. Should be set to <em>1</em> if yes and to*0* if the schema already exists. The default is <em>0</em>.</li>
+</ul>
+</div>
+<div class="section" id="sql-dir">
+<h3><code class="docutils literal"><span class="pre">&lt;Sql_dir&gt;</span></code><a class="headerlink" href="#sql-dir" title="Permalink to this headline">¶</a></h3>
+<p>An optional element whose value is the path to the SQL scripts specified by the <code class="docutils literal"><span class="pre">&lt;Sql_scripts&gt;</span></code> element described below. The default is the current working directory.</p>
+</div>
+<div class="section" id="sql-scripts">
+<h3><code class="docutils literal"><span class="pre">&lt;Sql_scripts&gt;</span></code><a class="headerlink" href="#sql-scripts" title="Permalink to this headline">¶</a></h3>
+<p>An optional element indicating the SQL scripts to be run to create the required tables. One script (attribute <code class="docutils literal"><span class="pre">sql_start</span></code> is run at the beginning and the other (attribute <code class="docutils literal"><span class="pre">sql_end</span></code> at the end of the run of <code class="docutils literal"><span class="pre">PFMFsetupdb.py</span></code>. If the tag is omitted, the default scripts are run. To skip a default script (for example, if the tables are already created), set its corresponding attribute to empty string.</p>
+</div>
+<div class="section" id="taxonomy">
+<h3><code class="docutils literal"><span class="pre">&lt;Taxonomy&gt;</span></code><a class="headerlink" href="#taxonomy" title="Permalink to this headline">¶</a></h3>
+<p>Optional element with one optional attribute (<code class="docutils literal"><span class="pre">copy</span></code>). If specified, it must include the element <code class="docutils literal"><span class="pre">&lt;Taxon_dir&gt;</span></code>, which indicates the storage directory for the taxon data from NCBI. The <code class="docutils literal"><span class="pre">copy</span></code> attribute can be set to <em>0</em> (default), <em>1</em> or <em>2</em>. If it is <em>2</em>, only the tab-separated tables will be loaded into database (this can be used to reuse the tables from several PostgreSQL schemas); if it is <em>1</em> the tables will in addition be created from the NCBI taxon data; if it is <em>0</em> the taxon data will be downloaded from the NCBI ftp site.</p>
+</div>
+<div class="section" id="uniprot-file-uniref-file-interpro-file">
+<h3><code class="docutils literal"><span class="pre">&lt;Uniprot_file&gt;</span></code>, <code class="docutils literal"><span class="pre">&lt;Uniref_file&gt;</span></code>, <code class="docutils literal"><span class="pre">&lt;InterPro_file&gt;</span></code><a class="headerlink" href="#uniprot-file-uniref-file-interpro-file" title="Permalink to this headline">¶</a></h3>
+<p>These three tags describe the path to files containing the Uniprot, Uniref and InterPro data, respectively. Each can be repeated as many times as necessary (or omitted). The loaders for Uniref and InterPro consider only the annotations for those (Uniprot) sequences that were stored before - hence, the order of tags is important. All three have the same attributes: <code class="docutils literal"><span class="pre">namespace</span></code> (mandatory, dataset identifier), <code class="docutils literal"><span class="pre">sql_start</span></code> and <code class="docutils literal"><span class="pre">sql_end</span></code> (optional SQL scripts to run before and after loading the data).</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Database Setup</a><ul>
+<li><a class="reference internal" href="#quick-guide">Quick guide</a></li>
+<li><a class="reference internal" href="#pfmfsetupdb-py-script"><code class="docutils literal"><span class="pre">PFMFsetupdb.py</span></code> script</a></li>
+<li><a class="reference internal" href="#configuration-file">Configuration file</a><ul>
+<li><a class="reference internal" href="#database"><code class="docutils literal"><span class="pre">&lt;Database&gt;</span></code></a></li>
+<li><a class="reference internal" href="#schema"><code class="docutils literal"><span class="pre">&lt;Schema&gt;</span></code></a></li>
+<li><a class="reference internal" href="#sql-dir"><code class="docutils literal"><span class="pre">&lt;Sql_dir&gt;</span></code></a></li>
+<li><a class="reference internal" href="#sql-scripts"><code class="docutils literal"><span class="pre">&lt;Sql_scripts&gt;</span></code></a></li>
+<li><a class="reference internal" href="#taxonomy"><code class="docutils literal"><span class="pre">&lt;Taxonomy&gt;</span></code></a></li>
+<li><a class="reference internal" href="#uniprot-file-uniref-file-interpro-file"><code class="docutils literal"><span class="pre">&lt;Uniprot_file&gt;</span></code>, <code class="docutils literal"><span class="pre">&lt;Uniref_file&gt;</span></code>, <code class="docutils literal"><span class="pre">&lt;InterPro_file&gt;</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="installation.html"
+                        title="previous chapter">Installation</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ixsetup.html"
+                        title="next chapter">Index Setup</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/dbsetup.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="ixsetup.html" title="Index Setup"
+             >next</a></li>
+        <li class="right" >
+          <a href="installation.html" title="Installation"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PFMFind 0.5 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.1.
+    </div>
+  </body>
+</html>

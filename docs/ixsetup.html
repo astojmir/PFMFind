@@ -1,0 +1,159 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Index Setup &mdash; PFMFind 0.5 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="PFMFind 0.5 documentation" href="index.html" />
+    <link rel="next" title="Running FSIndex search servers" href="fsindex.html" />
+    <link rel="prev" title="Database Setup" href="dbsetup.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="fsindex.html" title="Running FSIndex search servers"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="dbsetup.html" title="Database Setup"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PFMFind 0.5 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="index-setup">
+<h1>Index Setup<a class="headerlink" href="#index-setup" title="Permalink to this headline">¶</a></h1>
+<p>After all sequences are loaded, it is time to set up search indexes using the <code class="docutils literal"><span class="pre">PFMFsetupix.py</span></code>. The configuration parameters are once again supplied through an XML file, such as the one shown below:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;!DOCTYPE PFMF_index_setup SYSTEM &quot;PFMFix.dtd&quot;&gt;
+&lt;PFMF_index_setup&gt;
+  &lt;Database driver=&quot;psycopg&quot; host=&quot;130.195.61.38&quot; port=&quot;5432&quot;
+            user=&quot;aleksander&quot; password=&quot;aleksander&quot; db=&quot;PFMFind&quot;/&gt;
+  &lt;Index_dir&gt;/home/aleksander/data/uniprot-3.5/FSindex&lt;/Index_dir&gt;
+  &lt;Dataset name=&quot;sprot&quot; schema=&quot;PFMFind02&quot; namespace=&quot;SwissProt&quot;
+           max_residues=&quot;80000000&quot;&gt;
+    &lt;Index length=&quot;10&quot;&gt;
+      &lt;Partition&gt;STAN#ILVM#KRDEQ#WFYH#GPC&lt;/Partition&gt;
+    &lt;/Index&gt;
+    &lt;Index length=&quot;12&quot;&gt;
+      &lt;Partition&gt;STAN#ILVM#KRDEQ#WFYHGPC&lt;/Partition&gt;
+    &lt;/Index&gt;
+  &lt;/Dataset&gt;
+&lt;/PFMF_index_setup&gt;
+</pre></div>
+</div>
+<div class="section" id="configuration-file">
+<h2>Configuration file<a class="headerlink" href="#configuration-file" title="Permalink to this headline">¶</a></h2>
+<p>The index configuration file is very similar to the <a class="reference internal" href="dbsetup.html#sec-dbconfig"><span class="std std-ref">database configuration file</span></a>. All tags are under the <code class="docutils literal"><span class="pre">&lt;PFMF_index_setup&gt;</span></code> tag and the specification is given in the file <code class="docutils literal"><span class="pre">PFMFix.dtd</span></code> located in the <code class="docutils literal"><span class="pre">examples/setup_config</span></code> directory of the PFMFind distribution. Below is the description of each element and its attributes.</p>
+<div class="section" id="database">
+<h3><code class="docutils literal"><span class="pre">&lt;Database&gt;</span></code><a class="headerlink" href="#database" title="Permalink to this headline">¶</a></h3>
+<p>These are database connection details. Same as for database setup described <a class="reference internal" href="dbsetup.html#sec-dbconfig"><span class="std std-ref">earlier</span></a>.</p>
+</div>
+<div class="section" id="index-dir">
+<h3><code class="docutils literal"><span class="pre">&lt;Index_dir&gt;</span></code><a class="headerlink" href="#index-dir" title="Permalink to this headline">¶</a></h3>
+<p>A mandatory element describing the path that will contain the sequence files in FASTA format and their indexes.</p>
+</div>
+<div class="section" id="dataset">
+<h3><code class="docutils literal"><span class="pre">&lt;Dataset&gt;</span></code><a class="headerlink" href="#dataset" title="Permalink to this headline">¶</a></h3>
+<p>An element containing details about each dataset to be indexed. There can be multiple <code class="docutils literal"><span class="pre">&lt;Dataset&gt;</span></code> elements, each specifying multiple indexes.</p>
+<p>It has four possible attributes:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">name</span></code> (mandatory): the dataset identifier used as a prefix for all files related to this dataset;</li>
+<li><code class="docutils literal"><span class="pre">schema</span></code> (optional): the PostgreSQL schema containing the dataset. If omitted, the setup script attempts to use the schemas from the default PostgreSQL path.</li>
+<li><code class="docutils literal"><span class="pre">namespace</span></code> (optional): the namespace associated with the dataset. Each schema can contain multiple datasets, which are distinguished using the namespace identifier. If omitted, all sequences from the schema are retrieved.</li>
+<li><code class="docutils literal"><span class="pre">max_residues</span></code> (optional): the maximum number of residues a single sequence file can contain. If the dataset contains more than that number of residues, multiple files and indexes will be created (Note that each part may contain slightly more residues because the full sequences are not broken up). These parts can be loaded by slave index servers and the whole search distributed by a master server.</li>
+</ul>
+<p>Each <code class="docutils literal"><span class="pre">&lt;Dataset&gt;</span></code> element can contain one or more <code class="docutils literal"><span class="pre">&lt;Index&gt;</span></code> elements, whose only (mandatory) attribute is <code class="docutils literal"><span class="pre">length</span></code>, giving the fragment length to be used to create the index. In turn, each <code class="docutils literal"><span class="pre">&lt;Index&gt;</span></code> element contains one or more <code class="docutils literal"><span class="pre">&lt;Partition&gt;</span></code> elements, having no attributes and containing a string specifying the amino acid alphabet partitions.</p>
+<p>Alphabet partitions are separated by <code class="docutils literal"><span class="pre">#</span></code> (e.g. <code class="docutils literal"><span class="pre">STAN#ILVM#KRDEQ#WFYH#GPC</span></code>) and each <code class="docutils literal"><span class="pre">&lt;Partition&gt;</span></code> element specifies an alphabet partition for a single position in the fragment (up to the fragment length). If there are fewer <code class="docutils literal"><span class="pre">&lt;Partition&gt;</span></code> elements than the specified fragment length, the last <code class="docutils literal"><span class="pre">&lt;Partition&gt;</span></code> element is used for all remaining positions. Hence, in order to have the same alphabet partitions at all positions, it is sufficient to specify a single <code class="docutils literal"><span class="pre">&lt;Partition&gt;</span></code> element.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Index Setup</a><ul>
+<li><a class="reference internal" href="#configuration-file">Configuration file</a><ul>
+<li><a class="reference internal" href="#database"><code class="docutils literal"><span class="pre">&lt;Database&gt;</span></code></a></li>
+<li><a class="reference internal" href="#index-dir"><code class="docutils literal"><span class="pre">&lt;Index_dir&gt;</span></code></a></li>
+<li><a class="reference internal" href="#dataset"><code class="docutils literal"><span class="pre">&lt;Dataset&gt;</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="dbsetup.html"
+                        title="previous chapter">Database Setup</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="fsindex.html"
+                        title="next chapter">Running FSIndex search servers</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/ixsetup.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="fsindex.html" title="Running FSIndex search servers"
+             >next</a></li>
+        <li class="right" >
+          <a href="dbsetup.html" title="Database Setup"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PFMFind 0.5 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.1.
+    </div>
+  </body>
+</html>

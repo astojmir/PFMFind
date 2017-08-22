@@ -1,0 +1,204 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Setting up and running searches &mdash; PFMFind 0.5 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="PFMFind 0.5 documentation" href="index.html" />
+    <link rel="up" title="Running GUI client" href="gui.html" />
+    <link rel="next" title="Examining search hits" href="gui-hits.html" />
+    <link rel="prev" title="Viewing index information" href="gui-index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="gui-hits.html" title="Examining search hits"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="gui-index.html" title="Viewing index information"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PFMFind 0.5 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="gui.html" accesskey="U">Running GUI client</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="setting-up-and-running-searches">
+<span id="sec-gui-search"></span><h1>Setting up and running searches<a class="headerlink" href="#setting-up-and-running-searches" title="Permalink to this headline">¶</a></h1>
+<p>Fragment based searches for the selected experiment are set up and run through
+the <a class="reference internal" href="#fig-pfmfind-search"><span class="std std-ref">Search tab</span></a>. The searches are first scheduled by setting
+<em>search jobs</em>, which encapsulate the query sequence and the search parameters,
+and then sent to the connected index in batches for execution.</p>
+<div class="figure" id="id1">
+<span id="fig-pfmfind-search"></span><a class="reference internal image-reference" href="_images/pfmfind-gui-search.png"><img alt="PFMFind Search tab" src="_images/pfmfind-gui-search.png" style="width: 872.0px; height: 672.0px;" /></a>
+<p class="caption"><span class="caption-text">Search tab</span></p>
+</div>
+<p>To schedule and perform a search</p>
+<ul class="simple">
+<li>Select the appropriate sequence fragment and iteration using the counters
+within the <a class="reference internal" href="#subsec-status-bar"><span class="std std-ref">Status Bar</span></a>.</li>
+<li>Specify search parameters using the <a class="reference internal" href="#subsec-cutoff-options"><span class="std std-ref">Cutoff Options</span></a> and <a class="reference internal" href="#subsec-matrix-options"><span class="std std-ref">Matrix Options</span></a>
+panels.</li>
+<li>Select and set one or more search jobs through the <a class="reference internal" href="#subsec-setting-jobs"><span class="std std-ref">Jobs</span></a> panel. Click the <strong>Set</strong> button to record the jobs.</li>
+<li>Once you have selected all desired jobs, click on <strong>Run</strong> to submit all currently
+scheduled jobs to the index. The <strong>Run</strong> button is disabled while the search
+is running and becomes enabled again once the results are stored in the database.</li>
+</ul>
+<div class="section" id="fragment-status-bar">
+<span id="subsec-status-bar"></span><h2>Fragment status bar<a class="headerlink" href="#fragment-status-bar" title="Permalink to this headline">¶</a></h2>
+<p>The status bar at the top of the GUI area (just under Menu bar) allows setting of the current sequence fragment. All operations in <strong>Search</strong>, <strong>Hits</strong> and <strong>Keywords</strong> tab are relative to the current fragment. It contains three counters:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name" colspan="2">Fragment Length:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">selects a fragment length between 6 and 20 residues.</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Current Iteration:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body">selects an iteration (0 for the initial search, 1 or more for searches based on the results of previous searches (similar to PSI-BLAST).</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">Current Fragment:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">selects a particular fragment of a given length. Fragments are numbered from 0. An <em>n</em>-th fragment consists of the <em>n</em>-th residue within the query sequence plus the subsequent <em>m-1</em> residues, where <em>m</em> is the specified fragment length.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="matrix-options">
+<span id="subsec-matrix-options"></span><h2>Matrix options<a class="headerlink" href="#matrix-options" title="Permalink to this headline">¶</a></h2>
+<p>The search matrix is specified through Matrix Options panel and shown in the large text box on the right. Each matrix is obtained through <a class="reference internal" href="beyond.html#sec-search-plugins"><span class="std std-ref">Search matrix plugins</span></a>. A desired plugin can be chosen from the list of all appropriate available plugins through the <em>Plugin</em> pulldown box. PFMFind distinguishes between two types of plugins, one for the first iteration, which does not depend on the results of the previous query, and the other for all subsequent iterations, which may use previous results (see the plugin variable <code class="xref py py-data docutils literal"><span class="pre">iteration</span></code>). If the results of the first iteration (numbered 0) are avalable and you select current iteration to be 1, the contents of the Matrix Options panel will change.</p>
+</div>
+<div class="section" id="cutoff-options">
+<span id="subsec-cutoff-options"></span><h2>Cutoff options<a class="headerlink" href="#cutoff-options" title="Permalink to this headline">¶</a></h2>
+<p>The criteria for retrieval of fragments from the database are set through Cutoff Options panel. There are three possible options:</p>
+<ul class="simple">
+<li>by statistical significance (E-value),</li>
+<li>by range cutoff (Range), and</li>
+<li>by the number of nearest neighbours (Nearest Neighbours).</li>
+</ul>
+<p>The range cutoff is relative to the scoring matrix specified under <a class="reference internal" href="#subsec-matrix-options"><span class="std std-ref">Matrix Options</span></a>. If the supplied matrix is a similarity matrix (this is indicated in the text box), the retrieved fragments will all have similarity with the query greater than or equal to the specified cutoff. If the supplied matrix is a distance matrix, the distance of the retrieved fragments to the query will be less than or equal to the cutoff.</p>
+</div>
+<div class="section" id="setting-jobs">
+<span id="subsec-setting-jobs"></span><h2>Setting jobs<a class="headerlink" href="#setting-jobs" title="Permalink to this headline">¶</a></h2>
+<p>The Jobs panel allows setting, unsetting and running searches. A search job can be set for</p>
+<ul class="simple">
+<li>The currently selected fragment (<em>Current</em> checkbox),</li>
+<li>All fragments (from the query sequence of the current experiment) of the same length as the currently selected fragment (<em>All</em> + <em>Fragment</em> checkboxes),</li>
+<li>All fragments of all possible lengths (6 to 20) ((<em>All</em> + <em>Lengths</em> checkboxes),</li>
+<li>Remaining unset fragments of the same length (<em>Remaining</em> + <em>Fragment</em> checkboxes), and</li>
+<li>Remaining unset fragments of all possible lengths (<em>Remaining</em> + <em>Lengths</em> checkboxes).</li>
+</ul>
+<p>In all cases the jobs are set assuming the currently selected iteration, search matrix and cutoff options.</p>
+<p>The current fragment as well as the selected searches are indicated on the sequence viewer located above the matrix viewer text box. The full extent of the current fragment is indicated in yellow (<img alt="yellow" src="_images/yellow.png" />) below the sequence. Clicking on a residue in the sequence viewer selects the fragment starting with that residue as current.</p>
+<p>The currently set search jobs are indicated by highlighting the sequence (for the current fragment length) or the line above it (for all other fragment lengths). The highlighted residue represents the fragment starting with it.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="18%" />
+<col width="82%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Color</th>
+<th class="head">Interpretation</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><img alt="greenyellow" src="_images/greenyellow.png" /></td>
+<td>Search set for maximum possible iteration (everything OK)</td>
+</tr>
+<tr class="row-odd"><td><img alt="royalblue" src="_images/royalblue.png" /></td>
+<td>Invalid search set (too high iteration) - ignored</td>
+</tr>
+<tr class="row-even"><td><img alt="orange" src="_images/orange.png" /></td>
+<td>Search set for a lower iteration - will overwrite existing results</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Setting up and running searches</a><ul>
+<li><a class="reference internal" href="#fragment-status-bar">Fragment status bar</a></li>
+<li><a class="reference internal" href="#matrix-options">Matrix options</a></li>
+<li><a class="reference internal" href="#cutoff-options">Cutoff options</a></li>
+<li><a class="reference internal" href="#setting-jobs">Setting jobs</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="gui-index.html"
+                        title="previous chapter">Viewing index information</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="gui-hits.html"
+                        title="next chapter">Examining search hits</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/gui-search.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="gui-hits.html" title="Examining search hits"
+             >next</a></li>
+        <li class="right" >
+          <a href="gui-index.html" title="Viewing index information"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PFMFind 0.5 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="gui.html" >Running GUI client</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.1.
+    </div>
+  </body>
+</html>
